@@ -142,6 +142,10 @@ class LiveFit:
             for u, i, a in zip(c.u.values, c.i.values, c.a.values): self.hcart.setdefault(u, {})[i] = int(a)
             self.hbought = history[history.p > 0].groupby("u").i.agg(set).to_dict()
         self.lcart, self.lbought = {}, {}
+        # State windows (T-031). Time of the latest cart / purchase event per shopper and product, as the ISO string the
+        # stream gives ("2026-11-15 08:00:00.123": string order = time order). day_start None = no day window (as before).
+        self.lcart_t, self.lbought_t = {}, {}
+        self.day_start, self.day_carts = None, False
         self.snap = None
         # category mix of every shopper (r3). History matrices are built once, at the first set_catalog (needs the catalog).
         self._hist = history if history is not None and "v" in history else None        # a reference, dropped after the build
@@ -184,11 +188,37 @@ class LiveFit:
         self.alt = alt
 
     # ---- refresher thread ----
-    def add(self, u, i, v=0, a=0, p=0):
+    def set_window(self, day_start=None, carts="persistent"):
+        """Which live state belongs to the current day / phase. Definitions and evidence: D-310 in decisions.md, E-310 in experiments.md.
+        day_start: "YYYY-MM-DD HH:MM:SS" UTC, or None for no day window (everything since the writer's EVENTS_SINCE
+        counts as today, the behaviour before T-031).
+          - purchases: ALWAYS excluded from the slate, whatever their date (permanent). Only purchases at or after
+            day_start feed the "bought today" features (nbp, bsub).
+          - carts: "persistent" (default) keeps every live cart as a live cart; "day" keeps carts at or after day_start
+            as live carts and turns older ones into history carts (one more cart in `chn`). Never erased.
+          - views (category mix, affinity): always persistent, they are preferences.
+        An event whose time is unknown counts as today."""
+        if day_start is not None:
+            day_start = str(day_start)
+            if len(day_start) != 19 or str(np.datetime64(day_start.replace(" ", "T"), "s")).replace("T", " ") != day_start:
+                raise ValueError("day_start must be 'YYYY-MM-DD HH:MM:SS'")
+        if carts not in ("persistent", "day"): raise ValueError("carts must be 'persistent' or 'day'")
+        self.day_start, self.day_carts = day_start, carts == "day"       # two plain assignments; user_state reads them once
+
+    def add(self, u, i, v=0, a=0, p=0, ta=None, tp=None):
+        """ta / tp: time of the latest cart / purchase event (ISO strings from the stream), used only by the state windows."""
         if v:
             d = self.lmix.setdefault(u, {}); d[i] = d.get(i, 0) + int(v)
-        if p: self.lbought.setdefault(u, set()).add(i)
-        if a: self.lcart.setdefault(u, set()).add(i)
+        if p:
+            self.lbought.setdefault(u, set()).add(i)
+            if tp:
+                d = self.lbought_t.setdefault(u, {})
+                if tp > d.get(i, ""): d[i] = tp
+        if a:
+            self.lcart.setdefault(u, set()).add(i)
+            if ta:
+                d = self.lcart_t.setdefault(u, {})
+                if ta > d.get(i, ""): d[i] = ta
 
     def set_catalog(self, cat, unavail, aff, lq=None, hc=None):
         ids = list(aff.pid); A = aff.A
@@ -254,6 +284,15 @@ class LiveFit:
         b = bt | self.hbought.get(u, set())
         lc = set(self.lcart.get(u, ())) - b
         hc = {i: a for i, a in (self.hcart.get(u) or {}).items() if i not in b and i not in lc}
+        ds = self.day_start
+        if ds is not None:                               # b (the exclusion) is untouched: a purchase never comes back
+            t = self.lbought_t.get(u) or {}
+            bt = {i for i in bt if t.get(i, "~") >= ds}                  # "~" sorts after every date: unknown time = today
+            if self.day_carts and lc:
+                t = self.lcart_t.get(u) or {}
+                h = self.hcart.get(u) or {}
+                for i in [i for i in lc if t.get(i, "~") < ds]:
+                    lc.discard(i); hc[i] = h.get(i, 0) + 1
         return b, lc, hc, bt, self.user_mix(u)
 
     def scores(self, req, state, aff_obj, model=None):

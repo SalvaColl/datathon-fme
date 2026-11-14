@@ -262,3 +262,27 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Cuánto cambia el slate frente a r3 (3.000 peticiones del tramo final):** vuelven, páginas con vistas: 0,16 productos de 10 distintos y el primero cambia en el 3%; nuevos: 0,61 de 10 y el primero en el 11%. Con `cv` = 0,5 a mano serían 1,5 y 1,9 de 10 (primero 29% y 32%); con 1,0, 3,1 y 3,6.
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
+
+### E-310 — Ventanas de estado: cuánto dura el valor de un carrito y de una compra, y qué cambia el interruptor (T-031)
+- **Date / owner / branch:** 2026-11-14 20:15 UTC · Javi (agente) · `javi/state-windows`. Etiqueta: LIVE FEEDBACK (descriptivo, sin controlar por el resto de señales) + medida de latencia. No es conversión del modelo oculto.
+- **Datos:** 76.969 peticiones respondidas (11:09–18:17 UTC), estado reconstruido a la hora de cada petición. La práctica dejó de emitir eventos y peticiones a las 18:31 UTC.
+- **Carritos por antigüedad (compras por 10.000 impresiones de un producto en el carrito, no comprado):**
+
+| antigüedad del carrito | vuelven (n, compras) | nuevos (n, compras) |
+|---|---|---|
+| hasta 10 min | 101 (296, 3) | 192 (208, 4) |
+| 10–60 min | 27 (1.469, 4) | 124 (884, 11) |
+| 1–2 h | 48 (1.652, 8) | 160 (1.127, 18) |
+| 2–4 h | 38 (3.146, 12) | 181 (1.991, 36) |
+| más de 4 h | 32 (4.925, 16) | 161 (2.865, 46) |
+| carrito del histórico (hasta 60 días) | 34 (98.439, 332) | — |
+| sin carrito | 5,5 (368.239, 204) | 16 (222.726, 352) |
+
+  Con estos tamaños no se ve caída con la antigüedad: a más de 4 horas un carrito sigue valiendo 6 a 10 veces más que un producto sin carrito, y lo mismo que un carrito del histórico. Borrarlos o degradarlos a medianoche tiraría señal.
+- **"Misma subcategoría que una compra de hoy" por tiempo desde la última compra (productos sin carrito, compras por 10.000):** vuelven 35 (hasta 30 min), 39 (30 min–2 h), 24 (más de 2 h), frente a 4–8 del resto; nuevos 83, 60, 67 frente a 0–15. Sigue 3 a 4 veces por encima a más de 2 horas. De un día para otro no se puede medir con un solo día.
+- **Qué cambia el interruptor en datos reales** (3.000 peticiones, pesos r3, corte simulado a las 15:00 UTC): exclusiones idénticas y 0 carritos perdidos en los 2.891 usuarios; cambia el 42% de los slates (1,2 productos de 10 de media; en 542 solo el orden) y el 48% con `carts: day`. 0 slates inválidos en todos los casos.
+- **Latencia (estado + slate, 3.000 peticiones, misma máquina):** main p50 0,73 ms / p95 1,46; rama sin ventana 0,58 / 1,16; con ventana 0,54 / 1,18; con `carts: day` 0,63 / 1,41. Sin diferencia fuera del ruido.
+- **Riesgo de operación encontrado:** el runbook recomendaba arrancar la final con `EVENTS_SINCE` del domingo. Eso quitaría de las exclusiones 98.005 compras orgánicas del sábado (24.522 de los 41.358 usuarios que nos pidieron carrusel compraron algo) y los carritos del 74% de esos usuarios. Corregido en el runbook.
+- **Tests:** `tests/test_state_windows.py` (9): fronteras exactas (23:59:59.999 / 00:00:00.000), eventos que llegan tarde, transición sábado-domingo por `apply_events`, reinicio el domingo con el mismo resultado, ventanas de carga que cruzan medianoche. 169 tests en total en esta rama.
+- **Conclusión:** no activar ventana de día para la final (D-310).
+

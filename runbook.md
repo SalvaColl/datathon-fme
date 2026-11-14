@@ -174,7 +174,7 @@ caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home 
 - **Parar a mano:** `kill -INT <pid>` o `kill <pid>`; el writer de T-022 termina el bucle en curso y suelta el candado.
 - **Arranque en frío** (sin writer previo): `python live.py` como siempre. Ya no hay bloqueo de ~60 s tras `ready`: responde desde el primer bucle con features históricas mientras aplica el día en trozos.
 - **Memoria:** durante el relevo hay dos procesos de ~2,8 GB. Cerrar lo que sobre en el Mac antes de lanzarlo.
-- **`EVENTS_SINCE`:** el writer aplica `shop.events` desde `2026-11-14 07:00:00` (fijo en el código hasta ahora). Para la final, arrancar con `EVENTS_SINCE='2026-11-15 07:00:00'` (u otra hora) si no se quiere arrastrar el sábado como "hoy"; la carga va por ventanas de una hora, así que un rango largo ya no puede agotar el tiempo de la consulta.
+- **`EVENTS_SINCE`:** el writer aplica `shop.events` desde `2026-11-14 07:00:00`. **Para la final NO se cambia** (corregido por T-031, D-310): arrancar el domingo con `EVENTS_SINCE='2026-11-15 ...'` borraría las 98.005 compras orgánicas del sábado de las exclusiones (el 59% de los usuarios que nos pidieron carrusel compró algo el sábado), sus carritos y sus vistas. La carga va por ventanas de una hora, así que el rango largo no agota la consulta. Si algún día hiciera falta separar el sábado del domingo, se hace con `state_window` en `policy.json` (ver abajo), nunca recortando los eventos.
 - **Parones:** cualquier recolección de basura de más de 200 ms queda como `{"event": "gc_pause", ...}`. Si tras este cambio sigue habiendo bucles de varios segundos sin `gc_pause` al lado, la causa es otra (red o reposo del Mac).
 - **Ensayo sin escribir** (en otra máquina, nunca junto al writer): ver la cabecera de `tools/handoff_rehearsal.py`.
 
@@ -197,3 +197,13 @@ Con el writer reiniciado (con relevo) en un commit que incluya T-027:
 ```
 
 r5 son los pesos de r3 más `cv` (grafo `recsys/lfm_graph_B.json`, se carga solo al arrancar). Etiquetas `v3-lfm-r5-k|-n|-kh|-nh`. Para probar otro peso sin reiniciar: `{"tag": "r6", "file": "lfm_coef_r3.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}}`. Rehacer el grafo: `python lfm_graph_build.py`; reajustar: `python lfm_build.py --pull --base lfm_coef_r3.json --add cv --out lfm_coef_r5.json`.
+
+## Ventanas de estado de lfm en el paso de práctica a final — T-031 (2026-11-14)
+
+Definiciones en D-310. **Por defecto no hay ventana de día y no hay que hacer nada el domingo**: ni reiniciar, ni tocar `EVENTS_SINCE`, ni `policy.json`.
+
+- Writer que sigue encendido toda la noche: conserva el estado del sábado. Correcto.
+- Writer reiniciado el domingo: con `EVENTS_SINCE` por defecto recarga el sábado por ventanas de una hora y la primera lectura de feedback trae todas las compras del carrusel. Llega al mismo estado (test `test_a_restart_on_sunday_rebuilds_the_same_state`).
+- Interruptor opcional, sin reinicio una vez cargado el código de T-031: `"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}` en `data/policy.json`. Con él, solo las compras desde `day_start` alimentan las features de "comprado hoy"; las compras siguen excluidas siempre. `"carts": "day"` además pasa los carritos anteriores a carritos de histórico (no los borra). **No recomendado sin lectura del leaderboard**: en datos reales cambia el 42% de los slates (48% con `carts: day`) y no hay evidencia de que ayude (E-310).
+- Vuelta atrás: quitar `state_window` de `policy.json` (el writer lo aplica en el siguiente ciclo y lo escribe en el log como `{"event": "policy", "state_window": null}`).
+

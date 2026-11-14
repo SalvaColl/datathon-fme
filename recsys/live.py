@@ -60,7 +60,15 @@ VERSION_L = "v3-lfm-r1"            # live-fitted model (T-018); served with a se
 VERSION_T = "v3-attr-r1"
 VERSION_TA = "v3-attr-aff-r1"
 VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm")
-POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "lfm_arms": []}
+POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "lfm_arms": [], "state_window": None}
+# T-031: day / phase window of the lfm shopper state, e.g. {"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}}.
+# Absent or invalid = no day window (everything since EVENTS_SINCE counts as today). Purchases stay excluded either way.
+def clean_state_window(raw):
+    if not isinstance(raw, dict) or not isinstance(raw.get('day_start'), str) or set(raw) - {'day_start', 'carts'}: return None
+    w = {'day_start': raw['day_start'], 'carts': raw.get('carts', 'persistent')}
+    try: lfm.LiveFit({k: dict(w={}, b=0.0) for k in ('known', 'new')}).set_window(**w)
+    except Exception: return None
+    return w
 # T-021: tuning arms for lfm requests, read by the leaderboard per model_version ("v3-lfm-<tag>-k|-n|-kh|-nh"):
 #   {"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}, {"tag": "x1", "w": {"known": {"islast": 3.0}}}]}
 # An arm with only a tag is the committed weights (control). Users are split evenly by hash across 2-4 arms.
@@ -151,6 +159,9 @@ def read_policy():
             try: LF.set_arms(arms)                 # weights first: a request never sees an arm without its weights
             except Exception as e: print('lfm_arms ignored', type(e).__name__, e, flush=True); arms = []; LF.set_arms([])
             POLICY['lfm_arms'] = arms; print(json.dumps(dict(event='policy', lfm_arms=arms)), flush=True)
+        win = clean_state_window(conf.get('state_window'))
+        if win != POLICY['state_window'] and LF is not None:
+            LF.set_window(**(win or {})); POLICY['state_window'] = win; print(json.dumps(dict(event='policy', state_window=win)), flush=True)
     except FileNotFoundError: pass
     except Exception as e: print('policy.json ignored', type(e).__name__, flush=True)
     read_labels()
@@ -222,7 +233,8 @@ def refresh_catalog():
     return cat, unavail
 
 EVENT_SQL = """SELECT user_id::String u, product_id::String i, toUInt32(countIf(event_type='view')) v,
-      toUInt32(countIf(event_type='add_to_cart')) a, toUInt32(countIf(event_type='purchase')) p, max(ts::DateTime64(3))::String mx
+      toUInt32(countIf(event_type='add_to_cart')) a, toUInt32(countIf(event_type='purchase')) p, max(ts::DateTime64(3))::String mx,
+      maxIf(ts::DateTime64(3), event_type='add_to_cart')::String ta, maxIf(ts::DateTime64(3), event_type='purchase')::String tp
       FROM shop.events WHERE ts::DateTime64(3) > toDateTime64('{lo}',3){hi} GROUP BY u,i"""
 BACKFILL_WINDOW_H = 1.0     # first refresh after start: one query per hour of stream instead of one giant response
 EVENT_CHUNK = 2000          # rows applied per feature_lock hold; the serving loop gets the lock between chunks
@@ -245,7 +257,7 @@ def apply_events(rows, chunk=EVENT_CHUNK, pause=time.sleep):
                 LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
                 if r["p"]: BOUGHT[r["u"]].add(r["i"])
                 if AP is not None: AP.add(r["u"], r["i"], r["v"])
-                if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+                if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"], r.get("ta"), r.get("tp"))
         if k + chunk < len(rows): pause(0.002)      # threading.Lock is not fair: yield so a waiting predict() gets in
 
 def fb_window():
@@ -263,14 +275,14 @@ def refresh_events():
         if hi: state["ev_ts"] = hi
         elif rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
-        fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window())
+        fb = query(f"SELECT r.user_id::String u, f.purchased::String i, f.ts::DateTime64(3)::String t FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window())
         state["fb_full"] = True
         for r in fb:
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
                 fb_seen[r["u"]].add(r["i"])
                 with feature_lock:
                     LIVE.add(r["u"], r["i"], 0, 0, 1); BOUGHT[r["u"]].add(r["i"])
-                    if LF is not None: LF.add(r["u"], r["i"], 0, 0, 1)
+                    if LF is not None: LF.add(r["u"], r["i"], 0, 0, 1, tp=r.get("t"))
     except Exception as e: print("fb refresh failed", e)
     return LIVE
 
