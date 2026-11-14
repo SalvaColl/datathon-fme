@@ -72,7 +72,7 @@ def lq_target(mode, is_new_user, page, rv) -> bool:
     return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
 
 
-RC = "@recart"                     # arm key "recart": true (T-044). Marker entry of LiveFit.alt, see set_arms()
+RC = "@recart"                     # arm key "recart": true (T-046). Marker entry of LiveFit.alt, see set_arms()
 
 
 def recart_target(is_new_user, page, rv) -> bool:
@@ -229,7 +229,7 @@ class LiveFit:
         Fused arms: an optional "home": {"file": ..., "w": ...} (same shape; {} = committed weights) gives the weights
         used on home requests (no recent views), so one arm can serve one weight set on product/category pages and
         another on home.
-        Re-cart arms (T-044): "recart": true keeps, for a product carted in the 60-day history AND again today (never
+        Re-cart arms (T-046): "recart": true keeps, for a product carted in the 60-day history AND again today (never
         bought), the larger of its two cart contributions: the score gets max(0, w_chn * log1p(history carts) - w_cl) on
         top. Without it a history cart worth w_chn * log1p(n) is REPLACED by w_cl the moment the shopper carts the
         product again (features() zeroes chn for today's carts), so under cx3 a once-carted product loses 1.45 points by
@@ -394,7 +394,7 @@ class LiveFit:
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
         s = X @ w[seg] + b0[seg]
         if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
-            # T-044: the history count comes from self.hcart because the served state drops re-carted products from hc
+            # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc
             h = self.hcart.get(req["user_id"])
             if h:
                 wk = w[seg]; chn, cl = wk[FEATS.index("chn")], wk[FEATS.index("cl")]

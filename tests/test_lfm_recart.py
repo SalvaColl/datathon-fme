@@ -1,4 +1,4 @@
-"""T-044: arm option "recart" — a product carted in the 60-day history AND again today keeps the larger cart contribution."""
+"""T-046: arm option "recart" — a product carted in the 60-day history AND again today keeps the larger cart contribution."""
 import copy, math, unittest
 import numpy as np
 import pandas as pd
@@ -97,7 +97,8 @@ class RecartTests(unittest.TestCase):
         before = copy.deepcopy((st[0], st[1], st[2], lf.hcart))
         lf.scores(req(), st, aff, "rc")
         self.assertEqual(before, (st[0], st[1], st[2], lf.hcart))
-        self.assertEqual(lfm.FEATS[-1], "newp"); self.assertEqual(len(lfm.FEATS), 22)
+        X = lfm.features(lf.snap, aff.affinity_all('u1', ['A30']), ['A30'], 'product', st[2], st[1])
+        k = lf.snap.row['B05']; self.assertEqual((X[k, lfm.FEATS.index("chn")], X[k, lfm.FEATS.index("cl")]), (0.0, 1.0))   # features() as before
 
     def test_day_window_carts_moved_to_history_get_no_bonus_twice(self):
         lf, aff = build()

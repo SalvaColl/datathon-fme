@@ -511,7 +511,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Ensayo en seco (nube, `--dry-run`, 4 brazos con un brazo de exploración `true`, 5 min):** 852 peticiones, 0 errores, bucle p50 145 ms / p95 397 ms; 57 caducadas en el arranque en frío.
 - **No es conversión.** Sirve para medir en el leaderboard cuánto vende lo que lfm no prioriza.
 
-### E-440 — Re-carritos: un producto carrito del histórico pierde puntos al volver a carritarse hoy (T-044, 14 nov 23:55 UTC)
+### E-460 — Re-carritos: un producto carrito del histórico pierde puntos al volver a carritarse hoy (T-046, 14 nov 23:55 UTC)
 
 - **La interacción:** `lfm.features` pone `chn` a 0 en los productos del carrito de hoy. Un carrito del histórico vale `w_chn × log1p(n)` y, al volver a carritarse hoy, pasa a valer `w_cl`. Con cx3 (chn 3,0, cl 0,63) un producto carritado una vez baja de 2,08 a 0,63 puntos (−1,45). Con r3 (chn 0,73) solo afecta a los carritados 2 veces o más (−0,17 con 2).
 - **Candidato:** opción de brazo `"recart": true` (apagada por defecto): suma `max(0, w_chn × log1p(n) − w_cl)` a esos productos, es decir, conserva el mayor de los dos aportes. Solo conocidos en producto/categoría con vistas. El contador sale de `LiveFit.hcart`. Ni `features()` ni `user_state()` cambian. Políticas: `policy.rot_cx3rc.json` (cx3 + opción) y `policy.rot_r3rc.json`.

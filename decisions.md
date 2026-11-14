@@ -260,9 +260,9 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Se quita si:** 0,25 pt por debajo a los 30 minutos, o envíos inválidos. Rollback sin reinicio: quitar el brazo de `lfm_arms`.
 - **No a la vez que** la confirmación de `cold_new` (son cohortes distintas y podrían convivir, pero la regla es un retador cada vez).
 
-### D-440 — Brazo de re-carritos `cx3rc`: preparado, sin desplegar (T-044, 14 nov 23:55 UTC)
+### D-460 — Brazo de re-carritos `cx3rc`: preparado, sin desplegar (T-046, 14 nov 23:55 UTC)
 
-- **Qué:** opción `"recart": true` en un brazo de `lfm_arms` (E-440). Necesita un reinicio con relevo para cargar `lfm.py` y `live.py`; entra en el relevo planificado, no se pide uno para esto. Con el código viejo, `clean_lfm_arms` ignora la clave y el brazo serviría como su control, sin error: no lanzar `policy.rot_cx3rc.json` antes del relevo.
+- **Qué:** opción `"recart": true` en un brazo de `lfm_arms` (E-460). Necesita un reinicio con relevo para cargar `lfm.py` y `live.py`; entra en el relevo planificado, no se pide uno para esto. Con el código viejo, `clean_lfm_arms` ignora la clave y el brazo serviría como su control, sin error: no lanzar `policy.rot_cx3rc.json` antes del relevo.
 - **Cómo se prueba:** como un nombre más de la rotación, en época nueva: `cx3rc` contra `cx3` con r3 entre medias (por ejemplo `r3,cx3,r3,cx3rc`), cada bloque menos la referencia en la misma ventana. Sin `lq`.
 - **Se quita si:** envíos inválidos o `on_time` bajo el umbral del rotador. Rollback sin reinicio: quitar el nombre del plan, o la clave `recart` del brazo.
-- **No se hace:** subir `cl` a todos los carritos de hoy (los carritos solo de hoy venden menos que los solo históricos, E-440).
+- **No se hace:** subir `cl` a todos los carritos de hoy (los carritos solo de hoy venden menos que los solo históricos, E-460).

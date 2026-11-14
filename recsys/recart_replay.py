@@ -1,4 +1,4 @@
-"""E-440 — replay of the re-cart arm option (T-044) through the writer's own code. DIAGNOSTICS, never a result: the hidden
+"""E-460 — replay of the re-cart arm option (T-046) through the writer's own code. DIAGNOSTICS, never a result: the hidden
 model decides, on the leaderboard, candidate vs control vs reference in identical windows.
 
     cd recsys
