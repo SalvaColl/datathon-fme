@@ -345,4 +345,8 @@ class LiveFit:
         top = np.argpartition(-s, min(n + 20, S.n - 1))[: n + 20]
         top = top[np.argsort(-s[top])]
         out = [S.ids[k] for k in top if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
+        if len(out) < n and exclude:
+            # More than 20 of the 30 best are in `exclude` (stock moved since the snapshot was built, e.g. a slow
+            # catalogue refresh during a stock shock): look further down instead of handing the request to the old path.
+            out = [S.ids[k] for k in np.argsort(-s) if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
         return out if len(out) == n and len(set(out)) == n else None

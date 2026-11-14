@@ -50,6 +50,15 @@ class LfmTests(unittest.TestCase):
         s = slate(lf, aff, exclude={'A30', 'A00'})
         self.assertEqual(len(set(s)), 10); self.assertFalse({'A30', 'A00'} & set(s))
 
+    def test_stock_shock_since_the_snapshot_still_gets_ten_in_stock(self):
+        lf, aff = build()
+        best = slate(lf, aff)
+        gone = set(lf.slate(dict(user_id='u9', rv=['A30'], page='product', is_new_user=False), lf.user_state('u9'), aff, n=45))   # the 45 best of 80
+        s = slate(lf, aff, exclude=gone)
+        self.assertIsNotNone(s); self.assertEqual(len(set(s)), 10); self.assertFalse(gone & set(s))
+        self.assertEqual(slate(lf, aff, exclude=set(best[:3]))[:7], best[3:])        # the usual case is unchanged
+        self.assertIsNone(slate(lf, aff, exclude=set(lf.snap.ids[:75])))             # fewer than 10 left: still None (old path decides)
+
     def test_history_cart_shown_and_bought_never_shown(self):
         lf, aff = build()
         s = slate(lf, aff, user='u1', rv=('B05', 'B06', 'A30'))

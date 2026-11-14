@@ -354,6 +354,19 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Riesgo de operación encontrado:** el runbook recomendaba arrancar la final con `EVENTS_SINCE` del domingo. Eso quitaría de las exclusiones 98.005 compras orgánicas del sábado (24.522 de los 41.358 usuarios que nos pidieron carrusel compraron algo) y los carritos del 74% de esos usuarios. Corregido en el runbook.
 - **Tests:** `tests/test_state_windows.py` (9): fronteras exactas (23:59:59.999 / 00:00:00.000), eventos que llegan tarde, transición sábado-domingo por `apply_events`, reinicio el domingo con el mismo resultado, ventanas de carga que cruzan medianoche. 169 tests en total en esta rama.
 - **Conclusión:** no activar ventana de día para la final (D-360).
+### E-370 — Corte brusco de stock: lfm dejaba de responder y la petición caía a v1 (T-037)
+- **Date / owner / branch:** 2026-11-14 19:00 UTC · Javi (agente) · `javi/slate-stock-fix`. Etiqueta: ensayo de robustez con el código real del writer en `--dry-run` (`tools/final_rehearsal.py`, PR de T-032). No es una estimación de conversión.
+- **Causa:** `LiveFit.slate` mira los 30 productos con más puntuación y después quita los que el hilo de stock acaba de marcar como agotados. Si más de 20 de esos 30 están agotados desde la última carga de catálogo, devuelve vacío y la petición la responde el camino antiguo (`v1-gbm-cand-r1`).
+- **Ensayo (1.500 peticiones registradas, un tercio del catálogo y todas las vistas recientes agotados de golpe, RawTree sin responder):**
+
+| | respondidas por lfm | slates con un producto ya comprado | ms por petición p50 / p95 / máx |
+|---|---|---|---|
+| antes (main) | 53 de 1.500 | 133 (del camino v1) | 16,3 / 24,4 / 343 |
+| después | 1.500 de 1.500 | 0 | 7,1 / 10,3 / 12 |
+
+  En los dos casos los 10 productos eran distintos y con stock. El resto de escenarios (usuario nuevo, sin vistas, producto recién lanzado, metadatos rotos, cambio de categorías, refresco parado) no cambian: 0 inválidos, p95 por debajo de 2 ms.
+- **Alcance real:** con el refresco de catálogo funcionando (cada ciclo) casi nunca hay más de un par de productos agotados entre los 30 mejores; el sábado no se vio. Importa si el catálogo deja de refrescarse mientras el stock sigue cambiando.
+- **Cambio:** si tras filtrar quedan menos de 10, se recorre el resto por orden de puntuación. El caso normal no cambia (mismo slate, test).
 
 ### E-271 — Brazos de home (T-025) y ronda r3 contra r5 con `cv` a 0,5, modelo oculto
 - **Date / owner:** 2026-11-14 18:30 UTC · Javi (agente) · main `4ee67ed`. Etiqueta: HIDDEN MODEL (leaderboard, `api/state?by=model&from=&to=`).
