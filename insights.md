@@ -495,3 +495,15 @@ Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del 
 - **Réplica de la referencia:** la referencia nos gana fuera de cold (2,32% frente a 1,77%, 17:00–17:24 UTC) y pierde en cold (1,76% frente a 2,43%). Qué hace no está documentado; hilo en curso.
 - **Fórmula del comprador simulado:** ajuste directo de la fórmula del simulador; hilo en curso.
 - **Afinador con campeón protegido (PR #28):** parado a petición de Javi; no se lanza sin su visto bueno.
+
+### I-310 — El comprador simulado es de atributos: no hay factores ocultos por producto, y la forma de lfm ya está en el techo de lo observable (T-031b)
+
+- **Status:** REJECTED como palanca (2026-11-14 20:00 UTC, T-031b). Evidencia E-310…E-313.
+- **Pregunta:** ¿hay una fórmula generativa (gustos latentes usuario×producto, otra forma del gusto por frases/categoría) que explique las compras mejor que lfm r3/r5?
+- **OBSERVED DATA / OFFLINE ESTIMATE:**
+  1. *Factores latentes* (SVD de la matriz usuario×producto orgánica, 16 y 64 factores; coseno producto a producto): sobre 4,1M de pares nuevos tras el 15-oct, AUC de compra 0,829 con atributos (afinidad de frases, categoría, subcategoría, tasa del producto, tasa del usuario) → 0,831 al añadirlos. El simulador no tiene identidad de producto más allá de categoría, 2 frases y calidad.
+  2. *Forma del gusto por frases:* suma de cuotas (la de hoy), suma de logaritmos, mínimo/máximo y producto dan AUC entre 0,726 y 0,752 según el suavizado; ninguna destaca. Los gustos son continuos, no un conjunto discreto de frases favoritas (la cuota de vistas de la mejor frase es solo 2× la media).
+  3. *Carrusel histórico, usuarios held-out* (10,1M de impresiones del 15-oct al 14-nov, estado del usuario congelado al 15-oct, 7.433 compras de test): la base tipo r3 pone el producto comprado el primero de los 10 en el 53,5% de los casos; gusto ponderado por carritos y compras, gusto por tasa de compra por frase, formas logarítmicas e interacciones calidad×afinidad lo dejan entre 53,2% y 54,0%. La propensión a comprar del usuario mejora mucho la verosimilitud (−36.589 → −35.224) pero no cambia el orden dentro de una petición, así que no sirve para elegir productos.
+  4. *Exposición repetida (feedback propio):* un carrito del histórico ya enseñado 2 veces sin compra vende 33 por 10.000 en los slots 1–3 frente a 81 la primera vez, pero la mediana es 1 petición por usuario al día y como feature de lfm no mejora nada (E-313). Un producto clicado antes sin comprar vende 7–16× más (sin controlar por slot ni tipo de producto), pero solo el 3,4% de las peticiones tiene uno.
+- **Hallazgo útil (instrumento):** restando ventanas del leaderboard se obtiene la suma exacta de probabilidad oculta por `model_version` en bloques de 5 minutos (`recsys/lb_bins.py`, E-314). Límites: la API solo lista las 10 versiones con más peticiones de cada ventana y oculta las de menos de 100.
+- **Siguiente:** no rehacer estas pruebas. Lo que queda por explicar frente a `reference` en usuarios conocidos no está en la forma de la fórmula con los datos visibles.
