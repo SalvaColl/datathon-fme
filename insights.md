@@ -143,6 +143,16 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Evidence:** feedback 12:00–13:00 UTC: 7.977 servidas por el equipo, 39 fallback (29 `invalid` por latencia >3 s, 10 `missing`) → 99,5% a tiempo, latencia p50 1,35 s, p95 2,1 s. El 84% del leaderboard era la hora anterior. Leaderboard 12:44 UTC: referencia 2,05%, mejor equipo 1,03% (team_09), nosotros 0,95% (ventana mixta baseline+v1), baseline 0,70%.
 - **Implication:** el margen está en el ranking de product/category (80% del tráfico), no en la fiabilidad. Vigilar el p95 de 2,1 s: queda poco colchón.
 
+### I-160 — El leaderboard se recalcula cada 60 s sobre la última hora exacta (antes: cada 10 min)
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA) — 2026-11-14 13:25 UTC — Javi (agente, T-016, rama `javi/night-lab`)
+- **Evidence:** E-160. En `https://datathon.rawtree.dev/api/state`, `next_update − updated_at = 60 s` y `window = [updated_at − 3600, updated_at]` en 9 snapshots consecutivos (13:24–13:39 UTC). Corrige la cadencia de I-016 (10 min).
+- **Implication:** un bloque de 60 min o más con una sola variante se lee directamente de un snapshot (ventana entera dentro del bloque), sin restar snapshots ni conocer bloques anteriores: desaparece la limitación estadística anotada en E-REL-001. Entre snapshots consecutivos la diferencia es (minuto que entra − minuto que sale)/60. `recsys/night_lab.py` usa bloques de 65 min.
+
+### I-161 — 14/11 13:24–13:39 UTC: `on_time` cayendo y dos `model_version` alternando
+- **Status / date / owner:** OBSERVED DATA, causa SIN VERIFICAR — 2026-11-14 13:40 UTC — Javi (agente, T-016)
+- **Evidence:** `on_time` horario de team_26: 73,5% (13:24) → 66,1% (13:29) → 57,2% (13:39), unos −1,5 puntos por minuto al principio, lo que equivale a minutos enteros casi sin respuestas a tiempo. En esos mismos snapshots `model_version` alterna entre `v1-gbm-cand-r1`, `v1-gbm-cand-r1-guard` y **`v1-gbm-cand:v1`**, una cadena que no produce el `live.py` de `javi/qrank-serving`.
+- **Implication (HYPOTHESIS):** puede haber dos procesos escribiendo (I-017) o un reinicio a medias. No lo he comprobado en `submissions` (este hilo no tiene acceso al Mac). Hay que resolverlo antes de cualquier A/B: con `on_time` bajo, el lift medido se diluye.
+
 ## Correction register (superseded briefing assumptions)
 
 - **SUPERSEDED:** `~1 request every 3 seconds` -> official **~3 requests/second**.

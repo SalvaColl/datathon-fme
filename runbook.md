@@ -122,3 +122,39 @@ Rama `javi/qrank-serving` = writer robusto de Salva (`7176c03`) + ranker `recsys
 - Prueba recomendada: `ab_qrank` durante 30–60 min y `python recsys/compare_versions.py 60` para comparar `v1-gbm-cand-r1` con `v2-qrank-r1` (compras reales; con ~5.000 peticiones por brazo y hora se distingue 1,3% de 2,1%). Para el leaderboard, un bloque de 10 min con `qrank` alineado con `updated_at`.
 - Rollback: `{"variant": "v1"}` en `policy.json`, o borrar el archivo y reiniciar.
 - Reconstruir el artefacto: `cd recsys && python qrank_build.py --pull` (scikit-learn 1.9.1).
+
+## Laboratorio nocturno contra el leaderboard — T-016 (2026-11-14)
+
+`recsys/night_lab.py` rota las variantes del writer único por bloques y mide cada una con el leaderboard. Solo escribe `recsys/data/policy.json`, `recsys/data/d130.json` y sus logs en `recsys/data/night_lab/`. No usa la API key ni habla con RawTree. **No es un writer y no sustituye a `live.py`: `live.py` tiene que seguir corriendo en otra terminal.**
+
+**Antes de arrancar (5 min)**
+
+1. El writer debe estar sano. Si `on_time` está bajo (el 14/11 a las 13:30 UTC estaba en 57–73% y cayendo), arréglalo primero: lo tardío lo sirve el baseline y diluye todas las medidas.
+2. El `live.py` que está corriendo tiene que entender todos los brazos del plan. Una variante que no conoce la ignora sin avisar. Compruébalo contra el código en disco (si el proceso arrancó con otro código, reinícialo antes):
+   ```bash
+   cd recsys
+   python night_lab.py check --arms v1,qrank,qrank+home,qrank_aff+home
+   ```
+   `qrank` necesita el PR #1; `aff`, `qrank_aff` y los `ab_*` de afinidad necesitan `recsys/aff_live.patch` aplicado (PR #2); `+nodead` y `+home` necesitan el hook d130 (PR #3).
+3. Prueba en seco un par de minutos (no escribe los JSON): `python night_lab.py run --arms v1,qrank --dry-run --block-min 3 --until HH:MM`.
+
+**Arrancar** (en el Mac, en una terminal aparte; `caffeinate` evita que el Mac se duerma):
+
+```bash
+cd recsys
+caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home --until 08:30 2>&1 | tee -a data/night_lab.log
+```
+
+- Un brazo es `variante` o `variante+modo_d130`. Sin `+modo`, d130 queda en `off`.
+- Bloques de 65 min: 60 de ventana del leaderboard, 3 de asentamiento tras el cambio y 2 de margen. Así la conversión de cada bloque se lee directamente de la ventana horaria, sin supuestos. De 23:00 a 08:30 caben 8 bloques: dos réplicas de cuatro brazos.
+- Empieza por `v1` si es lo que ya corre: sirve de control y de referencia para la guardia.
+- En el primer minuto mira la terminal de `live.py`: debe salir `{"event": "policy", "variant": ...}` en cada cambio de variante y `d130 mode -> ...` en cada cambio de modo. Si no salen, el writer no está leyendo los ficheros.
+- Los brazos `ab_*` reparten 50/50 dentro del writer: el leaderboard solo ve la mezcla. Sirven para `compare_versions.py`, no para esta tabla.
+
+**Guardia.** Pasados 10 min de un bloque, si el `on_time` implícito del bloque queda más de 10 puntos por debajo del brazo seguro (`--safe`, por defecto `v1`), o su lift cae a menos de la mitad, durante 3 snapshots seguidos, el laboratorio vuelve al mejor brazo medido hasta el final del bloque y no vuelve a probar el brazo culpable. Peor caso: unos 13 min con una variante rota. El brazo seguro nunca se retira. Umbrales: `--guard-on-time-drop`, `--guard-lift-drop`, `--guard-consec`, `--guard-after-min`.
+
+**Parar y volver atrás.** Ctrl-C (o `kill`): cierra el bloque y deja `policy.json` y `d130.json` exactamente como estaban antes de empezar. Lo mismo al llegar la hora límite, si el leaderboard sale de modo práctica o si falta menos de 60 min para la final. Vuelta atrás manual si el proceso muere de golpe: `echo '{"variant": "v1"}' > data/policy.json; echo '{"mode": "off"}' > data/d130.json`. Con `--finish best` deja puesta la mejor variante medida; por defecto no promociona nada.
+
+**Por la mañana.** `recsys/data/night_lab/report.md` tiene la tabla por brazo y por bloque (se reescribe al cerrar cada bloque; `python night_lab.py report` la regenera). Mira el rango entre réplicas antes de creer una diferencia, y `lift_ot` para separar ranking de latencia. Decidid el campeón y dejadlo fijo antes de las 09:00 CET.
+
+**Límites.** El leaderboard mide todo el tráfico junto: no separa home de product/category. El cold start (`lift cold`) sale de menos peticiones. La columna "ajuste" supone conversión constante dentro del bloque y solo es fiable con tráfico estable.
