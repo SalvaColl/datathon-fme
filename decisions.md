@@ -213,6 +213,16 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Qué no sabemos:** si la final usa los mismos compradores que la práctica. Si son nuevos, el estado del sábado no molesta (nadie lo consulta). Si son los mismos, conservarlo es lo correcto.
 - **Rollback:** quitar `state_window` de `policy.json`; sin esa clave el código nuevo devuelve exactamente el estado anterior (test `test_without_a_window_nothing_changes`).
 
+### D-430 — `policy.json` se valida entero antes de publicarse; una actualización inválida no cambia nada (T-043, propuesta)
+
+Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño del writer. No es una palanca de conversión.
+
+- **Antes:** cada clave se aplicaba por separado. Una lista `lfm_arms` con un error (o un fichero de pesos ausente o incompleto) dejaba al writer **sin brazos** (pesos base, etiquetas `v3-lfm-r1-*`) y la variante podía cambiar aunque el resto del fichero fuera inválido. Un fichero de pesos con `NaN` se cargaba sin aviso.
+- **Ahora:** se valida todo el candidato (variante, `qrank_arms`, `lfm_arms` con sus ficheros de pesos ya leídos y comprobados como finitos, `state_window`) y solo entonces se publica, pesos primero. Si algo falla, **no cambia nada**: siguen la variante, los brazos y los pesos activos. El log lo dice una vez por fichero distinto: `{"event": "policy_rejected", "reason": ..., "kept": {...}}`, y `{"event": "policy_recovered"}` cuando vuelve a entrar un fichero válido. El mismo fichero se reintenta en cada ciclo, así que copiar después el fichero de pesos que faltaba lo arregla solo.
+- **Lo que no cambia:** una clave ausente, `null` o vacía sigue significando lo de siempre (sin `lfm_arms` = pesos publicados; sin `state_window` = sin ventana; sin `variant` = la misma). Las vueltas atrás documentadas (`{"variant": "v1"}`, quitar `lfm_arms`, `cp policy.champion.json data/policy.json`) funcionan igual. Si `policy.json` no existe no se toca nada, como antes.
+- **Ojo operativo:** una variante desconocida o un `qrank_arms` con un solo brazo antes se ignoraban en silencio y el resto del fichero se aplicaba; ahora rechazan el fichero entero. Los 15 ficheros de política del repo y de `javi/night-og1b` (incluidos los de la noche con og1 y cx3) pasan la validación nueva (E-430).
+- **Etiquetas:** un slate al que el guard le cambia un producto comprado sale como `<VERSION>-guard`, igual que cualquier otra reparación (regla existente de `send_answers`). En 1.500 peticiones reales no ocurrió ninguna vez (E-430): lfm ya excluye lo comprado al puntuar, el guard solo cubre la carrera entre ranking y envío.
+
 ### D-280 — cold_lq se prueba como brazo de lfm, no por bloques de tiempo (T-028)
 
 - **Decisión:** la calidad de productos nuevos de `cold_lq` (T-CS01) se sirve por brazo: `{"tag": "c1", "file": "<pesos del ganador>", "lq": "cold"}` contra el ganador de r3/r5, 30 minutos, lectura por `-k` y `-n` en `api/state?by=model&from=`. `"cold_new"` la aplica solo a usuarios nuevos. Máximo dos brazos a la vez. `data/coldlq.json` no se usa.
