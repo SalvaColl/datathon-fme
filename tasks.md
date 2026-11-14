@@ -16,6 +16,7 @@
 | T-010 | P1 | Slate ordering/diversity/price ablation | TBD / TBD | READY | T-005/T-006 or T-007 |
 | T-011 | P2 | Optional bounded bandit after proven ranker | TBD / TBD | HOLD | Reliable feedback attribution and offline/live evidence |
 | T-012 | P0 | Final deployment, backup, monitoring/rollback + jury demo | TBD / TBD | READY | Live loop, champion, experiment metrics |
+| T-020 | P1 | Independent item-to-item graph challenger from TRAINING-period organic `history_events` (league plugin, offline only) | d4xn (+Claude) / feat/graph-recommender | **OFFLINE BASELINE DONE (E-020, I-020; not promoted — inconclusive/below baselines on league proxies); modules `tools/graph_*.py`, no serving/writer changes** | T-013 league; read-only RawTree |
 
 ## Proposed responsibility split (adapt to actual team size)
 
