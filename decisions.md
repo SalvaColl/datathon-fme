@@ -195,7 +195,7 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Decisión:** tras cargar el código, `"lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "r5", "file": "lfm_coef_r5.json"}]` durante 30 minutos; se queda solo el brazo que gane en el leaderboard. No se descarta por validación offline (I-270: el histórico y nuestro feedback no pueden medirla). No más de dos brazos a la vez.
 - **Rollback:** quitar r5 de `lfm_arms` (sin reinicio). Sin `lfm_graph_B.json`, o con pesos sin `cv`, lfm se comporta exactamente como antes.
 
-### D-310 — Ventanas de estado de lfm: qué es persistente, qué es del día y qué no se borra nunca (T-031)
+### D-360 — Ventanas de estado de lfm: qué es persistente, qué es del día y qué no se borra nunca (T-036)
 - **Date / owner:** 2026-11-14 · Javi (agente). **Status:** PROPOSED (código en PR, apagado por defecto; activar es decisión de Javi).
 - **Definiciones (hora del evento, UTC, nunca la hora de llegada):**
 
@@ -204,8 +204,8 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 | Preferencias históricas (afinidad, reparto de categorías de 60 días, carritos y compras de histórico) | ficheros de histórico, `LiveFit.UC/US/hcart/hbought` | Persistente | Son el perfil del comprador |
 | Vistas del evento (reparto de categorías `lmix`, afinidad en vivo) | `LiveFit.lmix`, `AttrAffinity` | Persistente, sin corte de día | Son preferencias; r3 ganó con ellas acumuladas |
 | Exclusión de comprados (`BOUGHT`, `lbought`, compras del carrusel) | writer + `LiveFit` | **Permanente. Nunca se borra**, tampoco con `state_window` | Regla del organizador: lo comprado casi no se vuelve a comprar |
-| Carritos del evento (`lcart` -> feature `cl`) | `LiveFit.lcart` + hora en `lcart_t` | Persistente por defecto. Opción `carts: day`: los anteriores a `day_start` pasan a carritos de histórico (`chn`), no se borran | Un carrito vale lo mismo con 10 minutos que con más de 4 horas, y lo mismo que uno del histórico (E-310) |
-| "Comprado hoy" (features `nbp`, `bsub`) | `LiveFit.lbought` + hora en `lbought_t` | Persistente por defecto. Con `day_start`: solo compras desde esa hora | El efecto sigue visible a más de 2 horas (E-310); de un día para otro no es medible con un solo día de datos |
+| Carritos del evento (`lcart` -> feature `cl`) | `LiveFit.lcart` + hora en `lcart_t` | Persistente por defecto. Opción `carts: day`: los anteriores a `day_start` pasan a carritos de histórico (`chn`), no se borran | Un carrito vale lo mismo con 10 minutos que con más de 4 horas, y lo mismo que uno del histórico (E-360) |
+| "Comprado hoy" (features `nbp`, `bsub`) | `LiveFit.lbought` + hora en `lbought_t` | Persistente por defecto. Con `day_start`: solo compras desde esa hora | El efecto sigue visible a más de 2 horas (E-360); de un día para otro no es medible con un solo día de datos |
 | Vistas recientes de la petición | petición | De la sesión, las da RawTree | |
 | Tendencia de producto (`LIVE`, pools) | writer | Acumulado desde `EVENTS_SINCE`; lfm no lo usa | Solo alimenta variantes que no están en vivo |
 

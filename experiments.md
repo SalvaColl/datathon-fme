@@ -263,7 +263,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
 
-### E-310 — Ventanas de estado: cuánto dura el valor de un carrito y de una compra, y qué cambia el interruptor (T-031)
+### E-360 — Ventanas de estado: cuánto dura el valor de un carrito y de una compra, y qué cambia el interruptor (T-036)
 - **Date / owner / branch:** 2026-11-14 18:40 UTC · Javi (agente) · `javi/state-windows`. Etiqueta: LIVE FEEDBACK (descriptivo, sin controlar por el resto de señales) + medida de latencia. No es conversión del modelo oculto.
 - **Datos:** 76.969 peticiones respondidas (11:09–18:17 UTC), estado reconstruido a la hora de cada petición.
 - **Carritos por antigüedad (compras por 10.000 impresiones de un producto en el carrito, no comprado):**
@@ -284,5 +284,5 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Latencia (estado + slate, 3.000 peticiones, misma máquina):** main p50 0,73 ms / p95 1,46; rama sin ventana 0,58 / 1,16; con ventana 0,54 / 1,18; con `carts: day` 0,63 / 1,41. Sin diferencia fuera del ruido.
 - **Riesgo de operación encontrado:** el runbook recomendaba arrancar la final con `EVENTS_SINCE` del domingo. Eso quitaría de las exclusiones 98.005 compras orgánicas del sábado (24.522 de los 41.358 usuarios que nos pidieron carrusel compraron algo) y los carritos del 74% de esos usuarios. Corregido en el runbook.
 - **Tests:** `tests/test_state_windows.py` (9): fronteras exactas (23:59:59.999 / 00:00:00.000), eventos que llegan tarde, transición sábado-domingo por `apply_events`, reinicio el domingo con el mismo resultado, ventanas de carga que cruzan medianoche. 169 tests en total en esta rama.
-- **Conclusión:** no activar ventana de día para la final (D-310).
+- **Conclusión:** no activar ventana de día para la final (D-360).
 

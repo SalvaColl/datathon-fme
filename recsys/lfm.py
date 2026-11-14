@@ -142,7 +142,7 @@ class LiveFit:
             for u, i, a in zip(c.u.values, c.i.values, c.a.values): self.hcart.setdefault(u, {})[i] = int(a)
             self.hbought = history[history.p > 0].groupby("u").i.agg(set).to_dict()
         self.lcart, self.lbought = {}, {}
-        # State windows (T-031). Time of the latest cart / purchase event per shopper and product, as the ISO string the
+        # State windows (T-036). Time of the latest cart / purchase event per shopper and product, as the ISO string the
         # stream gives ("2026-11-15 08:00:00.123": string order = time order). day_start None = no day window (as before).
         self.lcart_t, self.lbought_t = {}, {}
         self.day_start, self.day_carts = None, False
@@ -189,9 +189,9 @@ class LiveFit:
 
     # ---- refresher thread ----
     def set_window(self, day_start=None, carts="persistent"):
-        """Which live state belongs to the current day / phase. Definitions and evidence: D-310 in decisions.md, E-310 in experiments.md.
+        """Which live state belongs to the current day / phase. Definitions and evidence: D-360 in decisions.md, E-360 in experiments.md.
         day_start: "YYYY-MM-DD HH:MM:SS" UTC, or None for no day window (everything since the writer's EVENTS_SINCE
-        counts as today, the behaviour before T-031).
+        counts as today, the behaviour before T-036).
           - purchases: ALWAYS excluded from the slate, whatever their date (permanent). Only purchases at or after
             day_start feed the "bought today" features (nbp, bsub).
           - carts: "persistent" (default) keeps every live cart as a live cart; "day" keeps carts at or after day_start

@@ -61,7 +61,7 @@ VERSION_T = "v3-attr-r1"
 VERSION_TA = "v3-attr-aff-r1"
 VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm")
 POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "lfm_arms": [], "state_window": None}
-# T-031: day / phase window of the lfm shopper state, e.g. {"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}}.
+# T-036: day / phase window of the lfm shopper state, e.g. {"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}}.
 # Absent or invalid = no day window (everything since EVENTS_SINCE counts as today). Purchases stay excluded either way.
 def clean_state_window(raw):
     if not isinstance(raw, dict) or not isinstance(raw.get('day_start'), str) or set(raw) - {'day_start', 'carts'}: return None
