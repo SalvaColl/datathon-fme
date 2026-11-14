@@ -132,3 +132,22 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Cómo medirlo:** modo `ab` durante ≥ 60 min con `ab_qrank` o `qrank` activos y comparar `v2-qrank-r1+lq` frente a `v2-qrank-r1`; o un bloque de 65 min en modo `on` leído en el leaderboard (el laboratorio nocturno todavía no rota `lq.json`: habría que añadirlo a sus brazos). Mirar también la fila de cold start.
 - **Rollback:** borrar `lq.json` o poner `{"mode": "off"}`; efecto en ≤ 1 s, sin reinicio.
 - **Riesgo principal:** que el modelo oculto no premie a los productos nuevos como predice la relación entre productos antiguos (HYPOTHESIS). Con `on`, el 31,6% de los slates cambia y las impresiones a productos nuevos pasan del 0,03% al 3,1%; el slot 1 solo cambia en el 4,7%.
+### D-130 — Filtrar productos "muertos" en todas las páginas y variante `home` con `recsys/home_cands.py`
+- **Date / owner / status:** 2026-11-14 · agente de Javi (T-013) · **PROPOSED** (requiere tocar `recsys/live.py`, que no es mío; decide el dueño del writer)
+- **Question and alternatives:** (a) seguir con v1 tal cual; (b) solo filtrar de los candidatos lo ya comprado y lo visto-sin-carrito del histórico; (c) además responder las peticiones sin `recent_views` con `HomeCands.slate()` en vez del GBM.
+- **Decision proposed:** (b) primero, en un bloque de 10 min alineado con `updated_at`; si el bloque mejora frente al baseline, añadir (c).
+- **Why, evidence:** I-130 / E-131 (28% de nuestras impresiones son de productos que en vivo dan 1 compra en 30.847), I-131 / E-130, E-132.
+- **Cambio mínimo en `live.py` (4 puntos, todo en memoria, sin consultas nuevas):**
+  ```python
+  import home_cands                                                   # arriba
+  HC = home_cands.HomeCands(pd.read_parquet("data/user_item_all.parquet"), fe.C)   # junto a BASE (7,7 s al arrancar)
+  # refresh_events(): al lado de LIVE.add(...)  ->  HC.add(r["u"], r["i"], r["v"], r["a"], r["p"])   (y HC.add(u, i, 0, 0, 1) con el feedback)
+  # refresher(): tras make_pools(...)           ->  HC.refresh(cat, unavail)
+  # candidates(): antes del return              ->  out = HC.drop_dead(req["user_id"], out)             # (b)
+  # predict(): si not r["rv"] y policy == "home" ->  items = HC.slate(r["user_id"])                      # (c), sin pasar por el GBM
+  ```
+- **Affected modules/owners:** `recsys/live.py` (Javi). `fe.py` no cambia. El fallback `best` de `predict` sigue rellenando si faltan candidatos.
+- **Rollout / rollback:** nueva variante en `policy.json` (p. ej. `v1_nodead`, `home`); volver a `v1` en caliente. Comprobar antes con `live.py --dry-run`.
+- **Revisit condition:** si el bloque de leaderboard no mejora, o si en la final (compradores nuevos) el histórico deja de aplicar: entonces solo queda la parte de usuario desconocido y el carrito del propio stream.
+- **Actualización 2026-11-14 13:15 UTC (aprobada la prueba por Javi):** el cambio queda en UNA línea de `live.py`, sin tocar sus funciones: `import d130; d130.install(globals())` justo encima de `if __name__ == "__main__":`. `recsys/d130.py` envuelve `LIVE.add`, `make_pools`, `candidates` y `predict`, así que es independiente de las variantes de `policy.json` (y de `qrank.py`). Se conmuta en caliente con `recsys/data/d130.json`: `{"mode": "off" | "nodead" | "home"}`; sin fichero = `off` = comportamiento anterior. Las respuestas tocadas llevan `model_version` con sufijo `+nd` o `+home`. Probado con `live.py --dry-run` en los tres modos: 0 errores, 17–26% de candidatos eliminados, edad p95 0,95 s (igual que sin el hook). Medición: `python d130_measure.py lb|fb`.
+- **Actualización 2026-11-14 13:30 UTC (compatibilidad con el writer endurecido):** `d130.py` probado también sobre `recsys/live.py` de `javi/qrank-serving` (8d4b6f3, serving de Salva + qrank) con `--dry-run`, `policy.json` en `ab_qrank` y modos `home` y `nodead`: 0 errores, 15–18% de candidatos eliminados, `loop_ms` p50 164 / p95 215 (sin hook 159 / 227). Rutas relativas a `recsys/data/` y stock (`stock_out`) incluidos. Las slates de qrank no se tocan ni se etiquetan; `home` solo cambia peticiones sin vistas, que qrank no sirve, así que los bloques se pueden correr en secuencia sin confundirse. `d130.HC.is_dead(user, item)` queda disponible para qrank si quiere filtrar también lo comprado/visto en el histórico.
