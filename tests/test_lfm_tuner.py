@@ -100,3 +100,18 @@ class TunerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BaseFileTests(unittest.TestCase):
+    """--coef other than lfm_coef.json: every arm must name that file, or the writer would tune the wrong base."""
+    def test_arms_and_final_arm_carry_the_base_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = T.Tuner(d, COEF, log=lambda *a: None, dry=True)
+            t.base_file = "lfm_coef_r3.json"
+            arms, _ = t.arms_for_round()
+            self.assertEqual({a.get("file") for a in arms}, {"lfm_coef_r3.json"})
+            self.assertEqual(t.final_arms("best"), [{"tag": "best", "file": "lfm_coef_r3.json"}])
+            self.assertEqual(t.final_arms("off"), [])
+            t.base_file = None
+            self.assertTrue(all("file" not in a for a in t.arms_for_round()[0]))
+            self.assertEqual(t.final_arms("best"), [])
