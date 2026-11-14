@@ -1,0 +1,21 @@
+<section id="huecos" data-transition="fade">
+<p class="eyebrow">HALLAZGO 1 · QUÉ NO SE COMPRA</p>
+<h2>Un tercio del carrusel no vendía nada</h2>
+<div class="main">
+<div class="col grow">
+<p class="small">Compras por cada 10.000 veces que mostramos un producto, según qué tipo de producto era</p>
+<div class="bars">
+<div class="row"><p class="lab" style="width:420px">Ya comprado por ese cliente</p><div class="bar hot" style="width:6px"></div><p class="val">0</p></div>
+<div class="row"><p class="lab" style="width:420px">De otra categoría</p><div class="bar hot" style="width:44px"></div><p class="val">6,8</p></div>
+<div class="row"><p class="lab" style="width:420px">Misma categoría, no visto</p><div class="bar" style="width:88px"></div><p class="val">13,7</p></div>
+<div class="row"><p class="lab" style="width:420px">Misma categoría, visto en la sesión</p><div class="bar good" style="width:560px"></div><p class="val">87,2</p></div>
+</div>
+</div>
+<div class="col" style="width:560px">
+<div class="card"><p class="mid">31 %</p><p class="cap">de los huecos iban a otra categoría y dieron 13 de las 84 compras</p></div>
+<p class="body">Decisión: solo la categoría que mira el cliente, nunca lo ya comprado.</p>
+</div>
+</div>
+<p class="source">Nuestro feedback en vivo, páginas de producto y categoría, 14 nov 12:01–13:02 UTC: 6.266 peticiones, 84 compras. Barras: 1.118, 19.092, 40.729 y 1.721 impresiones.</p>
+<aside>Primer hallazgo, y el más rentable: mirar qué NO se compra. Analizamos nuestro propio feedback en vivo, 6.266 peticiones. Nuestro primer modelo gastaba el 31 por ciento de los huecos del carrusel en productos de otra categoría, y esos huecos dieron solo 13 de las 84 compras. Y lo que el cliente ya había comprado: lo enseñamos 1.118 veces y no se volvió a comprar ni una. Curiosamente el histórico decía lo contrario, que lo ya comprado se revende; el dato en vivo lo desmiente. De aquí sale nuestro ranker qrank: solo la categoría que el cliente está mirando, sin lo ya comprado, ordenado por la calidad de cada producto. La página de inicio, donde no sabemos qué mira el cliente, sigue siendo la zona débil: en el histórico convierte un 0,14 por ciento frente a un 1,7 en el resto.</aside>
+</section>

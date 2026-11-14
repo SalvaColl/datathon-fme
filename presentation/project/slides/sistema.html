@@ -1,0 +1,24 @@
+<section id="sistema" data-transition="fade">
+<p class="eyebrow">EL SISTEMA</p>
+<h2>Un solo proceso responde; la receta se cambia en caliente</h2>
+<div class="stack">
+<div class="flow">
+<div class="step"><h3>Leer</h3><p class="small">Peticiones, eventos y stock de RawTree, de forma incremental</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="step"><h3>Candidatos</h3><p class="small">Lo visto, lo mejor de su categoría, lo nuevo</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="step key"><h3>Ordenar</h3><p class="small">La variante activa se elige en un fichero que se relee cada 20 s</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="step"><h3>Guardas</h3><p class="small">10 distintos, en stock, dentro de plazo</p></div>
+<x-shape kind="arrow-right" class="arrow"></x-shape>
+<div class="step"><h3>Escribir</h3><p class="small">Una respuesta por petición, nunca dos</p></div>
+</div>
+<div class="cards">
+<div class="card"><p class="mid">99,5 %</p><p class="cap">a tiempo en una hora normal (7.977 de 8.016)</p></div>
+<div class="card"><p class="mid">1,35 s</p><p class="cap">de latencia típica; el 95 % por debajo de 2,1 s</p></div>
+<div class="card"><p class="mid">37 %</p><p class="cap">de clientes alcanzados cuando escribían dos procesos a la vez: por eso solo uno</p></div>
+</div>
+</div>
+<p class="source">Feedback propio, 14 nov 12:00–13:00 UTC. Dos procesos: 13:00–13:08 CET, 531 de 1.437 peticiones respondidas por ambos mostraron nuestra lista.</p>
+<aside>El sistema. Un único proceso lee de RawTree las peticiones, los eventos orgánicos y los cambios de stock de forma incremental, junta entre 150 y 300 candidatos por cliente, los ordena, pasa las guardas y escribe. Tres decisiones de diseño. Una: un solo proceso escribe. Lo aprendimos por las malas: con dos procesos a la vez, nuestra lista solo llegaba al 37 por ciento de los clientes. Dos: la forma de ordenar es una variante que se elige en un fichero que el proceso relee cada veinte segundos; cambiar de receta o volver atrás no requiere reiniciar nada, y si una variante falla en una petición, esa petición sigue por el camino anterior. Tres: las guardas van antes que el modelo: si una petición ya lleva 1,8 segundos, se contesta al instante con una lista segura en vez de llegar tarde. En una hora normal, 99,5 por ciento a tiempo.</aside>
+</section>
