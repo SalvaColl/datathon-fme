@@ -76,4 +76,7 @@ today's carts) and a refit with his `lfm_build.py`, served as an `lfm_arms` arm 
 
 - Impressions are what our own policies showed (mostly lfm/qrank): this measures predictive value among shown items,
   not a counterfactual conversion gain. Purchases are real feedback with noise, not the hidden expected-purchase score.
+- H1 was measured against lfm **v2** (T-021). Since then main has lfm **r3** (T-024: `ucat`/`usub`, the user's category
+  shares, aimed at returning users). The cart family targets new users and is probably still residual, but this is
+  **not re-tested**: the re-run should use r3's feature set as the control.
 - One day of data; the final round has only new shoppers, where the effect would matter most if it holds.
