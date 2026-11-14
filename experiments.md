@@ -278,3 +278,27 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Lectura:** `cv` ayuda en páginas de producto/categoría de usuarios conocidos (+0,20 pt) y no mueve a los nuevos; en home pierde. Una sola ronda de 30 minutos: la diferencia total (+0,06 pt) está dentro del ruido. Equipo en la ventana: 1,68% (4.º; team_06 1,97%, `reference` 1,78%), 99,98% a tiempo.
 - **Siguiente:** brazo fusionado `f5c05` (`cv` 0,5 en páginas, pesos de r3 en home) contra r3 desde las 18:25 UTC; política en `recsys/policy.candidate.json`. El campeón demostrado sigue siendo r3 solo (`recsys/policy.champion.json`) hasta que `f5c05` gane una ronda.
+
+### E-320 — Features de orden de la sesión sobre lfm r5 (T-032, resultado negativo)
+- **Date / owner / branch:** 2026-11-14 19:00 UTC · Javi (agente) · `javi/session-sequence`. LIVE FEEDBACK (carrusel propio 11:09–18:31 UTC, 79.630 peticiones, 3.512 clics, 1.105 compras) y OBSERVED DATA (eventos orgánicos). Scripts: `recsys/explore_t032/` (solo lectura).
+- **Método:** las impresiones de `lfm_build.impressions` con el estado a fecha de cada petición; la puntuación de `lfm_coef_r5.json` entra como término fijo y se ajusta un solo peso nuevo cada vez (etiqueta clic, compras x3, como lfm). Ajuste con peticiones anteriores a las 16:19 UTC y 3/4 de los usuarios; lectura en peticiones posteriores (todas) y en posteriores del 1/4 de usuarios apartado. dLL = diferencia de log-verosimilitud frente a no añadir nada (positivo = ayuda).
+- **Resultado (peso ± error; dLL posterior / posterior con usuarios apartados):**
+
+| feature | los que vuelven | nuevos |
+|---|---|---|
+| visto 2+ veces en `recent_views` | 0,45 ± 0,51; -1,5 / -0,3 | 0,84 ± 0,41; -0,9 / 0,0 |
+| penúltima vista distinta | -0,08 ± 0,19; -0,6 / -0,3 | -0,33 ± 0,21; -0,5 / -0,2 |
+| vista más antigua | -0,28 ± 0,18; +0,7 / +1,4 | -0,04 ± 0,17; +0,5 / +0,1 |
+| subcategoría de una vista anterior (no la última) | 0,25 ± 0,16; -0,8 / +0,3 | -0,39 ± 0,25; -9,3 / -4,5 |
+| subcategoría de la última x racha de 3+ | -0,48 ± 0,19; -10,2 / -1,0 | -0,38 ± 0,18; +1,4 / -1,0 |
+| subcategoría de la última x última vista hace más de 60 s | -0,09 ± 0,15; -1,3 / -0,3 | 0,09 ± 0,15; -0,4 / -0,1 |
+| última vista x hace más de 60 s | 1,22 ± 0,22; +1,0 / +0,7 | 0,29 ± 0,24; -0,6 / -0,8 |
+| última vista x permanencia de más de 30 s | 0,58 ± 0,28; -3,9 / -0,6 | -0,11 ± 0,27; +0,1 / +0,1 |
+| subcategoría de la última x última vista ya en el carrito | -0,82 ± 0,57; -7,4 / -2,8 | -0,12 ± 0,53; -0,4 / -0,1 |
+| parte de las vistas recientes en la subcategoría | -0,13 ± 0,09; -2,6 / -0,9 | -0,16 ± 0,10; +0,7 / -0,7 |
+
+  Ninguna ayuda en los dos segmentos y las dos lecturas. La única con peso claro ("última vista de hace más de 60 s", 944 impresiones y 15 compras en los que vuelven) gana 1 punto de verosimilitud, no aparece en los nuevos y es 1 de 34 contrastes: ruido compatible.
+- **Orgánico:** ver I-320 (cadena de orden 1 por subcategoría, producto por popularidad, compra inmediata tras el carrito).
+- **Limitaciones:** el carrusel propio solo contiene lo que lfm enseñó; pocas compras por celda (las features raras no pueden medirse por debajo de un +50%). El comportamiento orgánico no es el carrusel, pero ambos coinciden en la falta de memoria.
+- **Decisión:** no se añade feature ni brazo; no se entrena modelo de secuencia.
+
