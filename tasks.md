@@ -11,7 +11,7 @@
 | T-005 | P0 | B1 personalized heuristic: recent views, co-views, category/brand profile, candidate assembly | Javi / javi/v1-gbm-recommender | **IN PROGRESS (candidates in `recsys/live.py`)** | T-004 features; policy interface |
 | T-006 | P0/P1 | Offline evaluation harness, replay and cold-start slices, reproducible experiment registry | TBD / TBD | READY | T-004; no hidden-simulator access |
 | T-007 | P1 | B2 ranker logistic/LightGBM or CatBoost; model registry and offline comparison | Javi / javi/v1-gbm-recommender | **IN PROGRESS (v1 HistGB, E-003; awaiting live swap by serving owner)** | T-004 and T-006; library availability |
-| T-008 | P1 | Real-time `shop.events` trend aggregates + `catalog_updates` cache | TBD / TBD | READY | T-003; frequent incremental refresh |
+| T-008 | P1 | Real-time `shop.events` trend aggregates + `catalog_updates` cache | Javi (agente) / javi/live-trends | **IN PROGRESS (`recsys/trends.py` + replay offline, sin tocar el writer)** | T-003; frequent incremental refresh |
 | T-009 | P1 | New-product content-based cold-start candidate generation | TBD / TBD | READY | T-004/T-005; catalog descriptions |
 | T-010 | P1 | Slate ordering/diversity/price ablation | TBD / TBD | READY | T-005/T-006 or T-007 |
 | T-011 | P2 | Optional bounded bandit after proven ranker | TBD / TBD | HOLD | Reliable feedback attribution and offline/live evidence |
