@@ -84,6 +84,25 @@ class LiveRoutingTests(unittest.TestCase):
         live.BOUGHT['u1'].add('A02')
         self.assertNotIn('A02', live.qrank_slates(self.reqs(), set())[0])
 
+    def test_tuning_arms_split_users_and_label_versions(self):
+        live.POLICY['variant'] = 'qrank'
+        saved = live.POLICY['qrank_arms']
+        try:
+            live.POLICY['qrank_arms'] = live.clean_arms([{'tag': 'vf005', 'viewed_factor': 0.05}, {'tag': 'vf100', 'viewed_factor': 1.0}])
+            reqs = [{'request_id': f'r{k}', 'user_id': f'u{k}', 'rv': ['A05'], 'page': 'product'} for k in range(40)]
+            versions = {}
+            out = live.qrank_slates(reqs, set(), versions)
+            self.assertEqual(len(out), 40)
+            self.assertEqual(set(versions.values()), {'v2-qrank-vf005', 'v2-qrank-vf100'})
+            for k, v in versions.items():      # the arm really changes the ranking: A05 first only when viewed counts fully
+                self.assertEqual(out[k][0], 'A05' if v.endswith('vf100') else 'A00')
+        finally:
+            live.POLICY['qrank_arms'] = saved
+
+    def test_invalid_arms_are_ignored(self):
+        self.assertEqual(live.clean_arms([{'tag': 'only', 'viewed_factor': 1.0}]), [])
+        self.assertEqual(live.clean_arms([{'tag': 'a', 'viewed_factor': 9}, {'tag': 'b!', 'viewed_factor': 1}]), [])
+
     def test_qrank_failure_falls_back_to_gbm_path(self):
         live.POLICY['variant'] = 'qrank'
         live.QR.model = None                      # predict_proba will raise

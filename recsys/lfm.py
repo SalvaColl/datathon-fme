@@ -1,4 +1,4 @@
-"""lfm — "live-fitted model": one slate policy for every page, fitted on TODAY's carousel feedback (T-018, I-180..I-182).
+"""lfm — "live-fitted model": one slate policy for every page, fitted on TODAY's carousel feedback (T-020, I-200..I-202).
 
 Plain version. Our own feedback (what we showed, what was clicked / bought) says the hidden shopper behaves very
 differently depending on who the shopper is, and neither v1 nor qrank uses that:

@@ -191,24 +191,46 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Evidence:** `on_time` horario de team_26: 73,5% (13:24) → 66,1% (13:29) → 57,2% (13:39), unos −1,5 puntos por minuto al principio, lo que equivale a minutos enteros casi sin respuestas a tiempo. En esos mismos snapshots `model_version` alterna entre `v1-gbm-cand-r1`, `v1-gbm-cand-r1-guard` y **`v1-gbm-cand:v1`**, una cadena que no produce el `live.py` de `javi/qrank-serving`.
 - **Implication (HYPOTHESIS):** puede haber dos procesos escribiendo (I-017) o un reinicio a medias. No lo he comprobado en `submissions` (este hilo no tiene acceso al Mac). Hay que resolverlo antes de cualquier A/B: con `on_time` bajo, el lift medido se diluye.
 
-### I-180 — El hueco con la referencia está en los usuarios que vuelven: 70% del tráfico y convierten 3 veces menos
-- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 14:30 UTC — Javi (agente, T-018, rama `javi/lfm-live-fit`)
+### I-200 — El hueco con la referencia está en los usuarios que vuelven: 70% del tráfico y convierten 3 veces menos
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 14:30 UTC — Javi (agente, T-020, rama `javi/lfm-live-fit`)
 - **Evidence:** feedback propio 11:09–13:57 UTC, 30.280 peticiones (todas las políticas mezcladas), compras reales. Página producto: `is_new_user=false` **0,66%** (78/11.877) vs nuevo **2,00%** (102/5.107); categoría 0,87% (45/5.186) vs 1,37% (30/2.194); home 0,12% vs 0,39%. Pasa igual con el slate genérico del fallback (0,68% vs 1,34% en producto), así que no es solo culpa de v1. Con `v2-qrank-r1` el usuario que vuelve sigue en 0,53% (3/569) y 0,87% (2/231): qrank arregla al nuevo, no al que vuelve.
 - **Tamaño:** usuario que vuelve fuera de home = 56% de las peticiones a 0,72%. Si convirtiera como el nuevo (~2%) serían **+0,7 pp** globales, dos tercios del hueco con la referencia (2,04–2,09%). Usuario nuevo fuera de home = 24% a 1,8%; home = 20% a 0,20% (techo bajo).
 - **Por qué:** por impresión, a un usuario que vuelve un producto sin relación con él y con afinidad de frases <0,12 le vende **3 veces en 56.280 impresiones** (la mitad de lo que le enseñamos); con afinidad >0,20 vende 62–127 por 10.000. Lo que carritó en los 60 días y no compró: 28,6 por 10.000 de media, **110 en el slot 1**, y hasta 178 si además la afinidad es >0,20. El 96% de estos usuarios tiene algún carrito sin comprar (el 45% más de 10).
 - **Potential confounding/weakness:** qué se mostró no fue aleatorio; compras reales con ruido (285 en total). Precio: sin efecto visible (8,0 por 10.000 por debajo de 10 €, 6,2 por encima de 80 €), así que ordenar por dinero esperado no es la palanca de conversión.
-- **What changed:** variante `lfm` (D-180).
+- **What changed:** variante `lfm` (D-200).
 
-### I-181 — El usuario nuevo compra lo que ha metido hoy en el carrito, y casi nunca se lo enseñamos
-- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 — Javi (agente, T-018)
+### I-201 — El usuario nuevo compra lo que ha metido hoy en el carrito, y casi nunca se lo enseñamos
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 — Javi (agente, T-020)
 - **Evidence:** peticiones fuera de home de usuarios nuevos con algún producto añadido al carrito hoy y no comprado (antes de la petición): 2.514 de 7.301 (34%). Si el slate incluía alguno: **4,2% / 10,2% / 17,4%** de conversión con 1 / 2 / 3+ carritos (37 compras en 380 peticiones); si no: 1,8% / 3,9% / 5,0%. Por impresión: 3,7% en el slot 1 (9/241) y 4,0% en los slots 2–3, también cuando el producto es de otra categoría (218 por 10.000). Solo lo mostramos en 380 de 2.514 peticiones (15%).
 - **Contraste:** en usuarios que vuelven el carrito de hoy apenas vende (2/895 impresiones); a ellos les vende el carrito del histórico. Por eso el modelo tiene pesos distintos por tipo de usuario.
 - **Potential confounding/weakness:** 18 compras de carrito de hoy; quien tiene carrito ya es un comprador más activo (convierte 2,7% en otros productos).
 
-### I-182 — El leaderboard da la conversión del modelo oculto por `model_version`: sirve para medir segmentos sin ruido
-- **Status / date / owner:** SUPPORTED (OBSERVED DATA) — 2026-11-14 — Javi (agente, T-018)
+### I-202 — El leaderboard da la conversión del modelo oculto por `model_version`: sirve para medir segmentos sin ruido
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA) — 2026-11-14 — Javi (agente, T-020)
 - **Evidence:** `https://datathon.rawtree.dev/api/state?by=model` devuelve por equipo una lista `versions` con peticiones, conversión esperada, cold y €/petición de cada `model_version` de la última hora (las de menos de 300 peticiones salen sin clasificar). team_09 lo usa con 56 versiones.
-- **Implication:** si la versión lleva el segmento en el nombre, el leaderboard devuelve la conversión esperada de cada segmento. `lfm` etiqueta `v3-lfm-r1-k` (vuelve), `-n` (nuevo), `-kh` y `-nh` (home).
+- **Implication:** si la versión lleva el segmento en el nombre, el leaderboard devuelve la conversión esperada de cada segmento. `lfm` etiqueta `v4-lfm-r1-k` (vuelve), `-n` (nuevo), `-kh` y `-nh` (home).
+### I-170 — Un ranker que describe productos por atributos iguala a qrank en productos conocidos y es el único que acierta con productos nuevos
+- **Status / date / owner:** SUPPORTED (OFFLINE ESTIMATE + LIVE FEEDBACK) · 2026-11-14 15:00 UTC · agente de Javi (T-017, rama `javi/attr-model`) · E-170, E-171, E-172
+- **Claim:** la calidad de un producto en el carrusel se reconstruye sin su ID: `exp(categoría + 1,04·prior de conversión por atributos + 0,71·popularidad relativa + 0,02·residuo de conversión)`, donde el prior sale de categoría, las 2 frases, marca y precio (absoluto y relativo a la subcategoría) y los otros dos términos son conteos con shrinkage que valen 0 en un producto recién lanzado. El comprador entra solo por `recent_views` (frases compartidas con lo último visto, reparto de frases de la sesión), sin ID ni historial.
+- **Evidence:**
+  1. *Calidad, split temporal (ajuste < 25 oct, compras del carrusel 25 oct–14 nov), 20% del catálogo (1.047 productos) oculto como "nuevo":* devianza explicada en esos productos nunca vistos (N=903 con exposición, 1.397 compras) 0,47 solo categoría → **0,66 solo atributos** → 0,90 con sus conteos. En los conocidos (N=3.455, 6.469 compras) 0,48 → 0,73 → 0,93.
+  2. *Ranking dentro de slates del histórico, test 8–14 nov (3.013 sesiones con compra):* hit@1 `attr_model` 0,436 frente a 0,430 de qrank con todo conocido (empate dentro del error, ±0,009). Con el 20% de productos tratados como nuevos, y la compra es de uno de ellos (N=529): **qrank 0,002, `attr_model` 0,293** (al azar 0,100); global 0,418 frente a 0,441.
+  3. *Feedback en vivo, modelo oculto (21.046 peticiones product/category, 11:09–13:35 UTC; 75.697 impresiones elegibles, 131 compras, 372 clics), puntuando en frío (sin conteos en vivo):* AUC de compra 0,831 frente a 0,787 de qrank (diferencia +0,046, IC 95% por bootstrap de peticiones 0,021…0,069); AUC de clic 0,748 frente a 0,721. En usuarios nuevos 0,870 frente a 0,823. Dentro de cada petición no hay ganador: log-verosimilitud de lo comprado −1,435 frente a −1,515 (mejor `attr_model`), pero hit@1 0,481 frente a 0,504 y en clics 0,401 frente a 0,446 (mejor qrank).
+- **Potential confounding/weakness:** en productos conocidos NO hemos demostrado mejora sobre qrank; la ventaja medida está en productos nuevos y solo offline (en vivo hay 291 impresiones de productos lanzados hoy y 1 compra, sin potencia). El hit@1 offline se mide dentro de slates de best-sellers, no sobre los ~500 candidatos que puntúa en vivo. Nada medido con el leaderboard.
+- **What changed:** `recsys/attr_model.py` + `attr_policy.py`, variantes `attr` / `attr_aff` / `ab_attr` / `ab_attr_aff` en el writer (apagadas por defecto). Propuesta D-170.
+- **Next action:** bloque `ab_attr_aff` (qrank_aff frente a attr_aff) o bloque completo contra el leaderboard, a decidir por el dueño del writer.
+
+### I-171 — El boost de afinidad con β=40 que incluye `recent_views` perjudica a los compradores sin historial (el caso de la final)
+- **Status / date / owner:** SUPPORTED con muestra pequeña (LIVE FEEDBACK) · 2026-11-14 15:00 UTC · agente de Javi (T-017) · E-172
+- **Claim:** `qrank_aff` multiplica por exp(40·afinidad) y la afinidad incluye las vistas de la petición. Con 1–6 vistas y nada más, una sola vista ya multiplica ×36 a los productos con sus frases. En compradores sin historial eso empeora el orden dentro del slate; en compradores con historial ayuda.
+- **Evidence:** misma muestra que I-170, ranking dentro de cada petición de lo que se mostró. *Sin historial (71 compras, 173 clics):* qrank hit@1 0,507 / clics 0,491; qrank×exp(40·afinidad) **0,408 / 0,393**, log-verosimilitud −1,607 → −1,926; con β=20 0,437 / 0,428. *Con historial (60 compras, 199 clics):* qrank 0,500 / 0,407; β=40 0,567 / 0,437; β=20 0,550 / 0,442. `attr_model` ya usa las frases de la sesión dentro del modelo, así que su variante `attr_aff` solo añade el gusto guardado (historial + vistas en vivo, sin `recent_views`) con β=20: sin historial queda igual que `attr`, con historial hit@1 0,500 → 0,550.
+- **Potential confounding/weakness:** 71 y 60 compras; diferencias de ±0,06 son ruido en compras, en clics la caída de 0,10 son unas 2,8 desviaciones. Es un análisis sobre slates ya mostrados (v1 y fallback), no un A/B. No contradice E-093: la pendiente por celda existe, lo que falla es la escala cuando casi toda la masa viene de la propia sesión.
+- **What changed:** nada en `aff_policy.py` (no es mío). Aviso para quien active `qrank_aff` en la final, donde los compradores son nuevos.
+- **Next action:** si se quiere `qrank_aff` en la final, probar β=20 (`AttrAffinity(beta=20)`) o excluir `recent_views` del vector cuando el usuario no tiene historial; decidirlo con un bloque del leaderboard.
+
+### I-172 — Predecir la popularidad de un producto desde sus atributos no funciona (REJECTED)
+- **Status / date / owner:** REJECTED · 2026-11-14 · agente de Javi (T-017) · E-170
+- **Evidence:** los atributos explican el 29% del log de vistas orgánicas. Añadir ese prior de popularidad a la calidad bajó la devianza explicada en productos nunca vistos de 0,66 a 0,61 (N=903) con coeficiente negativo (colineal con el prior de conversión). Se usa "popularidad media" como prior y el conteo real, con shrinkage de 20 vistas, como corrección.
 
 ## Correction register (superseded briefing assumptions)
 
@@ -255,3 +277,25 @@ _None tested/rejected by team yet. Corrected assumptions are listed above rather
 ### I-REL-002 — Published branch work and evidence boundaries
 - Published `javi/v1-gbm-recommender` has the implemented policy and a prior duplicate-writer finding. At fetched tips, cold-items, home-new-users and live-trends add task claims only; local/unpushed teammate implementations were not accessible. Main's league and Javi's home work both use T-013; reconcile task IDs before integrating future modules.
 - A rolling leaderboard with expected rewards removes some purchase noise but does not create randomized causal comparisons. Earlier branch claims about exact recovery of every ten-minute block from rolling averages need starting blocks, request counts and allocation assumptions. Keep experiment windows/version ledgers and report fallback/overlap contamination.
+
+### I-180 — La calidad de los productos antiguos NO se mueve durante el evento; el stream solo aporta en tres sitios (T-018) — OBSERVED DATA
+- Replay de `shop.events` del 14 nov 09:00–13:50 UTC (1,00 M vistas, 52,7 k compras orgánicas), prediciendo cada 15 min las compras de los 15 min siguientes con datos solo del pasado (E-180). Para productos con historia, fuera de ráfagas y descuentos (22.731 compras en la mitad de test), la tasa en vivo no mejora a la histórica de 60 días: ganancia +0,6 nats por 1.000 compras, es decir, nada. Histórico y vivo coinciden (Spearman 0,86 producto a producto con solo 158 vistas vivas de mediana; ratio global 1,00).
+- Consecuencia: una "tasa rolling por producto" genérica no es una gran mejora. Lo que el stream sí aporta: productos nuevos (I-183), ráfagas de subcategoría (I-181) y descuentos (I-182). `recsys/live_quality.py` hace exactamente esas tres cosas y deja el resto intacto.
+
+### I-181 — Ráfagas de subcategoría: la calidad estática se queda en el 42% de lo real; multiplicador con puerta estadística — OBSERVED DATA
+- En las subcategorías que el detector marca calientes (393 compras en test), la calidad estática predice el 42% de las compras reales; con el multiplicador de 30 min (compras observadas / esperadas, shrinkage de 20 compras) la calibración pasa a 0,97 y la ganancia es +312 nats por 1.000 compras (E-180). Confirma I-080 con otro método.
+- Sin puerta (aplicarlo a todas las subcategorías) el multiplicador EMPEORA los productos en calma (−3,6 nats por 1.000 compras): es ruido. Con puerta (z ≥ 3 y ≥ ×1,3) el coste en calma es 0. Ventanas de 15, 30 y 60 min rinden igual.
+- Limitación: en nuestro carrusel los productos de subcategorías calientes solo tuvieron 258 impresiones y 0 compras (E-183); el efecto en el modelo oculto es HYPOTHESIS.
+
+### I-182 — Los descuentos son promociones de ~−20% por categoría durante 2 h y suben la compra orgánica un 14,5% — OBSERVED DATA
+- `catalog_updates.price_change` no es ruido: a las 10:30 UTC ~610 productos (Pets) bajan un 11–20%, a las 12:30 vuelven a su precio, y a las 13:30 empieza otra tanda de 639 (Home & Garden). En descuento: 1.764 compras frente a 1.541 esperadas con las mismas vistas (×1,145, z = 5,7); los mismos productos a precio normal: ×1,016 (E-181).
+- Como la promoción cubre casi toda una categoría y qrank solo ordena dentro de la categoría, apenas cambia el orden: ganancia pequeña. Queda como opción (`promo_q`) apagada; útil para `home`, donde compiten categorías.
+
+### I-183 — La calidad en el carrusel es la tasa orgánica AL CUADRADO; con eso un producto nuevo recibe su calidad real en 1 hora — OBSERVED DATA + OFFLINE ESTIMATE
+- En los 5.000 productos históricos, log q (calidad de qrank, medida en el carrusel aleatorizado) = a_subcategoría + 2,02 · log(tasa orgánica compra/vista), r = 0,94 dentro de la subcategoría (E-182).
+- qrank da hoy a un producto nuevo la mediana de su subcategoría. Tratando cada producto antiguo como si fuera nuevo (prior de atributos ajustado sin él + solo sus eventos en vivo), el top-10 por categoría elegido con la mediana captura el 10% de la calidad del top-10 real; con el prior de atributos solo, 60%; con prior + 1 h de stream, 77%; con 4 h, 84%. Spearman dentro de categoría 0,23 → 0,79 → 0,81 → 0,85.
+- Los 100 productos nuevos de hoy: 4 tienen tasas orgánicas del 16–26% (p. ej. `p_548697`: 208 compras en 796 vistas), al nivel de los mejores del catálogo. Hoy ninguno entra en el top-10 de su categoría y solo 1 está en el pool de candidatos de qrank; con calidad en vivo entran 3 y 29. El writer les dio 611 impresiones de 288 k (0,2%).
+- Límite: la relación cuadrática es entre productos, medida en historia. Que se cumpla para productos nuevos en el modelo oculto es HYPOTHESIS hasta el A/B en vivo.
+
+### I-184 — Nuestro feedback no puede validar nada de esto; hace falta el A/B del writer — LIVE FEEDBACK
+- En 28,8 k respuestas (252 compras), productos nuevos: 611 impresiones, 2 compras (32,7 por 10 k frente a 8,6 del resto, no significativo); subcategorías calientes: 258 impresiones, 0 compras (E-183). No hay potencia. La única validación posible es encender `live_quality` en modo `ab` o en un bloque del laboratorio nocturno (D-180).

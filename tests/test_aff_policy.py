@@ -97,6 +97,9 @@ class LiveRoutingTests(unittest.TestCase):
         expect = {'v1': (False, False, False, False), 'qrank': (False, True, False, True), 'ab_qrank': (False, True, False, False),
                   'aff': (True, False, True, False), 'qrank_aff': (True, True, True, True),
                   'ab_aff': (True, False, False, False), 'ab_qrank_aff': (True, True, False, True),
+                  # D-170 (attr_model): the attr arm never goes to qrank; in ab_attr_aff the control arm is qrank_aff
+                  'attr': (False, False, False, False), 'attr_aff': (True, False, True, False),
+                  'ab_attr': (False, False, False, False), 'ab_attr_aff': (True, False, True, True),
                   'lfm': (False, False, False, False), 'ab_lfm': (False, False, False, True)}   # lfm arms: see test_lfm.py
         self.assertEqual(set(expect), set(live.VARIANTS))
         for v, e in expect.items():
