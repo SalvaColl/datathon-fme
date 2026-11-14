@@ -237,5 +237,20 @@ class R3CategoryMixTests(unittest.TestCase):
         self.assertTrue(set(c['known']['w']) <= set(lfm.FEATS)); self.assertGreater(c['known']['w']['ucat'], 0)
 
 
+class OwnPurchaseTests(unittest.TestCase):
+    def test_first_feedback_read_after_start_takes_every_carousel_purchase(self):
+        saved = live.state.get('fb_full')
+        try:
+            live.state['fb_full'] = False; self.assertEqual(live.fb_window(), '')
+            live.state['fb_full'] = True; self.assertIn('INTERVAL 10 MINUTE', live.fb_window())
+        finally: live.state['fb_full'] = saved
+
+    def test_product_bought_through_the_carousel_is_never_shown_again(self):
+        lf, aff = build()
+        self.assertIn('B05', slate(lf, aff, user='u1', rv=('B05', 'A30')))
+        lf.add('u1', 'B05', 0, 0, 1)                      # what refresh_events does for a feedback purchase
+        self.assertNotIn('B05', slate(lf, aff, user='u1', rv=('B05', 'A30')))
+
+
 if __name__ == '__main__':
     unittest.main()

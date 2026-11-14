@@ -179,6 +179,12 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Riesgo:** un usuario con pocas vistas no tiene preferencia fiable; por eso el reparto se encoge hacia "sin preferencia" con 5 vistas ficticias.
 - **Rollback:** quitar el brazo de `policy.json`.
 
+### D-241 — Tras un reinicio, recuperar todas las compras hechas por nuestro carrusel (T-024, 2026-11-14)
+- **Date / owner / status:** 2026-11-14 16:35 UTC / Javi (agente) / IMPLEMENTED, activo por defecto al cargar el código.
+- **Por qué:** aclaración de la organización (14-nov): quien ya compró un producto, también a través de nuestras recomendaciones, casi no lo vuelve a comprar. Medido: 676 de 695 compras de nuestro carrusel NO aparecen en `shop.events`; el writer solo las leía de `feedback` de los últimos 2 minutos, así que cada reinicio las olvidaba y esos productos (casi siempre de carrito, los que lfm pone arriba) volvían al slate.
+- **Qué:** la primera lectura de `feedback` tras arrancar trae todas las compras (0,5 s, 695 filas); las siguientes, los últimos 10 minutos.
+- **Comprobado que ya estaba bien:** lfm excluye lo comprado en el historial de 60 días, en `shop.events` de hoy (cada ciclo de refresco) y en `feedback`; ninguna feature premia "comprado antes" (`nbp` y `bsub` valen 0 para el propio producto comprado).
+
 ### D-220 — Reinicios del writer con relevo (`--takeover`) — PROPUESTA (T-022, 2026-11-14)
 - Arrancar siempre el writer nuevo con `python live.py --takeover` mientras el viejo sigue sirviendo. El nuevo carga, aplica el día, puntúa peticiones reales sin enviar, y solo entonces pide al viejo que pare; empieza a escribir cuando el sistema operativo le entrega `writer.lock`. Nunca hay dos writers: sin el candado no se escribe, y el diario compartido evita responder dos veces.
 - Evidencia: E-220. Estado: implementado y ensayado sin escribir; la primera aplicación real la hace el dueño del writer (el proceso actual es anterior y necesita `--replace-pid`).
