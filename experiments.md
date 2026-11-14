@@ -540,3 +540,19 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **No reconstruido:** retraso de refresco del writer (20 s catálogo y eventos, 1 s stock), resolución de 10 minutos de la evidencia orgánica, el slot de exploración y las compras hechas a través de nuestro carrusel.
 - **Salida completa:** `/mnt/project-files/precios-snapshot/replay_e420.json` (carpeta del proyecto).
 - **Conclusión:** el arreglo restaura las features y cambia la gran mayoría de las listas de todos los brazos, también del control. Que eso convierta más no está demostrado: hace falta lectura en el leaderboard (D-420).
+
+### E-422 — Ensayo en seco del writer real con el arreglo (T-042), 14 nov 22:55–23:11 UTC
+- **Etiqueta:** OBSERVED DATA. Nube, `live.py --dry-run` (el transporte rechaza cualquier escritura), una ejecución tras otra. Nada escrito en RawTree; el writer del Mac no se tocó. Un hilo auxiliar comparó cada 20 s `LF.snap.p40` y `LF.snap.cheap` con los precios del catálogo que el propio writer tenía cargado.
+
+| Política | Minutos | Peticiones | Errores | Bucle p50 / p95 / p99 (ms) | Comprobaciones de precio | Indicadores distintos del catálogo |
+|---|---|---|---|---|---|---|
+| noche (`r3`, `og1`, `np2`, `cn1`; 400 correcciones) | 5,5 | 972 | 0 | 148 / 384 / 580 | 11 | 0 |
+| `policy.fix_a_cold_new.json` (400 correcciones) | 3,5 | 612 | 0 | 172 / 383 / 770 | 5 | 0 |
+| `policy.fix_b_np1.json` | 3,5 | 616 | 0 | 177 / 373 / 908 | 6 | 0 |
+| `policy.fix_champion.json` | 2,8 | 493 | 0 | 201 / 359 / 1.034 | 4 | 0 |
+
+- En todas, 1.985 productos con `p40` y 1.753 con `cheap` de 5.400. Con el código de `6150ffc` las dos primeras darían 0 y 0.
+- Caducadas: 53–58 por ejecución, todas en los primeros 30 bucles (arranque en frío del contenedor, igual que en E-280 y E-390); 0 después.
+- Etiquetas internas servidas, como se esperaba: en la fase A `v3-lfm-r3p-k/-kh/-n/-nh` y `v3-lfm-cn1p-n` (el resto del tráfico del brazo `cn1p` sale como control); en la fase B las cuatro de `r3p` y las cuatro de `np1p`. Con una sal de prueba cada una recibió su código nuevo.
+- Un `stock refresh failed ReadTimeout` aislado en la segunda ejecución (consulta a RawTree), sin efecto en las respuestas.
+- **Límite:** el p99 de la nube no es el del Mac. No mide conversión.
