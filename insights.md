@@ -29,7 +29,7 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Owner/evidence:** TBD / no team experiment yet.
 
 ### I-002 — Live trends from organic `shop.events`
-- **Status:** IDEA (data source confirmed; effect untested)
+- **Status:** REJECTED como palanca grande (2026-11-14, T-020; ver R-02 en el tablero): medido en I-080/I-081, ~+0,04 pp. Sigue disponible con puerta estadística (I-181). Antes: IDEA (data source confirmed; effect untested)
 - **Hypothesis:** Recent category/subcategory momentum improves predictions under moving trends and generalizes to final round.
 - **Test:** Compare global historic vs 15-min/1-hour/3-hour smoothed trends, sliding chronological holdout and live ablation; compare high-traffic and low-traffic categories.
 - **Risk:** Seasonal noise, biased buyer mix and few purchases; 50/s organic stream may make views stronger signal than own carousel feedback.
@@ -43,28 +43,28 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Owner/evidence:** TBD / no team experiment yet.
 
 ### I-004 — Bounded Thompson Sampling or Bayesian exploration
-- **Status:** IDEA (feedback available; attribution/statistics not yet validated)
+- **Status:** REJECTED para el horizonte de 2 h (2026-11-14, T-020; ver R-07 en el tablero). Antes: IDEA (feedback available; attribution/statistics not yet validated)
 - **Hypothesis:** A tiny exploration allocation helps react faster to new products and taste shifts.
 - **Test:** Reproducible shadow + carefully controlled live test against greedy ranker; report realized conversion uncertainty and cold performance.
 - **Risk:** Rewards may be one purchase/slate and highly dependent on slot; uncontrolled exploration harms reliability/conversion.
 - **Owner/evidence:** TBD / no team experiment yet.
 
 ### I-005 — Supervised gradient-boosted ranking
-- **Status:** INVESTIGATING — offline support (Javi, 2026-11-14, E-003): within-session hit@1 0.49–0.52 vs 0.31 logged order; implemented in `recsys/` (sklearn HistGradientBoosting; LightGBM needs libomp, not installed)
+- **Status:** SUPERSEDED por qrank (I-082, E-081) y lfm (I-180, E-180); ver R-05 y R-06 en el tablero (2026-11-14, T-020). Antes: INVESTIGATING — offline support (Javi, 2026-11-14, E-003): within-session hit@1 0.49–0.52 vs 0.31 logged order; implemented in `recsys/` (sklearn HistGradientBoosting; LightGBM needs libomp, not installed)
 - **Hypothesis:** Purchase-prediction ranker based on context, recent views, product metadata, history and organic signals beats engineered weights.
 - **Test:** LightGBM/CatBoost vs logistic/heuristic with time-split evaluation, IPS support checks, calibration and cold-start ablation.
 - **Risk:** Historical best-seller exposure/position bias; new product distribution shift; train/inference cost.
 - **Owner/evidence:** TBD / no team experiment yet.
 
 ### I-006 — PPO isn't first priority
-- **Status:** IDEA, **DEFERRED** for engineering priority; not an experimental rejection
+- **Status:** REJECTED para este datathon (2026-11-14, T-020; ver R-13 en el tablero). Antes: IDEA, **DEFERRED** for engineering priority; not an experimental rejection
 - **Hypothesis:** Deep RL is slower/less robust than ranker + online bandit without access to a faithful simulator; purchase propensity mostly an immediate contextual objective.
 - **Test:** Only reconsider with a realistic simulator and evidence of long-term sequential reward advantage.
 - **Risk:** Wasting scarce build hours and overfitting to an imagined simulator.
 - **Owner/evidence:** TBD / no team experiment yet.
 
 ### I-007 — Content-based cold start
-- **Status:** IDEA (new product descriptions and cold-start score confirmed)
+- **Status:** SUPERSEDED por el prior de frases (I-090: Spearman 0,84 frente a 0,60 de TF-IDF); ver R-14 en el tablero (2026-11-14, T-020). Antes: IDEA (new product descriptions and cold-start score confirmed)
 - **Hypothesis:** TF-IDF/text embeddings + category/brand/price priors make new-item ranking competitive with no interactions.
 - **Test:** Simulate product launches with temporal held-out catalogue products and compare to only subcategory/popularity priors.
 - **Risk:** Description text may be generic; embeddings may not separate simulated buyer preferences.
@@ -318,3 +318,113 @@ _None tested/rejected by team yet. Corrected assumptions are listed above rather
 - **Status / date / owner:** SUPPORTED (OBSERVED DATA) → idea "top por región/dispositivo" **REJECTED** para región, débil para dispositivo · 2026-11-14 · agente de Javi
 - **Evidence:** `shop.events` 09:00–12:30 UTC, 11.855 compras orgánicas de usuarios que no están en el histórico: el reparto por categoría es igual en las 10 regiones (±2 puntos, p. ej. Books & Media 20–25%); por dispositivo solo cambia Books & Media (web 32%, ios 20%, android 17%). Las diferencias de conversión de home por región en el histórico (Andalucía 0,26%, C. Valenciana 0,065%) y dispositivo (android 0,22%, web/ios 0,11%) son propensión del usuario, no gusto por productos. Misma conversión orgánica por vista en nuevos y conocidos (5,3%) y mismo top (p_0210c5, p_adc3e6, p_69d40e, p_1036d3…). Top-10 de productos = 6% de las compras de nuevos; top-100 = 27%.
 - **Implication:** para usuario nuevo en home no hay palanca de contexto; una lista global tiene techo bajo. Además `live.pull()` no trae región/dispositivo, así que no pedimos ese cambio.
+
+---
+
+# TABLERO DE IDEAS DEL EQUIPO (T-020, abierto el 2026-11-14 15:00 UTC)
+
+**Cómo se usa.** Cada idea nueva tiene `owner: free`. Para cogerla, cambia esa línea por tu nombre y la hora, haz commit (`git pull --rebase` antes) y trabaja en tu rama. Al terminar, cambia el estado (SUPPORTED / REJECTED) y enlaza la entrada E. No se borra nada.
+
+**Cómo se mide.** (1) Offline, con el feedback propio: `cd recsys && python lfm_build.py --pull --no-write && python explore_t020.py --pull` deja en `recsys/data/` las peticiones respondidas con sus compras y los eventos de hoy; todo lo que se calcule debe usar solo eventos anteriores a cada petición. (2) En el modelo oculto: dar a la variante un `model_version` propio y leer su fila en `https://datathon.rawtree.dev/api/state?by=model` (conversión esperada, sin ruido de compras, fiable a partir de ~300 peticiones, I-182). Solo el dueño del writer toca `live.py`.
+
+**Foto del leaderboard por versión, 14:46 UTC (OBSERVED DATA):** referencia 2,16%, baseline 0,78%. Nosotros: `v3-lfm-r1-k` (vuelve, producto/categoría) **2,39%** en 581 peticiones; `v3-lfm-r1-n` (nuevo) **2,79%** en 255; `v2-qrank-r1` 1,39% en 5.062 (mezcla de segmentos); `v1-gbm-cand-r1` 0,93% en 3.715; `v3-lfm-r1-kh` (vuelve, home) 0,35% en 143; `v3-lfm-r1-nh` 1,69% en 54. Rivales: team_06 `skore_money_v5` 1,85% y 0,90 €/petición (7.343); team_19 `v1-cp2` 1,82%, cold 2,69% (1.339) y `v1-search` 1,78% (7.393). Las filas de lfm tienen pocas peticiones todavía; qrank no está etiquetado por segmento, así que la comparación exacta es I-200.
+
+## Descartadas o superadas (no repetir sin evidencia nueva)
+
+| ID | Idea | Estado | Evidencia |
+|---|---|---|---|
+| R-01 | Ordenar por precio o por dinero esperado para subir la conversión | REJECTED | I-180 (T-018): 8,0 compras por 10.000 impresiones por debajo de 10 € frente a 6,2 por encima de 80 €. E-205: en usuarios que vuelven, lo que cuesta más de 40 € vende menos (3 compras en 20.953 impresiones genéricas frente a 50 en 96.207). `skore_money_v5` gana en euros (0,90) con 1,85% de conversión, por debajo de la referencia. El dinero solo sirve de desempate (I-206). |
+| R-02 | Tendencias del stream como palanca principal | REJECTED como palanca grande | I-081: techo de unos +0,04 pp globales; nuestro carrusel dio 258 impresiones y 0 compras en subcategorías calientes (E-183). Se mantiene solo con puerta estadística (I-181 de T-018). |
+| R-03 | Listas de top ventas por región o por dispositivo | REJECTED en esa forma, sustituida por I-204 | I-132 (T-013): el reparto por categoría de las compras es igual en las 10 regiones (±2 puntos, 11.855 compras orgánicas). Lo que sí existe es UN segmento concreto (android en Andalucía, Canarias y Murcia) sensible al precio: ver I-204 y E-204. Fuera de ese segmento las 27 celdas dispositivo × región restantes son iguales (10,8–23,7 compras por 10.000 en productos baratos). |
+| R-04 | Lift por producto dentro de una subcategoría caliente | REJECTED | I-080: devianza 1.245 → 1.233 en 730 filas (1.396 compras). La ráfaga afecta a toda la subcategoría por igual. |
+| R-05 | Estimación de que qrank llegaría al 2,1% | SUPERSEDED (demasiado optimista) | E-081 predecía 3,93% por modelo. Medido en el leaderboard por versión: 1,44% frente a 1,26% de v1 en producto/categoría; a las 14:46 UTC 1,39% en 5.062 peticiones. qrank arregla al usuario nuevo y no al que vuelve (0,57% real, 7 compras en 1.233 peticiones del hold-out de hoy). |
+| R-06 | Ranking v1 (GBM) como campeón, incluido mostrar lo ya comprado | SUPERSEDED por qrank y lfm | I-082: lo ya comprado, 1.118 impresiones y 0 compras; 31% de las impresiones en otra categoría con 0,07%. Hoy: 93.624 impresiones "muertas" (ya comprado, o visto en el histórico sin carrito) con 11 compras. Rivales con GBM genérico: `v2-gbm` 0,80%, `lgbm-v1` 1,11%, `main-hgb-v1` 1,02%. |
+| R-07 | Exploración (bandit, Thompson) durante el evento | REJECTED para un horizonte de 2 h | Los productos antiguos no derivan: la tasa en vivo aporta +0,6 nats por 1.000 compras (I-180 de T-018, N 22.731). Brazos de exploración de rivales: `skore_money_v5_explore` 1,17% frente a 1,85% de su brazo principal; `explore@0ac9a11` 0,10% frente a 1,26–1,51%. Explorar cuesta más de lo que se recupera en 2 h. Para productos nuevos se usa el prior de atributos (I-090, I-183), no exploración. |
+| R-08 | Tasa rolling genérica por producto desde el stream | REJECTED | I-180 de T-018: sin ganancia en productos con historia. Solo aporta en productos nuevos, ráfagas y descuentos. |
+| R-09 | Predecir la popularidad desde los atributos | REJECTED | I-172: devianza explicada en productos nunca vistos 0,66 → 0,61. |
+| R-10 | Rellenar con productos genéricos de otra categoría | REJECTED | I-082: 19.092 impresiones, 13 compras (0,07%). Hoy, a usuarios que vuelven: 8 compras en 39.415 impresiones (2,0 por 10.000). Otra categoría solo vende si es carrito o afinidad alta. |
+| R-11 | Afinidad con β=40 incluyendo `recent_views` para compradores sin historial | REJECTED para la final | I-171: hit@1 0,507 → 0,408 (71 compras), clics 0,491 → 0,393. Usar β=20 o solo historial. |
+| R-12 | Frescura del carrito (minutos desde que se añadió) y carrito repetido | REJECTED | E-200: sin patrón (usuario nuevo: 2 compras en 73 impresiones con 10–30 min, 21 en 659 con más de 60 min; observado/esperado 1,53 y 1,18). En hold-out no mejora (log-verosimilitud de clic −971,8 → −971,7). El carrito vale igual sea reciente o no. |
+| R-13 | PPO o RL profundo | REJECTED para este datathon | Sin simulador fiel y con una compra como máximo por petición (I-013) el objetivo es contextual e inmediato; R-07 muestra que ni la exploración simple compensa. |
+| R-14 | TF-IDF o embeddings de la descripción para productos nuevos | SUPERSEDED | I-090: Spearman 0,60 frente a 0,84 del GLM de frases × categoría. Queda de reserva si la final trae frases nuevas. |
+| R-15 | Elegir política con IPS del slot 1 en el histórico | SUPERSEDED | I-010 (Codex): no distingue políticas que cambian slots 2–10; unas 98 de tamaño efectivo. La medida válida es la fila por versión del leaderboard (I-182). |
+| R-16 | "Visto antes hoy pero fuera de `recent_views`" como señal o como producto muerto | REJECTED (sin efecto medible) | E-201: 3 compras en 2.330 impresiones, observado/esperado 1,6–1,7, peso 0 en hold-out. Ni está muerto (a diferencia de lo visto en el histórico sin carrito) ni merece un peso. |
+
+## Ideas nuevas (cógelas: cambia `owner: free`)
+
+Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las ganancias son HYPOTHESIS salvo donde se indica la medida.
+
+### I-200 — Etiquetar el control por segmento para comparar lfm con qrank de igual a igual
+- **Status / owner:** IDEA · **owner: free** (tiene que ser el dueño del writer)
+- **Hipótesis:** hoy `v2-qrank-r1` mezcla usuarios nuevos y que vuelven, así que no se puede leer en el leaderboard cuánto gana lfm en cada segmento. Con `v2-qrank-r1-k` / `-n` la lectura es directa a los 15 min.
+- **Ganancia:** 0 pp directos; evita promocionar o retirar lfm por una comparación mezclada. **Coste:** 15 min en `live.py` (una línea donde se asigna la versión).
+- **Test:** `api/state?by=model`, filas `-k` y `-n` de las dos políticas en la misma hora.
+
+### I-201 — Gusto de la sesión de hoy para compradores nuevos (lo que compró, carritó y vio hoy)
+- **Status / owner:** SUPPORTED offline con muestra pequeña (E-202) · **owner: free**
+- **Hipótesis:** un comprador nuevo que ya compró hoy vuelve a comprar productos parecidos a lo que compró. lfm se ajustó con la afinidad calculada solo con `recent_views`, mientras que el writer la calcula con todas las vistas de hoy (`AP.aff`): el peso `aff10` del segmento nuevo está ajustado con una señal distinta de la que se sirve.
+- **Evidencia (E-202):** usuario nuevo, producto ni carritado ni en `recent_views`: sin frases en común con lo comprado hoy 7,8 compras por 10.000 impresiones (18/23.152); con frases en común 35–41 (62/16.820); con las dos frases 98 (7/711). Observado frente a lo que espera lfm: ×0,73, ×2,6–3,1 y ×6,8. Misma subcategoría que algo comprado hoy: 53,9 por 10.000 frente a 19,0. Hold-out temporal (68 compras): AUC de compra 0,873 → 0,885, log-verosimilitud de clic −971,8 → −968,7, hit@1 0,324 → 0,353. En usuarios que vuelven no aporta (su historial ya lo dice).
+- **Ganancia esperada:** el 38% de las peticiones de usuarios nuevos fuera de home son de alguien que ya compró hoy, y convierten 1,7–9,5%. Si el orden mejora un 15% ahí, unos +0,05–0,1 pp hoy; en la final (compradores nuevos) pesa más. **Coste:** 1–2 h. En `lfm_build.impressions` reconstruir la afinidad con las vistas y compras de hoy anteriores a cada petición (los datos están en `data/t020_views.parquet` y `t020_cp.parquet`), reajustar y comparar pesos.
+- **Test:** hold-out de `lfm_build.py` (AUC y hit@1 del segmento nuevo); en vivo, versión `v3-lfm-r2-n` frente a `v3-lfm-r1-n`.
+
+### I-202 — Home para el usuario que vuelve: solo carritos del histórico
+- **Status / owner:** SUPPORTED offline (E-203) · **owner: free**
+- **Hipótesis:** en home, a un usuario que vuelve lo genérico no le vende nada; solo vende lo que carritó y no compró.
+- **Evidencia (E-203, coincide con I-130 e I-131 de T-013):** home, usuario que vuelve: genéricos **1 compra en 23.363 impresiones** (0,4 por 10.000; 0 compras en los tres cuartiles bajos de calidad); carrito del histórico 6 en 5.441 (11,0 por 10.000); carrito de hoy 1 en 307. La fila `v3-lfm-r1-kh` va al 0,35% (143 peticiones) frente a 2,39% de `-k`.
+- **Ganancia esperada:** home de usuario que vuelve es el 14% del tráfico al 0,35%. Llenando los 10 slots con carritos del histórico (hoy lfm pone unos 3) y ordenándolos por afinidad, objetivo 0,7–1,0%: **+0,05–0,09 pp**. **Coste:** 1 h (regla en `lfm.slate` para `page == "home"`: primero todos los carritos, después afinidad). El 96% de estos usuarios tiene carrito sin comprar y el 45% más de 10 (I-180).
+- **Test:** offline, valor por modelo en el hold-out de home; en vivo, fila `-kh`.
+
+### I-203 — Carrito primero como regla dura encima de cualquier ranker (plan B si lfm se retira)
+- **Status / owner:** IDEA con evidencia (I-181, E-200) · **owner: free**
+- **Hipótesis:** poner en los slots 1–3 lo carritado hoy (usuario nuevo) o en el histórico (usuario que vuelve) captura la mayor parte de la ganancia de lfm sin depender de sus 11 pesos.
+- **Evidencia:** carrito de hoy en usuario nuevo, slot 1: **17 compras en 363 impresiones (4,7%)**; slots 2–3: 5 en 203 (2,5%); genérico de la misma categoría: 0,06–0,5%. Solo se mostraba en el 15% de las peticiones que tenían carrito (380 de 2.514, I-181). Carrito del histórico en usuario que vuelve: 78 compras en 20.245 impresiones (38,5 por 10.000) frente a 2–5 de lo genérico.
+- **Ganancia esperada:** +0,2 pp sobre qrank (24% del tráfico × 34% con carrito × +2,4 pp), ya incluida en lfm. **Coste:** 30 min sobre qrank. Sirve también de red de seguridad para la final si los pesos de lfm no generalizan.
+- **Test:** versión `v2-qrank-cart` frente a `v2-qrank-r1` en el leaderboard.
+
+### I-204 — Segmento sensible al precio: android en Andalucía, Canarias y Murcia
+- **Status / owner:** INVESTIGATING (E-204) · **owner: free**
+- **Hipótesis:** el modelo oculto tiene un tipo de comprador que compra mucho más y casi solo barato, identificable por `context.device = android` y `context.region` en esas tres regiones. Para él hay que ordenar con una calidad propia (productos de menos de 20 € primero).
+- **Evidencia (E-204):** *Histórico (mitad de `history_sessions`, 8,1M impresiones):* productos de menos de 20 € venden 62,4 / 50,2 / 72,8 por 10.000 impresiones en android × Andalucía / Canarias / Murcia frente a 10,8–23,7 en las otras 27 celdas dispositivo × región; los de más de 20 € venden igual en todas (5,7–17,1). *En vivo hoy:* el segmento es el 9,8% de las peticiones fuera de home y convierte **2,37% (70/2.955) frente a 0,93% (255/27.286)**. Clics en el segmento: 0,80% por impresión por debajo de 40 € (137/17.163) y 0,27% por encima (12/4.494); en el resto, 0,37% en ambos.
+- **Debilidad:** en compras en vivo el efecto del precio dentro del segmento no se distingue todavía (8 compras por encima de 40 €) y un término lineal de precio no mejoró el hold-out. La señal fuerte es del histórico y de los clics.
+- **Ganancia esperada:** el segmento pesa un 10% y convierte 2,4 veces más; si un orden propio sube su conversión un 20%, **+0,05 pp**; y sirve para los compradores nuevos de la final porque no necesita historial. **Coste:** 1–2 h. Calcular la calidad `q` de `qrank_build.py` solo con sesiones del segmento y usarla como `lq` en esas peticiones.
+- **Test:** offline, hit@1 dentro de slates del histórico del segmento con `q` global frente a `q` del segmento; en vivo, versión con sufijo `-s`.
+
+### I-205 — Reajustar lfm antes de la final con todo el feedback de la noche
+- **Status / owner:** IDEA · **owner: free**
+- **Hipótesis:** los pesos actuales salen de 3 h de feedback (333 compras). Con 18 h más de datos, incluidas las filas servidas por lfm, los pesos son más estables y dejan de extrapolar.
+- **Evidencia:** reajuste de hoy con 37.601 peticiones frente a 31.776: AUC de compra en hold-out 0,926 (vuelve, 54 compras) y 0,873 (nuevo, 68); los pesos se mueven poco (`cl` nuevo 2,23 → 2,13; `oinrv` vuelve 2,01 → 1,49).
+- **Ganancia esperada:** +0,05–0,1 pp. **Coste:** 1 min (`python recsys/lfm_build.py --pull`) más revisar el informe; hacerlo a las 08:30 CET del domingo y congelar a las 09:30. Riesgo: cambiar pesos sin poder ver el leaderboard (oculto en la final), por eso se valida en la práctica de antes de las 10:00.
+- **Test:** hold-out del propio script; fila `v3-lfm-r2-*` durante la práctica.
+
+### I-206 — Desempate por precio solo en compradores nuevos
+- **Status / owner:** IDEA con evidencia (E-205) · **owner: free**
+- **Hipótesis:** el ingreso es el desempate oficial. En compradores nuevos el precio no cambia la conversión, así que entre productos con score casi igual (menos de un 5% de diferencia) se puede poner primero el más caro sin coste.
+- **Evidencia (E-205):** genéricos, usuario nuevo: 14,6 compras por 10.000 por debajo de 15 € y 15,4 por encima de 80 € (60/40.984 y 21/13.597). Usuario que vuelve: 5,5 y 1,9 (34/61.757 y 3/15.765), ahí no. Excluir siempre el segmento de I-204.
+- **Ganancia esperada:** 0 pp de conversión, más €/petición. **Coste:** 30 min.
+- **Test:** misma conversión y más €/petición en la fila de la versión.
+
+### I-207 — Ensayo de generalización para la final: tratar a usuarios conocidos como nuevos
+- **Status / owner:** IDEA · **owner: free**
+- **Hipótesis:** en la final muchos compradores no tendrán historial. Hay que saber cuánto pierde lfm cuando solo dispone de la sesión, y si conviene usar el modelo "nuevo" para todos los que no tengan carritos en el histórico.
+- **Ganancia esperada:** evita una caída en la final (el segmento que vuelve pasa de 2,39% a lo que dé sin historial). **Coste:** 1 h. En `lfm_build.py`, borrar el historial de una mitad aleatoria de los usuarios que vuelven y puntuar sus peticiones con los pesos `new` y con los `known`; comparar hit@1 y AUC.
+- **Test:** solo offline; decide qué pesos usa cada usuario en la final.
+
+### I-208 — Home para el comprador nuevo: no hay señal; usarlo para los puntos de cold start
+- **Status / owner:** IDEA de baja prioridad (E-203) · **owner: free**
+- **Evidencia:** home, usuario nuevo, genéricos: 10 compras en 21.366 impresiones (4,7 por 10.000) y plano por calidad del producto (3,7 / 5,6 / 3,6 / 5,9 por cuartil). Es el 6% del tráfico.
+- **Hipótesis:** como nada ordena mejor que nada, estos slots pueden llevar productos nuevos con buen prior de atributos (I-183: 4 de los 100 nuevos tienen tasas del 16–26%) y promociones activas (×1,145, I-182 de T-018) sin perder conversión.
+- **Ganancia esperada:** ≤ +0,03 pp; posible mejora en cold start. **Coste:** 1 h. **Test:** fila `-nh` (conversión y cold).
+
+### I-209 — Último producto visto en el slot 1 para el usuario que vuelve
+- **Status / owner:** IDEA con muestra pequeña (E-202) · **owner: free**
+- **Evidencia:** usuario que vuelve, último visto: 10 compras en 1.018 impresiones frente a 3,0 esperadas por lfm (×3,3). En el usuario nuevo el modelo ya lo valora bien (14 frente a 16,2).
+- **Hipótesis:** el peso `islast` del segmento que vuelve está bajo. **Ganancia esperada:** +0,02–0,05 pp. **Coste:** 15 min (se resuelve solo con I-205 si el reajuste lo sube; comprobar el peso).
+- **Test:** peso `islast` tras reajustar; hit@1 del hold-out.
+
+## Hallazgos de hoy (T-020)
+
+### I-210 — Un comprador nuevo que ya ha comprado hoy convierte hasta 11 veces más
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) · 2026-11-14 15:00 UTC · Javi (agente, T-020) · E-202
+- **Evidencia:** peticiones fuera de home de usuarios nuevos según compras orgánicas hechas hoy antes de la petición: 0 compras **0,85%** (48/5.666); 1 compra 1,73% (36/2.081); 2 compras 3,82% (30/785); 3 o más **9,46%** (53/560). En usuarios que vuelven casi no cambia (0,56% → 1,10%). El aumento se reparte por todos los tipos de producto (×2,1–3,2 sobre lo esperado), así que es propensión del comprador, y además se concentra en productos parecidos a lo comprado (I-201).
+- **Implicación:** el 15% de las peticiones de usuarios nuevos (2 o más compras hoy) da el 50% de sus compras en el carrusel (83 de 167). Ahí es donde más vale el orden del slate, y es el caso típico de la final.
+- **Debilidad:** observacional; `is_new_user` significa "no está en el histórico", no "primera visita de hoy".
