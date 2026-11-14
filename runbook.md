@@ -197,3 +197,19 @@ Con el writer reiniciado (con relevo) en un commit que incluya T-027:
 ```
 
 r5 son los pesos de r3 más `cv` (grafo `recsys/lfm_graph_B.json`, se carga solo al arrancar). Etiquetas `v3-lfm-r5-k|-n|-kh|-nh`. Para probar otro peso sin reiniciar: `{"tag": "r6", "file": "lfm_coef_r3.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}}`. Rehacer el grafo: `python lfm_graph_build.py`; reajustar: `python lfm_build.py --pull --base lfm_coef_r3.json --add cv --out lfm_coef_r5.json`.
+
+## Afinador de lfm que conserva al campeón — T-023b (2026-11-14)
+
+Sustituye a la línea del afinador de D-230 (ya no existe `--coef`; `--finish off` equivale a `restore`). Lanzarlo es decisión de Javi; nunca durante la final ni a la vez que una prueba manual en `policy.json`.
+
+```bash
+cd recsys
+python lfm_tuner.py check --cohort known-pages            # enseña el campeón capturado y los brazos de la primera ronda; no escribe
+caffeinate -i python lfm_tuner.py run --cohort known-pages --until 08:30 2>&1 | tee -a data/lfm_tuner.log
+python lfm_tuner.py report
+```
+
+- Con varios brazos en `lfm_arms`, añadir `--champion <tag>`. Cada ronda dura unos 35 min (ventana de 30 min exacta más calentamiento y lectura).
+- Ctrl-C deja `lfm_arms` como estaba, o un brazo `best` si hay cambios confirmados. `--finish restore` lo deja siempre como estaba.
+- Estado de otra base o cohorte: el afinador se niega a retomarlo; `--fresh` lo archiva y empieza de cero.
+- Reservar `policy.json` para una prueba manual: `echo '{"owner": "manual: cold_lq"}' > data/policy_owner.json`; borrarlo al terminar. El afinador no arranca mientras exista y para sin escribir si alguien cambia `policy.json`.
