@@ -160,3 +160,11 @@ caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home 
 **Por la mañana.** `recsys/data/night_lab/report.md` tiene la tabla por brazo y por bloque (se reescribe al cerrar cada bloque; `python night_lab.py report` la regenera). Mira el rango entre réplicas antes de creer una diferencia, y `lift_ot` para separar ranking de latencia. Decidid el campeón y dejadlo fijo antes de las 09:00 CET.
 
 **Límites.** El leaderboard mide todo el tráfico junto: no separa home de product/category. El cold start (`lift cold`) sale de menos peticiones. La columna "ajuste" supone conversión constante dentro del bloque y solo es fiable con tráfico estable.
+
+## K28 on-time investigation and opt-in experiment
+
+Javi may be on a phone hotspot (user report); location in Murcia vs Barcelona is not by itself a diagnosed cause. Latest read-only full five-minute bucket served 900/900; older outage/restart gaps still affect rolling scores. Keep writer laptop/phone powered and awake, avoid heavy experiments/tests on that machine and unnecessary restarts. A stable fixed connection is preferable if available; USB tethering, if supported by the phone, only removes the Wi-Fi hop, not cellular outages. Do not change the running host remotely.
+
+Transport branch salva/k28 is OFF by default, with optional read-only request prefetch, original single writer, durable dedupe, current ranking and opaque labels. After a planned owner-controlled code deployment, only delivery=k28 in the existing private policy.json enables it; preserve every other field and the label mapping. Explicit delivery=serial or omission rolls back after drain, without restart. Keep model arms/weights fixed during this comparison. The old night-lab controller replaces policy.json, so do not run it concurrently with a delivery test unless its config preservation is separately reviewed.
+
+Use `python tools/k28_log_summary.py COPIED_LOG` on another machine for stage p50/p95/p99. Use team feedback and exact public API windows from HANDOFF.md for actual acceptance. No real on-time gain has been measured for K28; simulations cost extra read queries and do not model server contention. Full protocol, conditions to abort and rollback are in recsys/K28.md. No live process, credentials, .env or private configuration changed here.

@@ -13,9 +13,13 @@ import numpy as np, pandas as pd, requests, joblib
 if __package__:
     from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
     from .serving import Journal, WriterLock, age, repair, serve
+    from .prefetch import RequestReader
+    from .event_apply import apply_chunks
 else:
     import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
     from serving import Journal, WriterLock, age, repair, serve
+    from prefetch import RequestReader
+    from event_apply import apply_chunks
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
 
@@ -49,7 +53,7 @@ VERSION_L = "v3-lfm-r1"            # live-fitted model (T-018); served with a se
 VERSION_T = "v3-attr-r1"
 VERSION_TA = "v3-attr-aff-r1"
 VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm")
-POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": []}
+POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "delivery": "serial"}
 # Optional tuning arms for plain-qrank requests, measured by the leaderboard's per-model_version breakdown:
 #   {"variant": "qrank", "qrank_arms": [{"tag": "vf045", "viewed_factor": 0.45}, {"tag": "vf100", "viewed_factor": 1.0}]}
 # Users are split evenly by hash across the arms; each arm is written as model_version "v2-qrank-<tag>".
@@ -106,6 +110,10 @@ def use_attr(r):
 def read_policy():
     try:
         conf = json.loads((DATA / 'policy.json').read_text()); v = conf.get('variant')
+        delivery = 'k28' if conf.get('delivery') == 'k28' else 'serial'
+        if delivery != POLICY['delivery']:
+            POLICY['delivery'] = delivery
+            print(json.dumps(dict(event='delivery', mode=delivery, ts_utc=time.time())), flush=True)
         if v in VARIANTS and v != POLICY['variant']:
             POLICY['variant'] = v; print(json.dumps(dict(event='policy', variant=v)), flush=True)
         arms = clean_arms(conf.get('qrank_arms'))
@@ -182,12 +190,14 @@ def refresh_events():
     rows = query(f"""SELECT user_id::String u, product_id::String i, toUInt32(countIf(event_type='view')) v,
       toUInt32(countIf(event_type='add_to_cart')) a, toUInt32(countIf(event_type='purchase')) p, max(ts::DateTime64(3))::String mx
       FROM shop.events WHERE ts::DateTime64(3) > toDateTime64('{state['ev_ts']}',3) GROUP BY u,i""", timeout=60)
-    with feature_lock:
-        for r in rows:
-            LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
-            if r["p"]: BOUGHT[r["u"]].add(r["i"])
-            if AP is not None: AP.add(r["u"], r["i"], r["v"])
-            if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+    def apply(row):
+        LIVE.add(row["u"], row["i"], row["v"], row["a"], row["p"])
+        if row["p"]: BOUGHT[row["u"]].add(row["i"])
+        if AP is not None: AP.add(row["u"], row["i"], row["v"])
+        if LF is not None: LF.add(row["u"], row["i"], row["v"], row["a"], row["p"])
+    applied = apply_chunks(rows, feature_lock, apply)
+    if rows:
+        print(json.dumps(dict(event='event_apply',ts_utc=time.time(),**applied)),flush=True)
     if rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
         fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != '' AND f.ts::DateTime64(3) > now() - INTERVAL 2 MINUTE")
@@ -422,6 +432,7 @@ def pull(seen):
 
 def send_answers(reqs, answers, journal, seen, dry=False):
     """Recheck eligibility/deadline, durably claim once, then perform ONE POST."""
+    prepare_started = time.perf_counter()
     _, unavailable, cat, _, best = snapshot()
     active = set(cat.index) - unavailable
     by_id = {a['request_id']: a for a in answers}
@@ -453,21 +464,29 @@ def send_answers(reqs, answers, journal, seen, dry=False):
     if not batch:
         return
     started = time.perf_counter()
-    remaining = min(3-age(r) for r in reqs if r['request_id'] in {a['request_id'] for a in batch})
+    sent_ids = {a['request_id'] for a in batch}
+    sent_reqs = [r for r in reqs if r['request_id'] in sent_ids]
+    age_at_post = 1000*max(age(r) for r in sent_reqs)
+    prepare_ms = 1000*(started-prepare_started)
+    remaining = min(3-age(r) for r in sent_reqs)
     try:
         response = session().post(f'{API}/v1/tables/submissions', params={'database': TEAM},
             json=batch, timeout=(min(0.3, remaining/2), max(0.05, remaining-0.3)))
         response.raise_for_status()
+        post_ms = 1000*(time.perf_counter()-started)
     except Exception as exc:
         journal.finish([a['request_id'] for a in batch], 'uncertain')
         print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
+                              ts_utc=time.time(), prepare_ms=round(prepare_ms,1), age_at_post_ms=round(age_at_post,1),
                               post_ms=round(1000*(time.perf_counter()-started), 1))), flush=True)
         # A timeout can mean accepted-but-acknowledgement-lost. Never blindly retry.
         return
+    journal_started = time.perf_counter()
     journal.finish([a['request_id'] for a in batch], 'acknowledged')
     print(json.dumps(dict(event='push_ack', n=len(batch),
-        post_ms=round(1000*(time.perf_counter()-started), 1),
-        oldest_age_ms=round(1000*max(age(r) for r in reqs), 1))), flush=True)
+        ts_utc=time.time(), prepare_ms=round(prepare_ms,1), age_at_post_ms=round(age_at_post,1),
+        post_ms=round(post_ms,1), journal_finish_ms=round(1000*(time.perf_counter()-journal_started),1),
+        oldest_age_ms=round(1000*max(age(r) for r in sent_reqs), 1))), flush=True)
 
 
 def main():
@@ -475,6 +494,7 @@ def main():
     directory = Path(tempfile.gettempdir()) / ('rawtree-' + TEAM)
     writer_lock = None if DRY else WriterLock(directory / 'writer.lock')
     journal = None if DRY else Journal(directory / 'attempts.sqlite3')
+    reader = None
     try:
         initialize()
         threading.Thread(target=refresher, daemon=True).start()
@@ -492,29 +512,58 @@ def main():
                 ON s.request_id::String = r.request_id::String"""))
         def deliver(reqs, answers):
             send_answers(reqs, answers, journal, seen, dry=DRY)
+        timings = {'predict_ms': 0., 'deadline_guarded': 0}
         def score(reqs):
+            begin = time.perf_counter()
             ctrl = [r for r in reqs if AB and zlib.crc32(r['user_id'].encode()) % 2 == 0]
             model = [r for r in reqs if r not in ctrl]
-            return (predict(model) if model else []) + fallback_answers(ctrl, 'baseline-ctrl')
+            try:
+                return (predict(model) if model else []) + fallback_answers(ctrl, 'baseline-ctrl')
+            finally:
+                timings['predict_ms'] += 1000*(time.perf_counter()-begin)
+        def guarded(reqs):
+            timings['deadline_guarded'] += len(reqs)
+            return fallback_answers(reqs)
+        # Thread is asleep (zero extra queries) until explicitly enabled by policy.json.
+        # It only calls pull(); all writes and SQLite access stay on this main thread.
+        reader = RequestReader(lambda: pull(seen), on_error=lambda kind, count: print(json.dumps(
+            dict(event='reader_error', error=kind, count=count, ts_utc=time.time())), flush=True)).start()
+        last_heartbeat = time.monotonic()
         while True:
             started = time.perf_counter()
+            timings.update(predict_ms=0., deadline_guarded=0)
             try:
-                reqs = pull(seen)
+                delivery = POLICY.get('delivery', 'serial')
+                reader.enable(delivery == 'k28')
+                wait_started = time.perf_counter()
+                draining = delivery == 'k28' or reader.should_drain()
+                reqs = reader.take() if draining else pull(seen)
+                wait_ms = 1000*(time.perf_counter()-wait_started)
+                # A poll can finish while a previous batch is being claimed/posted.
+                reqs = [r for r in reqs if r['request_id'] not in seen]
                 if journal:
-                    reqs = [r for r in reqs if not journal.contains(r['request_id'])]
+                    attempted = {r['request_id'] for r in reqs if journal.contains(r['request_id'])}
+                    seen.update(attempted)
+                    reqs = [r for r in reqs if r['request_id'] not in attempted]
+                source_age_ms = max((1000*age(r) for r in reqs),default=0.)
                 expired_ids = {r['request_id'] for r in reqs if age(r) > 2.5}
                 seen.update(expired_ids)
-                expired = serve(reqs, score, fallback_answers, deliver)
-                if reqs:
+                expired = serve(reqs, score, guarded, deliver)
+                if reqs or time.monotonic()-last_heartbeat >= 5:
                     print(json.dumps(dict(event='loop', n=len(reqs), expired=expired,
+                        ts_utc=time.time(), delivery=delivery, wait_ms=round(wait_ms,1),
+                        source_age_ms=round(source_age_ms,1), predict_ms=round(timings['predict_ms'],1),
+                        deadline_guarded=timings['deadline_guarded'], reader=reader.stats() if draining else None,
                         loop_ms=round(1000*(time.perf_counter()-started), 1),
                         stock_age_s=round(time.monotonic()-state['stock_checked'], 2))), flush=True)
+                    last_heartbeat = time.monotonic()
             except Exception as exc:
                 print('loop error', type(exc).__name__, str(exc), flush=True)
                 time.sleep(0.1)
             # Network round trips already consumed time; don't add a fixed .25s tax.
             time.sleep(max(0, 0.1-(time.perf_counter()-started)))
     finally:
+        if reader: reader.close()
         if journal:
             journal.close()
         if writer_lock:
