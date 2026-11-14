@@ -23,6 +23,23 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - OLD: no historical data assumed -> **historical propensities, sessions, organic events available**.
 - OLD: need server endpoint -> **continuous RawTree polling and insert loop, no recommendation webserver required**.
 
+### D-081 — Variante `qrank` en el writer para páginas product/category
+- **Date / owner / status:** 2026-11-14 / Javi (agente, T-015) / **IMPLEMENTED en rama de integración, sin desplegar** (el despliegue lo decide el dueño del writer)
+- **Question and alternatives:** v1 pierde slots en otra categoría y en productos ya comprados (I-082). Alternativas: (a) reglas sobre v1 (quitar comprados y otra categoría); (b) sustituir el ranking de product/category por `qrank`; (c) nada.
+- **Decision (propuesta):** (b) detrás de una variante `qrank` en `policy.json`; home sigue con la lógica actual (o la de T-013). Cambio en `live.py`, ~8 líneas:
+  1. Arriba: `import qrank; QR = qrank.Ranker.load()` y `BOUGHT = collections.defaultdict(set)`.
+  2. En `refresh_events()`: dentro del bucle de eventos, `if r["p"]: BOUGHT[r["u"]].add(r["i"])`; y lo mismo donde se añaden las compras de `feedback`.
+  3. En `refresher()`, tras `fe.set_catalog(cat)`: `QR.set_catalog(cat, unavail)`.
+  4. En `predict()`, antes del bucle final: `qr = QR.slates([{"rv": r["rv"], "page": r["page"], "bought": BOUGHT.get(r["user_id"], ())} for r in reqs]) if variante == "qrank" else [None] * len(reqs)`, y en el bucle `items = qr[k] or top.get(k, [])[:10]` con `model_version = "v2-qrank"` cuando `qr[k]` no es None. El relleno y las guardas existentes no cambian.
+  - `qrank.slates` devuelve `None` en home, sin vistas o si el último visto no está en el catálogo: en esos casos sigue v1.
+  - El artefacto `data/qrank.joblib` (145 KB) está en el repo; se regenera con `python qrank_build.py --pull` (necesita scikit-learn 1.9.1, la versión fijada).
+- **Why, evidence/experiment:** I-082, I-083, E-081: de 1,34% a ~2,1% estimado en product/category (prudente), ~+0,6 pp global.
+- **Affected modules/interfaces/owners:** `recsys/live.py` (dueño del writer). `fe.py` y `model_buy.joblib` no cambian.
+- **Rollout / rollback:** primero `python live.py --dry-run` con la variante para ver latencia; después un bloque de 10 min alineado con `updated_at`, o mejor `--ab` 50/50 por hash de usuario durante 30 min, y comparar el bloque contra `baseline` y contra v1. Rollback = quitar `qrank` de `policy.json`.
+- **Estado 14:35 CET — implementado sobre el writer de Salva** (rama `javi/qrank-serving`, PR contra `salva/serving-reliability`): `live.py` carga `data/qrank.joblib` en `initialize()`, mantiene `BOUGHT` y enruta por variante. `v1` es el valor por defecto (comportamiento idéntico al de Salva). Se cambia en caliente con `recsys/data/policy.json` = `{"variant": "qrank"}` o `{"variant": "ab_qrank"}` (se relee cada ~20 s), o al arrancar con `--qrank` / `--ab-qrank`. `ab_qrank` reparte 50/50 por hash de usuario entre `v1-gbm-cand-r1` y `v2-qrank-r1`. Si qrank falla o no aplica, la petición sigue por el GBM; las guardas de plazo, stock y at-most-once de Salva se aplican igual a los slates de qrank. Dry-run (sin escribir) 90 s con `--ab-qrank`: 132 peticiones, 44 por qrank, 0 slates inválidos, `predict` p50 49 ms / p95 86 ms. 30 tests pasan (21 de Salva + 9 nuevos).
+- **Convivencia con D-130 (hilo de home, `home_cands.py`):** `qrank` solo responde peticiones CON `recent_views`; la variante `home` de D-130 solo las que NO tienen. Tráfico disjunto, se pueden activar a la vez. En cambio `drop_dead()` (D-130 b) filtra los candidatos de v1 en product/category, el mismo tráfico que `qrank` sustituye: **no medir los dos en el mismo bloque**. Con `qrank` activo, `drop_dead` deja de tener efecto en product/category (qrank no usa `candidates()`); si se quiere su lista de "muertos", se pasa como `bought` a `QR.slates` (`BOUGHT[u] | dead`), sin más cambios. Orden propuesto de bloques de 10 min: (1) v1 (control, ya corriendo) → (2) `v1_nodead` de D-130 → (3) `qrank` → (4) `qrank` + `home`. Cada bloque se compara con `baseline` de su misma ventana y con el bloque anterior.
+- **Revisit condition:** resultado del bloque; recalibrar `viewed_factor` (ahora 0,45) con el feedback de la propia variante.
+
 ## Decision template
 
 ```markdown

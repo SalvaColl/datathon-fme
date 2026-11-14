@@ -7,15 +7,16 @@
 | T-001 | P0 | Official spec + starter files reviewed, schemas and score in `challenge.md` | Doc owner / docs refresh | **DONE (public sources only)** | Actual team API access not tested |
 | T-002 | P0 | Run baseline `starter/recommender.py`, verify live feedback `served_by='team'`, p95, `.env` safe | TBD / TBD | READY | TEAM_ID/key; available Python env |
 | T-003 | P0 | RawTree client, polling ledger, batch writer, stock refresh, valid-ten guard, retries and restarts | TBD / TBD | READY | T-002 working instance; **single writer** |
-| T-004 | P0 | Inspect `history_sessions`/`history_events`; time-split, data size/quality and offline notebook + IPS assumptions | TBD / TBD | READY | RawTree read credentials |
-| T-005 | P0 | B1 personalized heuristic: recent views, co-views, category/brand profile, candidate assembly | TBD / TBD | READY | T-004 features; policy interface |
+| T-004 | P0 | Inspect `history_sessions`/`history_events`; time-split, data size/quality and offline notebook + IPS assumptions | Javi / javi/v1-gbm-recommender | **DONE (first pass, I-010…I-015)** | RawTree read credentials |
+| T-005 | P0 | B1 personalized heuristic: recent views, co-views, category/brand profile, candidate assembly | Javi / javi/v1-gbm-recommender | **IN PROGRESS (candidates in `recsys/live.py`)** | T-004 features; policy interface |
 | T-006 | P0/P1 | Offline evaluation harness, replay and cold-start slices, reproducible experiment registry | TBD / TBD | READY | T-004; no hidden-simulator access |
-| T-007 | P1 | B2 ranker logistic/LightGBM or CatBoost; model registry and offline comparison | TBD / TBD | READY | T-004 and T-006; library availability |
+| T-007 | P1 | B2 ranker logistic/LightGBM or CatBoost; model registry and offline comparison | Javi / javi/v1-gbm-recommender | **IN PROGRESS (v1 HistGB, E-003; awaiting live swap by serving owner)** | T-004 and T-006; library availability |
 | T-008 | P1 | Real-time `shop.events` trend aggregates + `catalog_updates` cache | TBD / TBD | READY | T-003; frequent incremental refresh |
 | T-009 | P1 | New-product content-based cold-start candidate generation | TBD / TBD | READY | T-004/T-005; catalog descriptions |
 | T-010 | P1 | Slate ordering/diversity/price ablation | TBD / TBD | READY | T-005/T-006 or T-007 |
 | T-011 | P2 | Optional bounded bandit after proven ranker | TBD / TBD | HOLD | Reliable feedback attribution and offline/live evidence |
 | T-012 | P0 | Final deployment, backup, monitoring/rollback + jury demo | TBD / TBD | READY | Live loop, champion, experiment metrics |
+| T-015 | P0 | Ranker `qrank` para product/category: calidad del producto en el carrusel aleatorizado × contexto (visto, subcategoría, slot), solo misma categoría y sin lo ya comprado; módulo `recsys/qrank.py` importable por `live.py` | Javi (agente) / javi/rv-first-slate → javi/qrank-serving | **IMPLEMENTED/TESTED sobre el writer de Salva (rama `javi/qrank-serving`, 30 tests, dry-run OK); sin desplegar, pendiente de A/B en vivo por el dueño del writer** | Feedback en vivo de v1; no toca `live.py` |
 
 ## Proposed responsibility split (adapt to actual team size)
 

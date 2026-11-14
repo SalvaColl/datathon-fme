@@ -112,3 +112,13 @@ See `tools/LEAGUE.md` for train/validation/test preparation, policy registration
 Actual owner: **Javi on his laptop** (user report). Standalone tested code fix: `7176c03` on `salva/serving-reliability`, based on Javi's `5541d74`. It has not been deployed. Javi can fetch and cherry-pick that commit onto his existing branch without merging the imported snapshot or unrelated docs. Run tests with his existing environment and history artifact, then coordinate a single-writer handoff. See `recsys/README.md` for commands, lock/journal paths, telemetry, limitations and rollback.
 
 Read-only diagnosis: `python tools/reliability_audit.py --minutes 30`; source/reason counts and p95/p99 by five-minute UTC bucket. An hourly 76% score can include old disruptions: measured recent 30-minute acceptance was 99.30%. Do not start another process to chase the rolling score. Current stock/transport risks still warrant the staged patch, but no post-fix E2E improvement has yet been measured. Do not delete the persistent attempts journal or blindly resend uncertain POSTs. Local lock cannot protect against another laptop or unpatched baseline.
+
+## Variante qrank en el writer — T-015 (2026-11-14)
+
+Rama `javi/qrank-serving` = writer robusto de Salva (`7176c03`) + ranker `recsys/qrank.py`. No está desplegado. Sigue habiendo **un único writer**.
+
+- Arranque normal: `python recsys/live.py` sirve v1 como hasta ahora. Probar antes con `--dry-run` (no escribe).
+- Cambiar de variante sin reiniciar: escribir `recsys/data/policy.json` con `{"variant": "v1"}`, `{"variant": "qrank"}` o `{"variant": "ab_qrank"}`. El proceso lo relee cada ~20 s y lo anota en el log (`{"event": "policy", ...}`).
+- Prueba recomendada: `ab_qrank` durante 30–60 min y `python recsys/compare_versions.py 60` para comparar `v1-gbm-cand-r1` con `v2-qrank-r1` (compras reales; con ~5.000 peticiones por brazo y hora se distingue 1,3% de 2,1%). Para el leaderboard, un bloque de 10 min con `qrank` alineado con `updated_at`.
+- Rollback: `{"variant": "v1"}` en `policy.json`, o borrar el archivo y reiniciar.
+- Reconstruir el artefacto: `cd recsys && python qrank_build.py --pull` (scikit-learn 1.9.1).

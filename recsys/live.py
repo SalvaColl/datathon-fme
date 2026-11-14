@@ -6,15 +6,15 @@
 pull -> predict -> push like the starter. Falls back to in-stock best sellers on any per-request error.
 """
 from __future__ import annotations
-import os, sys, time, json, threading, traceback, zlib
+import os, sys, time, json, threading, traceback, zlib, collections
 from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe
+    from . import fe, qrank
     from .serving import Journal, WriterLock, age, repair, serve
 else:
-    import fe
+    import fe, qrank
     from serving import Journal, WriterLock, age, repair, serve
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -33,14 +33,31 @@ def session():
 DRY = "--dry-run" in sys.argv
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand-r1"
+VERSION_Q = "v2-qrank-r1"
+# Ranking variant for requests WITH recent views (product/category pages). Hot-switchable: the refresher re-reads
+# data/policy.json every cycle, e.g. {"variant": "qrank"}.  v1 = GBM (default, unchanged behaviour) | qrank = qrank.py
+# | ab_qrank = 50/50 by user hash, v1 vs qrank, so compare_versions.py can compare the two model_versions.
+VARIANTS = ("v1", "qrank", "ab_qrank")
+POLICY = {"variant": "ab_qrank" if "--ab-qrank" in sys.argv else "qrank" if "--qrank" in sys.argv else "v1"}
+def read_policy():
+    try:
+        v = json.loads((DATA / 'policy.json').read_text()).get('variant')
+        if v in VARIANTS and v != POLICY['variant']:
+            POLICY['variant'] = v; print(json.dumps(dict(event='policy', variant=v)), flush=True)
+    except FileNotFoundError: pass
+    except Exception as e: print('policy.json ignored', type(e).__name__, flush=True)
 
 def query(sql, timeout=20):
     r = session().post(f"{API}/v1/query", json={"sql": sql}, timeout=timeout); r.raise_for_status(); return r.json()["data"]
 
 # ---------- state ----------
 MODEL, BASE, U_ITEMS = None, None, {}
+QR = None                                  # qrank.Ranker, loaded by initialize() if data/qrank.joblib exists
+BOUGHT = collections.defaultdict(set)      # user -> products bought today (organic stream + our carousel feedback)
 def initialize():
-    global MODEL, BASE, U_ITEMS
+    global MODEL, BASE, U_ITEMS, QR
+    try: QR = qrank.Ranker.load(DATA / 'qrank.joblib')
+    except Exception as e: print('qrank not loaded, serving v1 only:', type(e).__name__, flush=True)
     MODEL = joblib.load(DATA / 'model_buy.joblib')
     history = pd.read_parquet(DATA / 'user_item_all.parquet')
     BASE = build_tables(history)
@@ -83,14 +100,16 @@ def refresh_events():
       toUInt32(countIf(event_type='add_to_cart')) a, toUInt32(countIf(event_type='purchase')) p, max(ts::DateTime64(3))::String mx
       FROM shop.events WHERE ts::DateTime64(3) > toDateTime64('{state['ev_ts']}',3) GROUP BY u,i""", timeout=60)
     with feature_lock:
-        for r in rows: LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+        for r in rows:
+            LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+            if r["p"]: BOUGHT[r["u"]].add(r["i"])
     if rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
         fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != '' AND f.ts::DateTime64(3) > now() - INTERVAL 2 MINUTE")
         for r in fb:
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
                 fb_seen[r["u"]].add(r["i"])
-                with feature_lock: LIVE.add(r["u"], r["i"], 0, 0, 1)
+                with feature_lock: LIVE.add(r["u"], r["i"], 0, 0, 1); BOUGHT[r["u"]].add(r["i"])
     except Exception as e: print("fb refresh failed", e)
     return LIVE
 
@@ -146,8 +165,10 @@ def make_pools(cat, unavail, T):
 def refresher():
     while True:
         try:
+            read_policy()
             cat, unavail = refresh_catalog()
             with lock: fe.set_catalog(cat)  # LIVE.add needs current catalog (new products)
+            if QR is not None: QR.set_catalog(cat, unavail)
             if state['pools'] is None:
                 # Serve from cached historical features while the first stream backfill runs.
                 pools, best = make_pools(cat, unavail, None)
@@ -177,25 +198,44 @@ def candidates(req, pools, unavail, cat):
 def predict(reqs):
     pools, unavail, cat, live, best = snapshot()
     fallback = [p for p in best if p not in unavail][:10]
+    quick = qrank_slates(reqs, unavail)   # {index: slate} for requests answered by qrank; the rest go through the GBM
     rows = []
     for k, r in enumerate(reqs):
+        if k in quick: continue
         for p in candidates(r, pools, unavail, cat):
             rows.append((k, r["user_id"], p, 0, r["rv"], r["page"], bool(r.get("is_new_user"))))
     P = pd.DataFrame(rows, columns=["sid", "u", "i", "slot", "rv", "page", "new_user"])
     out = []
     try:
+        if not len(P): raise LookupError('no GBM rows')
         with feature_lock:
             X = featurize(P, [BASE, live] if live is not None else BASE, pd.Timestamp.now("UTC").tz_localize(None), catalog=cat)
         X["s"] = MODEL.predict_proba(X[FEATS])[:, 1]
         top = X.sort_values("s", ascending=False).groupby("sid").i.apply(list).to_dict()
+    except LookupError: top = {}
     except Exception as e:
         print("predict error", e); traceback.print_exc(); top = {}
     for k, r in enumerate(reqs):
+        if k in quick:
+            out.append({"request_id": r["request_id"], "items": quick[k], "model_version": VERSION_Q}); continue
         items = top.get(k, [])[:10]
         if len(items) < 10: items += [p for p in fallback if p not in items][: 10 - len(items)]
         if len(set(items)) != 10: items = fallback
         out.append({"request_id": r["request_id"], "items": items, "model_version": VERSION})
     return out
+
+def qrank_slates(reqs, unavail):
+    """Slates from qrank for the requests the active variant routes to it. Any failure -> {} (GBM path)."""
+    variant = POLICY['variant']
+    if QR is None or variant == 'v1' or not QR.ok: return {}
+    try:
+        idx = [k for k, r in enumerate(reqs) if r.get('rv') and (variant == 'qrank' or zlib.crc32(r['user_id'].encode()) % 2 == 1)]
+        if not idx: return {}
+        with feature_lock: bought = [set(BOUGHT.get(reqs[k]['user_id'], ())) for k in idx]
+        res = QR.slates([{"rv": reqs[k]['rv'], "page": reqs[k].get('page', 'product'), "bought": b | unavail} for k, b in zip(idx, bought)])
+        return {k: s for k, s in zip(idx, res) if s is not None and len(set(s)) == 10}
+    except Exception as e:
+        print('qrank error', type(e).__name__, e, flush=True); return {}
 
 def fallback_answers(reqs, version=None):
     _, unavail, _, _, best = snapshot()
