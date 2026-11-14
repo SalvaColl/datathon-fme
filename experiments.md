@@ -206,3 +206,21 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Limitaciones:** lo mostrado no fue aleatorio (v1, qrank y fallback); son compras reales con ruido, no la probabilidad del modelo oculto. Las tasas "esperadas" vienen de un modelo ajustado con los mismos datos. Ninguna de estas pruebas sustituye a la fila por versión del leaderboard.
 - **Sin cambios en** `live.py`, el writer ni `submissions`.
+
+### E-210 — lfm r2: reajuste con feedback propio y 6 features nuevas; brazos en caliente
+- **Date / owner / branch:** 2026-11-14 15:15 UTC / Javi (agente) / `javi/lfm-v2`, T-021. Solo lectura en RawTree; ningún envío.
+- **Datos:** `team_26.feedback` 11:09–15:14 UTC: 44.026 peticiones, 440.260 impresiones, 430 compras, 1.450 clics; 96.396 impresiones muertas con 12 compras. La afinidad se reconstruye como la calcula el writer (historial + vistas de hoy anteriores a la petición + `recent_views`).
+- **Hold-out (ajuste antes de 14:01 UTC; prueba 13.208 peticiones, 81 + 71 compras):**
+
+| Pesos | Segmento | AUC compra | AUC clic | Log-verosimilitud compra | MRR compra | MRR clic |
+|---|---|---:|---:|---:|---:|---:|
+| `lfm_coef.json` publicado | vuelve | 0,887 | 0,821 | −532,0 | 0,598 | 0,566 |
+| 11 features, reajustado | vuelve | 0,881 | 0,818 | −535,8 | 0,583 | 0,562 |
+| 17 features, reajustado | vuelve | 0,888 | 0,824 | −536,7 | 0,589 | 0,556 |
+| `lfm_coef.json` publicado | nuevo | 0,884 | 0,792 | −449,0 | 0,639 | 0,507 |
+| 11 features, reajustado | nuevo | 0,879 | 0,791 | −424,4 | 0,599 | 0,497 |
+| 17 features, reajustado | nuevo | 0,884 | 0,800 | −435,4 | 0,542 | 0,460 |
+
+- **Lectura:** sin ganador. El reajuste calibra mejor al usuario nuevo (los pesos publicados predicen 159 compras donde hubo 71) pero no ordena mejor. Pesos nuevos tras ajustar con todo: usuario nuevo `nbp` +0,62 y `bsub` +0,62 (parecido a lo comprado hoy), `segcheap` +0,44; usuario que vuelve `hcart` +0,88 (carrito en home), `p40` +0,13 (el precio alto no penaliza), `islast` 1,95 → 2,19.
+- **Dry-run real sin escribir (15:18 UTC, 327 peticiones, brazos r1 / r2 / t1):** 0 slates inválidos, 1,8 ms por petición (p95 3,3 ms), 12 versiones `v3-lfm-<brazo>-<segmento>` repartidas a tercios.
+- **Comandos:** `python recsys/lfm_build.py --pull --out lfm_coef_r2.json`; `python -m unittest discover -s tests` → 114 tests OK.

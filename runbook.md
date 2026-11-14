@@ -123,6 +123,7 @@ Rama `javi/qrank-serving` = writer robusto de Salva (`7176c03`) + ranker `recsys
 - Brazos de afinado (T-019): `{"variant": "qrank", "qrank_arms": [{"tag": "vf045", "viewed_factor": 0.45}, {"tag": "vf100", "viewed_factor": 1.0}]}` reparte a los usuarios por hash entre los brazos (2 a 4) y escribe cada uno como `v2-qrank-<tag>`; se comparan en `https://datathon.rawtree.dev/api/state?by=model` (conversión esperada del modelo oculto por `model_version`). Quitar `qrank_arms` vuelve a `v2-qrank-r1`. Solo afecta a las peticiones de qrank puro (no a `qrank_aff`).
 - Rollback: `{"variant": "v1"}` en `policy.json`, o borrar el archivo y reiniciar.
 - Variante `lfm` (D-180): `{"variant": "ab_lfm"}` reparte 50/50 entre qrank y lfm; `{"variant": "lfm"}` lo pone al 100%. Sus respuestas salen como `v3-lfm-r1-k|-n|-kh|-nh` (vuelve, nuevo, y sus home), legibles por separado en `api/state?by=model`. Reajustar pesos: `python lfm_build.py --pull` y reiniciar el writer.
+- Brazos de lfm (D-210): añadir `"lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}]` a `policy.json` reparte a los usuarios entre brazos sin reiniciar; cada brazo sale como `v3-lfm-<tag>-k|-n|-kh|-nh` (con `labels.json`, el código público de cada uno queda en el log como `{"event": "label"}`). Quitar la clave vuelve a lfm normal.
 - Reconstruir el artefacto: `cd recsys && python qrank_build.py --pull` (scikit-learn 1.9.1).
 
 ## Laboratorio nocturno contra el leaderboard — T-016 (2026-11-14)

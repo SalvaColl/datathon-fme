@@ -127,5 +127,70 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(live.lfm_slates([dict(request_id='r', user_id='u9', rv=['A30'], page='product')], set(), {}), {})
 
 
+class ArmTests(unittest.TestCase):
+    def setUp(self):
+        self.saved = (live.POLICY['variant'], live.LF, live.AP, live.POLICY['lfm_arms'])
+        lf, aff = build()
+        live.LF = lf; live.AP = type('AP', (), {'aff': aff})(); live.POLICY['variant'] = 'lfm'
+    def tearDown(self):
+        live.POLICY['variant'], live.LF, live.AP, live.POLICY['lfm_arms'] = self.saved
+
+    def arms(self, raw):
+        arms = live.clean_lfm_arms(raw); live.LF.set_arms(arms); live.POLICY['lfm_arms'] = arms; return arms
+
+    def test_bad_arm_lists_are_rejected(self):
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'only'}]), [])                                    # needs 2+
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'a'}]), [])                         # duplicate tag
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'b', 'w': {'known': {'nope': 1}}}]), [])
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'b', 'file': '../secrets.json'}]), [])
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'b', 'w': {'new': {'cl': 99}}}]), [])
+        self.assertEqual(len(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'B2', 'w': {'new': {'cl': 3}}}])), 2)
+
+    def test_arms_split_users_and_label_versions(self):
+        self.arms([{'tag': 'r1'}, {'tag': 'x1', 'w': {'known': {'islast': 5.0}}}])
+        reqs = [dict(request_id=str(k), user_id=f'u{k}', rv=['A30'], page='product', is_new_user=False) for k in range(40)]
+        ver = {}; out = live.lfm_slates(reqs, set(), ver)
+        self.assertEqual(len(out), 40)
+        self.assertEqual(set(ver.values()), {'v3-lfm-r1-k', 'v3-lfm-x1-k'})
+        self.assertTrue(all(out[k][0] == 'A30' for k in out if ver[k] == 'v3-lfm-x1-k'))             # the override acts
+
+    def test_override_changes_only_that_arm_and_control_equals_no_arms(self):
+        base = slate(live.LF, live.AP.aff, user='u1', rv=('B05', 'A30'))
+        self.arms([{'tag': 'r1'}, {'tag': 'x1', 'w': {'known': {'chn': -5.0}}}])
+        req = dict(user_id='u1', rv=['B05', 'A30'], page='product', is_new_user=False)
+        st = live.LF.user_state('u1')
+        self.assertEqual(live.LF.slate(req, st, live.AP.aff, model='r1'), base)
+        self.assertNotIn('B05', live.LF.slate(req, st, live.AP.aff, model='x1')[:1])
+
+    def test_arm_from_committed_r2_file(self):
+        arms = self.arms([{'tag': 'r1'}, {'tag': 'r2', 'file': 'lfm_coef_r2.json'}])
+        self.assertEqual(len(arms), 2)
+        req = dict(user_id='u9', rv=['A30'], page='product', is_new_user=True, device='android', region='Murcia')
+        self.assertEqual(len(set(live.LF.slate(req, live.LF.user_state('u9'), live.AP.aff, model='r2'))), 10)
+
+    def test_no_arms_keeps_the_original_label(self):
+        ver = {}; live.lfm_slates([dict(request_id='a', user_id='u9', rv=['A30'], page='product')], set(), ver)
+        self.assertEqual(ver, {0: live.VERSION_L + '-k'})
+
+
+class R2FeatureTests(unittest.TestCase):
+    def test_bought_today_features_and_old_state_tuple(self):
+        lf, aff = build()
+        lf.add('u9', 'B11', 0, 0, 1)
+        st = lf.user_state('u9'); self.assertEqual(st[3], {'B11'})
+        S = lf.snap
+        X = lfm.features(S, aff.affinity_all('u9'), ['A30'], 'product', {}, set(), bought_today=st[3])
+        k = S.row['B11']; nb = lfm.FEATS.index('nbp'); bs = lfm.FEATS.index('bsub')
+        self.assertEqual(X[k, nb], 0); self.assertEqual(X[S.row['B31'], nb], 2); self.assertEqual(X[S.row['B13'], bs], 1)
+        req = dict(user_id='u9', rv=['A30'], page='product', is_new_user=True)
+        self.assertEqual(len(set(lf.slate(req, st[:3], aff))), 10)                     # 3-tuple state still accepted
+
+    def test_r1_weights_ignore_the_new_features(self):
+        lf, aff = build()
+        a = slate(lf, aff, new=True)
+        lf.add('u9', 'B11', 0, 0, 1)
+        self.assertEqual(slate(lf, aff, new=True), a)                                  # COEF has no r2 weights -> same slate
+
+
 if __name__ == '__main__':
     unittest.main()

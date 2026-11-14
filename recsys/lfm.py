@@ -30,7 +30,14 @@ import numpy as np, pandas as pd
 
 HERE = Path(__file__).resolve().parent
 ART = HERE / "lfm_coef.json"
-FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home", "lq", "sbrand"]
+FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home", "lq", "sbrand",
+         # r2 (T-021): weights missing from a coefficient file count as 0, so r1 files keep working unchanged
+         "nbp", "bsub", "hcart", "p40", "segcheap", "seglq"]
+# nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
+# hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
+# segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
+SEG_REGIONS = ("Andalucía", "Canarias", "Murcia")
+def in_segment(device, region): return device == "android" and region in SEG_REGIONS
 AFF_CAP, NEUTRAL = 0.35, 0.10
 
 
@@ -45,6 +52,8 @@ class Snap:
         self.cat = pd.factorize(c["category"])[0]; self.sub = pd.factorize(c["sub"])[0]; self.brand = pd.factorize(c["brand"])[0]
         g = (lq or {}).get
         self.lq = np.array([g(p, lq0) for p in ids], dtype=np.float64) - lq0
+        price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c else np.full(n, 20.0)
+        self.p40 = (price > 40).astype(float); self.cheap = (price < 20).astype(float)
         # home_cands keeps "viewed in the 60-day history, never carted" as one bitmap per user; map its bit order to ours
         self.hc = hc
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
@@ -60,7 +69,7 @@ class Snap:
         return out
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -88,13 +97,22 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None) -> np
         X[:, 10] = S.brand == S.brand[last]
     X[:, 8] = 1.0 if page == "home" else 0.0
     X[:, 9] = S.lq
+    bt = [k for k in (r(p) for p in bought_today) if k is not None]
+    if bt:
+        X[:, 11] = (S.A @ S.A[bt].T).max(axis=1)
+        X[:, 12] = np.isin(S.sub, S.sub[bt])
+        X[bt, 11] = 0.0; X[bt, 12] = 0.0
+    if page == "home": X[:, 13] = (X[:, 1] > 0) | (X[:, 2] > 0)
+    X[:, 14] = S.p40
+    if seg: X[:, 15] = S.cheap; X[:, 16] = S.lq
     return X if idx is None else X[idx]
 
 
 class LiveFit:
     def __init__(self, coef: dict, history: pd.DataFrame | None = None):
-        self.w = {k: np.array([coef[k]["w"][f] for f in FEATS]) for k in ("known", "new")}
+        self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
+        self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
         self.lq0 = float(coef.get("lq0", 0.0)); self.meta = coef.get("meta", {})
         self.hcart, self.hbought = {}, {}
         if history is not None:
@@ -107,6 +125,28 @@ class LiveFit:
     @classmethod
     def load(cls, history=None, path=ART):
         return cls(json.loads(Path(path).read_text()), history)
+
+    def add_model(self, name, coef):
+        """Register another coefficient file (same features, same shopper state) under `name`, e.g. "r2"."""
+        self.alt[name] = ({k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")},
+                          {k: float(coef[k]["b"]) for k in ("known", "new")})
+
+    def set_arms(self, arms):
+        """Tuning arms served side by side (T-021). Each arm: {"tag": "x1", "file": "lfm_coef_r2.json" (optional),
+        "w": {"known": {"islast": 3.0}, "new": {...}} (optional absolute overrides)}. An arm without file and
+        without w is the committed weights (control). Replaces the previous arms in one step; raises on bad input."""
+        alt = {}
+        for a in arms:
+            if a.get("file"):
+                c = json.loads((HERE / a["file"]).read_text())
+                w = {k: np.array([c[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
+                b = {k: float(c[k]["b"]) for k in ("known", "new")}
+            else:
+                w = {k: v.copy() for k, v in self.w.items()}; b = dict(self.b)
+            for seg, over in (a.get("w") or {}).items():
+                for f, val in over.items(): w[seg][FEATS.index(f)] = float(val)
+            alt[a["tag"]] = (w, b)
+        self.alt = alt
 
     # ---- refresher thread ----
     def add(self, u, i, v=0, a=0, p=0):
@@ -123,19 +163,22 @@ class LiveFit:
 
     # ---- serving thread ----
     def user_state(self, u):
-        """(bought, live carts not bought, history carts not bought). Copies: safe against concurrent add()."""
-        b = set(self.lbought.get(u, ())) | self.hbought.get(u, set())
+        """(bought, live carts not bought, history carts not bought, bought today). Copies: safe against concurrent add()."""
+        bt = set(self.lbought.get(u, ()))
+        b = bt | self.hbought.get(u, set())
         lc = set(self.lcart.get(u, ())) - b
         hc = {i: a for i, a in (self.hcart.get(u) or {}).items() if i not in b and i not in lc}
-        return b, lc, hc
+        return b, lc, hc, bt
 
-    def scores(self, req, state, aff_obj):
+    def scores(self, req, state, aff_obj, model=None):
         """(snapshot, score per product with dead / unavailable products at -inf)."""
         S = self.snap; rv = req.get("rv") or []
-        bought, lc, hc = state
+        bought, lc, hc = state[:3]; bt = state[3] if len(state) > 3 else ()
         aff = aff_obj.affinity_all(req["user_id"], rv)
         seg = "new" if req.get("is_new_user") else "known"
-        s = features(S, aff, rv, req.get("page", "product"), hc, lc) @ self.w[seg] + self.b[seg]
+        w, b0 = self.alt[model] if model else (self.w, self.b)
+        X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")))
+        s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])
         if st is not None:
@@ -146,8 +189,8 @@ class LiveFit:
         s[dead] = -np.inf
         return S, s
 
-    def slate(self, req, state, aff_obj, n=10, exclude=()):
-        S, s = self.scores(req, state, aff_obj)
+    def slate(self, req, state, aff_obj, n=10, exclude=(), model=None):
+        S, s = self.scores(req, state, aff_obj, model)
         top = np.argpartition(-s, min(n + 20, S.n - 1))[: n + 20]
         top = top[np.argsort(-s[top])]
         out = [S.ids[k] for k in top if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
