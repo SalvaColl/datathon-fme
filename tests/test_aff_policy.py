@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from recsys import aff_policy, attr_affinity, cold_items, qrank
+from recsys import aff_policy, attr_affinity, cold_items, qrank, live
 from tests.test_qrank import FakeModel
 
 
@@ -80,6 +80,44 @@ class QrankAffinityTests(unittest.TestCase):
     def test_home_and_unknown_last_view_are_left_to_the_caller(self):
         out = self.ap.qrank_slates(self.qr, [{'user_id': 'fan', 'rv': [], 'page': 'home'}, {'user_id': 'fan', 'rv': ['A03', 'ZZZ'], 'page': 'product'}])
         self.assertEqual(out, [None, None])
+
+
+class LiveRoutingTests(unittest.TestCase):
+    def setUp(self):
+        self.saved = (live.POLICY['variant'], live.AP, live.QR)
+        self.ap = policy(); cat = catalog()
+        qr = qrank.Ranker(FakeModel(), {i: 0.02 / (1 + int(i[1:])) for i in cat.index}); qr.set_catalog(cat, unavail=set())
+        live.AP, live.QR = self.ap, qr
+        users = [f'u{k}' for k in range(40)]
+        self.t = next(u for u in users if live.treated(u)); self.c = next(u for u in users if not live.treated(u))
+    def tearDown(self): live.POLICY['variant'], live.AP, live.QR = self.saved
+    def req(self, u, rv=('A30',)): return {'request_id': 'r', 'user_id': u, 'rv': list(rv), 'page': 'product'}
+
+    def test_variants_route_requests_to_the_right_arm(self):
+        expect = {'v1': (False, False, False, False), 'qrank': (False, True, False, True), 'ab_qrank': (False, True, False, False),
+                  'aff': (True, False, True, False), 'qrank_aff': (True, True, True, True),
+                  'ab_aff': (True, False, False, False), 'ab_qrank_aff': (True, True, False, True)}
+        self.assertEqual(set(expect), set(live.VARIANTS))
+        for v, e in expect.items():
+            live.POLICY['variant'] = v
+            got = (live.use_aff(self.req(self.t)), live.use_qrank(self.req(self.t)), live.use_aff(self.req(self.c)), live.use_qrank(self.req(self.c)))
+            self.assertEqual(got, e, v)
+        self.assertFalse(live.use_qrank(self.req(self.t, rv=())))          # home never goes to qrank
+
+    def test_qrank_aff_versions_and_fallback_without_policy(self):
+        live.POLICY['variant'] = 'ab_qrank_aff'; ver = {}
+        out = live.qrank_slates([self.req(self.t), self.req(self.c)], set(), ver)
+        self.assertEqual(sorted(out), [0, 1]); self.assertEqual(ver, {0: live.VERSION_QA})
+        self.assertTrue(all(len(set(s)) == 10 for s in out.values()))
+        live.AP = None; live.POLICY['variant'] = 'qrank_aff'; ver = {}      # affinity unavailable -> plain qrank
+        out = live.qrank_slates([self.req(self.t)], set(), ver)
+        self.assertEqual(len(set(out[0])), 10); self.assertEqual(ver, {})
+
+    def test_broken_affinity_falls_back_to_plain_qrank(self):
+        live.POLICY['variant'] = 'qrank_aff'; ver = {}
+        self.ap.qrank_slates = lambda *a, **k: (_ for _ in ()).throw(RuntimeError('boom'))
+        out = live.qrank_slates([self.req(self.t)], set(), ver)
+        self.assertEqual(len(set(out[0])), 10); self.assertEqual(ver, {})
 
 
 class ColdPriorTests(unittest.TestCase):
