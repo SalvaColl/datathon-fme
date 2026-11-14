@@ -262,3 +262,18 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Cuánto cambia el slate frente a r3 (3.000 peticiones del tramo final):** vuelven, páginas con vistas: 0,16 productos de 10 distintos y el primero cambia en el 3%; nuevos: 0,61 de 10 y el primero en el 11%. Con `cv` = 0,5 a mano serían 1,5 y 1,9 de 10 (primero 29% y 32%); con 1,0, 3,1 y 3,6.
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
+
+### E-330 — Corte brusco de stock: lfm dejaba de responder y la petición caía a v1 (T-033)
+- **Date / owner / branch:** 2026-11-14 21:40 UTC · Javi (agente) · `javi/slate-stock-fix`. Etiqueta: ensayo de robustez con el código real del writer en `--dry-run` (`tools/final_rehearsal.py`, PR de T-032). No es una estimación de conversión.
+- **Causa:** `LiveFit.slate` mira los 30 productos con más puntuación y después quita los que el hilo de stock acaba de marcar como agotados. Si más de 20 de esos 30 están agotados desde la última carga de catálogo, devuelve vacío y la petición la responde el camino antiguo (`v1-gbm-cand-r1`).
+- **Ensayo (1.500 peticiones registradas, un tercio del catálogo y todas las vistas recientes agotados de golpe, RawTree sin responder):**
+
+| | respondidas por lfm | slates con un producto ya comprado | ms por petición p50 / p95 / máx |
+|---|---|---|---|
+| antes (main) | 53 de 1.500 | 133 (del camino v1) | 16,3 / 24,4 / 343 |
+| después | 1.500 de 1.500 | 0 | 7,1 / 10,3 / 12 |
+
+  En los dos casos los 10 productos eran distintos y con stock. El resto de escenarios (usuario nuevo, sin vistas, producto recién lanzado, metadatos rotos, cambio de categorías, refresco parado) no cambian: 0 inválidos, p95 por debajo de 2 ms.
+- **Alcance real:** con el refresco de catálogo funcionando (cada ciclo) casi nunca hay más de un par de productos agotados entre los 30 mejores; el sábado no se vio. Importa si el catálogo deja de refrescarse mientras el stock sigue cambiando.
+- **Cambio:** si tras filtrar quedan menos de 10, se recorre el resto por orden de puntuación. El caso normal no cambia (mismo slate, test).
+
