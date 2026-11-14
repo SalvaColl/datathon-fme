@@ -42,7 +42,19 @@ VERSION_QA = "v2-qrank-aff-r1"     # qrank x description-phrase affinity
 # D-090 adds the affinity family: aff = GBM x affinity on every page | qrank_aff = qrank x affinity on pages with
 # views, GBM x affinity on home | ab_aff = 50/50 by user hash, v1 vs aff | ab_qrank_aff = 50/50, qrank vs qrank_aff.
 VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff")
-POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1")}
+POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": []}
+# Optional tuning arms for plain-qrank requests, measured by the leaderboard's per-model_version breakdown:
+#   {"variant": "qrank", "qrank_arms": [{"tag": "vf045", "viewed_factor": 0.45}, {"tag": "vf100", "viewed_factor": 1.0}]}
+# Users are split evenly by hash across the arms; each arm is written as model_version "v2-qrank-<tag>".
+def clean_arms(raw):
+    arms = []
+    for a in (raw or [])[:4]:
+        tag, vf = str(a.get('tag', '')), float(a.get('viewed_factor', 0.45))
+        if tag.isalnum() and len(tag) <= 12 and 0.05 <= vf <= 3: arms.append({'tag': tag.lower(), 'viewed_factor': vf})
+    return arms if len(arms) >= 2 else []
+def qrank_arm(user_id):
+    arms = POLICY['qrank_arms']
+    return arms[zlib.crc32(('arm:' + user_id).encode()) % len(arms)] if arms else None
 def treated(user_id): return zlib.crc32(user_id.encode()) % 2 == 1      # A/B arm, stable per user
 def use_aff(r):
     """Does this request get the affinity policy under the active variant? Never if aff_policy failed to load."""
@@ -53,9 +65,12 @@ def use_qrank(r):
     return bool(r.get('rv')) and (v in ('qrank', 'qrank_aff', 'ab_qrank_aff') or (v == 'ab_qrank' and treated(r['user_id'])))
 def read_policy():
     try:
-        v = json.loads((DATA / 'policy.json').read_text()).get('variant')
+        conf = json.loads((DATA / 'policy.json').read_text()); v = conf.get('variant')
         if v in VARIANTS and v != POLICY['variant']:
             POLICY['variant'] = v; print(json.dumps(dict(event='policy', variant=v)), flush=True)
+        arms = clean_arms(conf.get('qrank_arms'))
+        if arms != POLICY['qrank_arms']:
+            POLICY['qrank_arms'] = arms; print(json.dumps(dict(event='policy', qrank_arms=arms)), flush=True)
     except FileNotFoundError: pass
     except Exception as e: print('policy.json ignored', type(e).__name__, flush=True)
 
@@ -279,8 +294,15 @@ def qrank_slates(reqs, unavail, versions=None):
         except Exception as e:
             print('aff qrank error', type(e).__name__, e, flush=True)
         todo = [j for j in range(len(idx)) if idx[j] not in out]      # plain qrank, and affinity requests that fell through
-        for j, s in zip(todo, QR.slates([qreqs[j] for j in todo]) if todo else []):
-            if s is not None and len(set(s)) == 10: out[idx[j]] = s
+        groups = {}                                                   # tuning arm -> request positions (None = default)
+        for j in todo:
+            arm = qrank_arm(qreqs[j]['user_id'])
+            groups.setdefault(arm['tag'] if arm else None, (arm, []))[1].append(j)
+        for tag, (arm, js) in groups.items():
+            for j, s in zip(js, QR.slates([qreqs[j] for j in js], viewed_factor=arm['viewed_factor'] if arm else None)):
+                if s is not None and len(set(s)) == 10:
+                    out[idx[j]] = s
+                    if arm and versions is not None: versions[idx[j]] = 'v2-qrank-' + tag
         return out
     except Exception as e:
         print('qrank error', type(e).__name__, e, flush=True); return {}

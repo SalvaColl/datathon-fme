@@ -62,17 +62,18 @@ class Ranker:
                    by_sub={s: g.index[:N_SUB].tolist() for s, g in live.groupby(cat["sub"].reindex(live.index).values, sort=False)})
         self.__dict__.update(new)   # one step, so a serving thread never sees a half-updated catalogue
 
-    def _predict(self, X, calibrated=False):
+    def _predict(self, X, calibrated=False, vf=None):
         p = self.model.predict_proba(X)[:, 1]
-        return np.where((X[:, 2] + X[:, 3]) > 0, p * self.viewed_factor, p) if calibrated else p
+        return np.where((X[:, 2] + X[:, 3]) > 0, p * (self.viewed_factor if vf is None else vf), p) if calibrated else p
 
     def candidates(self, rv, bought=()):
         last = rv[-1]
         c = list(dict.fromkeys(list(rv[::-1]) + self.by_sub.get(self.sub.get(last), []) + self.by_cat.get(self.cat.get(last), [])))
         return [i for i in c if i in self.ok and i not in bought]
 
-    def slates(self, reqs, n=10, with_scores=False):
-        """reqs: list of dicts with rv (list of product ids, oldest first), page, optional bought (set)."""
+    def slates(self, reqs, n=10, with_scores=False, viewed_factor=None):
+        """reqs: list of dicts with rv (list of product ids, oldest first), page, optional bought (set).
+        viewed_factor overrides the ranker's default for this call only (used by live A/B arms)."""
         todo, blocks = [], []
         for k, r in enumerate(reqs):
             rv = [x for x in r.get("rv", []) if x in self.cat]
@@ -83,14 +84,14 @@ class Ranker:
             blocks.append(feature_rows(cand, rv, r.get("page", "product"), 0, self.lq, self.sub, self.brand, self.price))
         out = [None] * len(reqs)
         if not todo: return out
-        p0 = self._predict(np.vstack(blocks), calibrated=True)
+        p0 = self._predict(np.vstack(blocks), calibrated=True, vf=viewed_factor)
         # stage 2: shortlist x 10 slots in one predict call, then fill slots greedily (the slot effect differs for viewed items)
         shorts, blocks2, off = [], [], 0
         for (k, rv, page, cand), b in zip(todo, blocks):
             idx = np.argsort(-p0[off:off + len(cand)])[:SHORT]; off += len(cand)
             rows = b[idx]; rep = np.repeat(rows, n, axis=0); rep[:, 0] = np.tile(np.arange(n), len(idx))
             shorts.append([cand[j] for j in idx]); blocks2.append(rep)
-        p = self._predict(np.vstack(blocks2), calibrated=True); off = 0
+        p = self._predict(np.vstack(blocks2), calibrated=True, vf=viewed_factor); off = 0
         for (k, rv, page, cand), sh in zip(todo, shorts):
             m = p[off:off + len(sh) * n].reshape(len(sh), n).copy(); off += len(sh) * n
             slate, ps = [], []
