@@ -35,7 +35,7 @@ Las etiquetas que no estén en `map` reciben un código estable derivado de `sal
 
 ## Cómo medir
 
-`https://datathon.rawtree.dev/api/state?by=model` da, por `model_version`, la conversión esperada del modelo oculto en la última hora (se recalcula cada 60 s). Es la medida de referencia: con unas 500–1.000 peticiones por versión ya es estable. `python recsys/compare_versions.py 60` da compras reales, mucho más ruidosas. Salud por minuto: tabla `team_26.feedback` (`served_by = 'team'` contra `fallback_reason = 'missing'`).
+`https://datathon.rawtree.dev/api/state?by=model` da, por `model_version`, la conversión esperada del modelo oculto en la última hora (se recalcula cada 60 s). Desde el 14 nov ~15:20 UTC admite ventana propia: `&from=<epoch>&to=<epoch>` (segundos UTC, múltiplos de 300; mínimo 15 min, máximo 3 h; `from` solo = desde ahí hasta ahora; la respuesta trae `custom: true` y `window`). Usarla para leer un bloque exacto, por ejemplo desde el cambio de variante, en vez de la última hora. Es la medida de referencia: con unas 500–1.000 peticiones por versión ya es estable. `python recsys/compare_versions.py 60` da compras reales, mucho más ruidosas. Salud por minuto: tabla `team_26.feedback` (`served_by = 'team'` contra `fallback_reason = 'missing'`).
 
 ## Resultados medidos (modelo oculto)
 
