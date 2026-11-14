@@ -34,11 +34,14 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # r2 (T-021): weights missing from a coefficient file count as 0, so r1 files keep working unchanged
          "nbp", "bsub", "hcart", "p40", "segcheap", "seglq",
          # r3 (T-024): the shopper's own category mix, from the views of the 60-day history plus today's
-         "ucat", "usub"]
+         "ucat", "usub",
+         # r4 (T-025): the same share counted on what the shopper carted or bought (history + today), a sharper sign of taste
+         "ucab"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
 # ucat / usub: share of the shopper's views that fall in this product's category / subcategory (shrunk to "no preference")
+# ucab: share of the shopper's carts and purchases that fall in this product's category (shrunk the same way)
 UC_PRIOR = 5.0
 SEG_REGIONS = ("Andalucía", "Canarias", "Murcia")
 def in_segment(device, region): return device == "android" and region in SEG_REGIONS
@@ -74,7 +77,7 @@ class Snap:
         return out
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, cab=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -114,6 +117,8 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         cv, sv = mix; t = float(cv.sum())
         X[:, 17] = ((cv[S.ucode] + UC_PRIOR / len(cv)) / (t + UC_PRIOR) - 1.0 / len(cv)) * (S.ucode >= 0)
         X[:, 18] = ((sv[S.scode] + UC_PRIOR / len(sv)) / (t + UC_PRIOR) - 1.0 / len(sv)) * (S.scode >= 0)
+    if cab is not None and S.ucode is not None:         # cab = carts + purchases per category code
+        X[:, 19] = ((cab[S.ucode] + UC_PRIOR / len(cab)) / (float(cab.sum()) + UC_PRIOR) - 1.0 / len(cab)) * (S.ucode >= 0)
     return X if idx is None else X[idx]
 
 
@@ -134,6 +139,7 @@ class LiveFit:
         self._hist = history if history is not None and "v" in history else None        # a reference, dropped after the build
         self.ccode, self.sub_code, self.icode = {}, {}, {}      # category name -> code, subcategory -> code, product -> (cat, sub)
         self.urow, self.UC, self.US = {}, None, None            # user -> row of the history matrices
+        self.UB = None                                          # r4: history carts + purchases per category
         self.lmix = {}                                          # today's views: user -> {product: views}
         self.NC, self.NS = 16, 160                              # fixed widths, so codes stay valid when the catalog grows
 
@@ -193,6 +199,9 @@ class LiveFit:
             n = len(users); m = c >= 0; m2 = sb >= 0
             UC = np.bincount(uc[m] * self.NC + c[m], weights=v[m], minlength=n * self.NC).reshape(n, self.NC).astype(np.float32)
             US = np.bincount(uc[m2] * self.NS + sb[m2], weights=v[m2], minlength=n * self.NS).reshape(n, self.NS).astype(np.float32)
+            if "a" in h and "p" in h:
+                ab = (h["a"].values[ok] + h["p"].values[ok]).astype(np.float64)
+                self.UB = np.bincount(uc[m] * self.NC + c[m], weights=ab[m], minlength=n * self.NC).reshape(n, self.NC).astype(np.float32)
             self.UC, self.US, self.urow = UC, US, {u: k for k, u in enumerate(users)}
 
     def user_mix(self, u, asof=None):
@@ -208,6 +217,17 @@ class LiveFit:
             if c[1] >= 0: sv[c[1]] += n
         return cv, sv
 
+    def user_cab(self, u, carts=None, buys=None):
+        """Carts + purchases per category code: 60-day history (event counts) + today's (one per product carted, one per
+        product bought). `carts` / `buys`: product collections that replace the live sets (lfm_build.py, as of a request)."""
+        k = self.urow.get(u)
+        cb = self.UB[k].astype(np.float64) if k is not None and self.UB is not None else np.zeros(self.NC)
+        for src in (self.lcart.get(u, ()) if carts is None else carts, self.lbought.get(u, ()) if buys is None else buys):
+            for p in list(src):
+                c = self.icode.get(p)
+                if c is not None and c[0] >= 0: cb[c[0]] += 1
+        return cb
+
     @property
     def ok(self): return self.snap is not None
 
@@ -218,7 +238,7 @@ class LiveFit:
         b = bt | self.hbought.get(u, set())
         lc = set(self.lcart.get(u, ())) - b
         hc = {i: a for i, a in (self.hcart.get(u) or {}).items() if i not in b and i not in lc}
-        return b, lc, hc, bt, self.user_mix(u)
+        return b, lc, hc, bt, self.user_mix(u), self.user_cab(u)
 
     def scores(self, req, state, aff_obj, model=None):
         """(snapshot, score per product with dead / unavailable products at -inf)."""
@@ -228,7 +248,7 @@ class LiveFit:
         seg = "new" if req.get("is_new_user") else "known"
         w, b0 = self.alt[model] if model else (self.w, self.b)
         X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None)
+                     mix=state[4] if len(state) > 4 else None, cab=state[5] if len(state) > 5 else None)
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])

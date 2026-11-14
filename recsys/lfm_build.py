@@ -116,13 +116,19 @@ def mix_asof(LF, aff, u, ts):
     return LF.user_mix(u, asof=today)
 
 
+def cab_asof(LF, carts, buys, u, ts):
+    """LiveFit.user_cab as of the request: history + the products carted / bought today before it."""
+    ts = np.datetime64(ts)
+    return LF.user_cab(u, carts=[i for i, t in carts.get(u, {}).items() if t < ts], buys=[i for i, t in buys.get(u, {}).items() if t < ts])
+
+
 def impressions(d, LF, aff, carts, buys):
     """One row per (request, shown product): features, slot, labels, dead flag."""
     S = LF.snap; rows = []; meta = []
     for r in d.itertuples():
         st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
         idx = [S.row.get(p, -1) for p in r.shown]
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx], mix=mix_asof(LF, aff, r.user_id, r.ts),
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx], mix=mix_asof(LF, aff, r.user_id, r.ts), cab=cab_asof(LF, carts, buys, r.user_id, r.ts),
                          bought_today=bt, seg=lfm.in_segment(r.device, r.region))
         stale = S.stale(r.user_id)
         for s, (p, k) in enumerate(zip(r.shown, idx)):
@@ -196,7 +202,7 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
         seg_flag = lfm.in_segment(r.device, r.region)
         req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
         seg = "new" if r.new_user else "known"
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix_asof(LF, aff, r.user_id, r.ts))
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix_asof(LF, aff, r.user_id, r.ts), cab=cab_asof(LF, carts, buys, r.user_id, r.ts))
         stale = S.stale(r.user_id)
         def value(items):
             v = 0.0
