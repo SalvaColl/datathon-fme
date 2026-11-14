@@ -70,7 +70,7 @@ Decisión recomendada y pendiente: pasar a `{"variant": "lfm"}` al 100%.
 1. Reajustar los pesos de lfm con datos recientes: `cd recsys && python lfm_build.py --pull` (revisar `lfm_coef.json` y pasar `python -m unittest discover -s tests`, 104 tests).
 2. Decidir home: probar `d130.json` `{"mode": "home"}` contra el home de lfm (`-kh`/`-nh`) en bloques consecutivos y quedarse con el mejor. Home de usuarios conocidos es el punto más flojo (≈0,3%).
 3. Laboratorio nocturno opcional: `recsys/night_lab.py` (sección en `runbook.md`); solo cambia `policy.json`/`d130.json`.
-4. Un único reinicio con el `main` final, con margen antes de las 10:00 CET, y política fijada. Portátil enchufado y sin reposo.
+4. Un único reinicio con el `main` final, con margen antes de las 10:00 CET, y política fijada. Portátil enchufado y sin reposo. Hacerlo con relevo (`live.py --takeover --replace-pid <pid>`, sección T-022 de `runbook.md`): el writer viejo sigue respondiendo mientras el nuevo carga, y no se pierde ninguna petición (E-220).
 
 ## Dónde está cada cosa
 
