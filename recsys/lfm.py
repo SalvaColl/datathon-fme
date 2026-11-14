@@ -36,14 +36,20 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # r3 (T-024): the shopper's own category mix, from the views of the 60-day history plus today's
          "ucat", "usub",
          # r5 (T-027): product-to-product co-occurrence with what the shopper is looking at right now
-         "cv"]
+         "cv",
+         # r6 (T-031): collaborative filtering, the shopper's 60-day history factorised against everybody else's
+         "mf"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
 # ucat / usub: share of the shopper's views that fall in this product's category / subcategory (shrunk to "no preference")
 # cv: sum of graph weights (lfm_graph_B.json: sessions of the organic history, view 1 / cart 3 / purchase 6) between this
 #     product and each recent view and each product carted today; 0 for products without edges (new products)
+# mf: score of the product for this shopper in a rank-16 factorisation of the 60-day organic history (users x products,
+#     log(1 + views + 3 carts + 6 purchases), lfm_mf_build.py -> lfm_mf.npz), standardised across the catalogue for each
+#     shopper; 0 for shoppers without history and for products launched after the history (new products)
 UC_PRIOR = 5.0
+MF = HERE / "lfm_mf.npz"
 GRAPH = HERE / "lfm_graph_B.json"
 CV_SCALE, CV_CAP = 10.0, 5.0
 SEG_REGIONS = ("Andalucía", "Canarias", "Murcia")
@@ -68,6 +74,7 @@ class Snap:
         self.ucode = self.scode = None        # stable category / subcategory codes of each product (LiveFit.set_catalog)
         self.hc = hc
         self.g = None                         # product-to-product graph: row -> (neighbour rows, weights), see LiveFit._graph_catalog
+        self.mf = None                        # (product factors, their rows, the matching rows of this snapshot), see LiveFit._mf_catalog
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
 
     def stale(self, u):
@@ -81,7 +88,7 @@ class Snap:
         return out
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, mfu=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -127,6 +134,10 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
             e = S.g.get(k)
             if e is not None: acc[e[0]] += e[1]
         np.minimum(acc * CV_SCALE, CV_CAP, out=acc)
+    if mfu is not None and S.mf is not None:            # mfu: the shopper's factor vector (LiveFit.user_mf)
+        Q, rows_mf, rows_s = S.mf                        # Q: every product of the history; rows_s[k] <-> rows_mf[k]
+        sc = Q @ mfu; sd = float(sc.std())
+        if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
     return X if idx is None else X[idx]
 
 
@@ -150,6 +161,7 @@ class LiveFit:
         self.lmix = {}                                          # today's views: user -> {product: views}
         self.NC, self.NS = 16, 160                              # fixed widths, so codes stay valid when the catalog grows
         self.graph = None                                       # {product: [[neighbour, weight], ...]}, read once from GRAPH
+        self.mf_u, self.mf_P, self.mf_Q, self.mf_items = None, None, None, None    # factorisation, read once from MF
 
     @classmethod
     def load(cls, history=None, path=ART):
@@ -198,7 +210,25 @@ class LiveFit:
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
         except Exception as e: print("lfm graph off:", type(e).__name__, e, flush=True); S.g = None
+        try: self._mf_catalog(S)
+        except Exception as e: print("lfm mf off:", type(e).__name__, e, flush=True); S.mf = None
         self.snap = S                                                     # one atomic swap
+
+    def _mf_catalog(self, S):
+        """Factor rows matched to this snapshot. No file -> mf stays 0 and every weight file behaves as before."""
+        if self.mf_u is None:
+            if not MF.exists(): self.mf_u = {}; return
+            z = np.load(MF, allow_pickle=False)
+            self.mf_P = z["P"].astype(np.float64); self.mf_Q = z["Q"].astype(np.float64)
+            self.mf_items = [str(x) for x in z["items"]]; self.mf_u = {str(u): k for k, u in enumerate(z["users"])}
+        if not self.mf_u: return
+        pairs = [(k, S.row[p]) for k, p in enumerate(self.mf_items) if p in S.row]
+        S.mf = (self.mf_Q, np.array([a for a, _ in pairs], dtype=np.int64), np.array([b for _, b in pairs], dtype=np.int64))
+
+    def user_mf(self, u):
+        """The shopper's factor vector, or None (no history, or no factor file)."""
+        k = self.mf_u.get(u) if self.mf_u else None
+        return None if k is None else self.mf_P[k]
 
     def _graph_catalog(self, S):
         """Graph edges as row indices of this snapshot. No file -> cv stays 0 and every weight file behaves as before."""
@@ -254,7 +284,7 @@ class LiveFit:
         b = bt | self.hbought.get(u, set())
         lc = set(self.lcart.get(u, ())) - b
         hc = {i: a for i, a in (self.hcart.get(u) or {}).items() if i not in b and i not in lc}
-        return b, lc, hc, bt, self.user_mix(u)
+        return b, lc, hc, bt, self.user_mix(u), self.user_mf(u)
 
     def scores(self, req, state, aff_obj, model=None):
         """(snapshot, score per product with dead / unavailable products at -inf)."""
@@ -264,7 +294,7 @@ class LiveFit:
         seg = "new" if req.get("is_new_user") else "known"
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
         X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None)
+                     mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None)
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])

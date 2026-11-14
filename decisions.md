@@ -194,3 +194,8 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Date / owner:** 2026-11-14 · Javi. **Status:** PROPOSED, pendiente del reinicio con relevo.
 - **Decisión:** tras cargar el código, `"lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "r5", "file": "lfm_coef_r5.json"}]` durante 30 minutos; se queda solo el brazo que gane en el leaderboard. No se descarta por validación offline (I-270: el histórico y nuestro feedback no pueden medirla). No más de dos brazos a la vez.
 - **Rollback:** quitar r5 de `lfm_arms` (sin reinicio). Sin `lfm_graph_B.json`, o con pesos sin `cv`, lfm se comporta exactamente como antes.
+
+### D-310 — r6 (`mf`) se prueba como retador único contra el campeón del momento (propuesta, T-031)
+- **Qué:** tras fusionar `javi/mf-r6` y un reinicio con relevo, una ronda de 30 minutos con `{"tag": "r6", "file": "lfm_coef_r6.json"}` contra el campeón. Si en ese momento el campeón lleva `cv` (brazo `f5c05`), el retador equivalente es `{"tag": "r6c", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5, "mf": 0.0627}, "new": {"cv": 0.5}}, "home": {"file": "lfm_coef_r6.json"}}`.
+- **Regla:** gana quien tenga más conversión en las filas de conocidos (producto/categoría y home) de la misma ventana; los nuevos no cambian (peso 0). Si r6 gana, siguiente ronda con el peso al doble (`"w": {"known": {"mf": 0.125}}`), que se cambia sin reiniciar.
+- **Vuelta atrás:** quitar el brazo de `policy.json`. Sin `lfm_mf.npz` la feature vale 0 y todo se comporta como antes.

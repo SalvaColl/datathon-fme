@@ -123,7 +123,7 @@ def impressions(d, LF, aff, carts, buys):
     for r in d.itertuples():
         st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
         idx = [S.row.get(p, -1) for p in r.shown]
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx], mix=mix_asof(LF, aff, r.user_id, r.ts),
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx], mix=mix_asof(LF, aff, r.user_id, r.ts), mfu=LF.user_mf(r.user_id),
                          bought_today=bt, seg=lfm.in_segment(r.device, r.region))
         stale = S.stale(r.user_id)
         for s, (p, k) in enumerate(zip(r.shown, idx)):
@@ -221,7 +221,7 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
         seg_flag = lfm.in_segment(r.device, r.region)
         req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
         seg = "new" if r.new_user else "known"
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix_asof(LF, aff, r.user_id, r.ts))
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix_asof(LF, aff, r.user_id, r.ts), mfu=LF.user_mf(r.user_id))
         stale = S.stale(r.user_id)
         def value(items):
             v = 0.0
