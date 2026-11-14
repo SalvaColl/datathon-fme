@@ -74,6 +74,20 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - **Riesgo y vuelta atrás:** un brazo malo corre como mucho ~13 min antes de que la guardia vuelva al mejor medido. Ctrl-C restaura los JSON originales. Se detiene solo 60 min antes de la final. Por defecto no deja promocionada ninguna variante.
 - **Evidencia:** E-160, I-160.
 
+### D-170 — Variantes `attr` / `attr_aff` en el writer: ranker por atributos para páginas con vistas (propuesta)
+- **Date / owner / status:** 2026-11-14 / agente de Javi (T-017) / **PROPOSED; implementado en la rama `javi/attr-model`, apagado por defecto, sin desplegar**
+- **Question and alternatives:** la final trae compradores, productos y tendencias nuevos. qrank ordena por un número aprendido del historial de cada producto y no sabe qué hacer con uno recién lanzado (hit@1 0,002 en la simulación, E-171). Alternativas: (a) seguir con qrank / qrank_aff; (b) sustituir el ranker de páginas con vistas por `attr_model`; (c) usar `attr_model` solo para productos nuevos.
+- **Decision (propuesta):** (b) detrás de variantes nuevas en `data/policy.json`, a validar con un bloque antes de decidir. No cambia nada si no se activa.
+  - `attr`: `attr_model` en peticiones con `recent_views` (`model_version = v3-attr-r1`); home sigue por el GBM. Solo usa la petición y el catálogo.
+  - `attr_aff`: lo mismo más el gusto guardado del comprador (historial + vistas en vivo, sin `recent_views`, β=20; `v3-attr-aff-r1`); home y productos nuevos del GBM como en `qrank_aff`.
+  - `ab_attr`: 50/50 por hash de usuario, v1 frente a `attr`. `ab_attr_aff`: 50/50, `qrank_aff` frente a `attr_aff` (solo cambia el ranker de páginas con vistas).
+  - Candidatos: todos los productos activos de la categoría de la última vista (~500) más los vistos; fuera lo ya comprado y lo agotado. La calidad se recalcula en cada refresco (20 s) con los conteos en vivo, así que un producto nuevo arranca en su prior de atributos y se corrige con el stream.
+  - Si `attr_policy` no carga o falla en una petición, esa petición sigue por qrank/GBM como hasta ahora. Compatible con D-130 (home) y con `night_lab.py` (lee `VARIANTS` de `live.py`).
+- **Why, evidence/experiment:** I-170, I-171; E-170…E-173. Empata con qrank en productos conocidos y es el único que coloca productos nuevos. No hay medida del leaderboard.
+- **Affected modules/interfaces/owners:** `recsys/live.py` (dueño del writer): +42 líneas, 7 sustituidas (import, variantes, `use_attr`, carga en `initialize()`, refresco, `attr_slates()`). `tests/test_aff_policy.py`: la tabla de variantes esperadas incluye las 4 nuevas. Nuevos: `recsys/attr_model.py`, `attr_policy.py`, `attr_model_build.py`, `attr_model_eval.py`, `recsys/data/attr_model.joblib` (298 KB), `tests/test_attr_model.py`. Sin dependencias nuevas.
+- **Rollout / rollback:** `python recsys/live.py --dry-run --ab-attr-aff` en el Mac para ver latencia; después `{"variant": "ab_attr_aff"}` o un bloque completo `attr_aff` medido contra `baseline` del leaderboard. Rollback = volver a la variante anterior en `policy.json` (se relee cada ~20 s). Regenerar el artefacto: `python qrank_build.py --pull` (una vez) y `python attr_model_build.py`.
+- **Revisit condition:** si el bloque no iguala a `qrank_aff`, dejar `attr_model` solo como fuente de calidad para productos nuevos (encaja en `LiveQuality(prior=...)` de T-018).
+
 ## Decision template
 
 ```markdown
