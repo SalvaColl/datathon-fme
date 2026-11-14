@@ -39,6 +39,8 @@ To retrain: `python train.py` (needs `data/hs.parquet` + `data/user_item_A.parqu
 | `trends.py` | Detector de subcategorías calientes en `shop.events` (15 min vs 3 h), multiplicador y candidatos; solo lectura (`python trends.py` muestra qué está caliente ahora) |
 | `trends_replay.py` | Replay offline de las tendencias de hoy (E-080): `python trends_replay.py --pull` |
 | `night_lab.py` | Laboratorio nocturno (T-016): rota `data/policy.json` / `data/d130.json` por bloques y mide cada variante contra el leaderboard; guardia y tabla de ablación. No escribe en RawTree. Ver `runbook.md` |
+| `lfm.py` | Variante `lfm` (T-018, D-180): puntúa todos los productos con un modelo de 11 pesos ajustado con el feedback de hoy; pesos distintos para usuario nuevo y recurrente |
+| `lfm_build.py` | Reajusta y valida `lfm_coef.json` con corte temporal (`--pull` descarga el feedback); solo lectura |
 | `qrank.py` | Ranker para product/category: calidad del producto × contexto, solo misma categoría, sin lo ya comprado (T-015, propuesta D-081) |
 | `qrank_build.py` | Construye y valida `data/qrank.joblib` con split temporal (`--pull` descarga los agregados) |
 | `qrank_eval.py` | Contrasta qrank con el feedback en vivo, solo lectura |

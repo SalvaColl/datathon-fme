@@ -96,7 +96,8 @@ class LiveRoutingTests(unittest.TestCase):
     def test_variants_route_requests_to_the_right_arm(self):
         expect = {'v1': (False, False, False, False), 'qrank': (False, True, False, True), 'ab_qrank': (False, True, False, False),
                   'aff': (True, False, True, False), 'qrank_aff': (True, True, True, True),
-                  'ab_aff': (True, False, False, False), 'ab_qrank_aff': (True, True, False, True)}
+                  'ab_aff': (True, False, False, False), 'ab_qrank_aff': (True, True, False, True),
+                  'lfm': (False, False, False, False), 'ab_lfm': (False, False, False, True)}   # lfm arms: see test_lfm.py
         self.assertEqual(set(expect), set(live.VARIANTS))
         for v, e in expect.items():
             live.POLICY['variant'] = v

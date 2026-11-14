@@ -74,6 +74,16 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - **Riesgo y vuelta atrás:** un brazo malo corre como mucho ~13 min antes de que la guardia vuelva al mejor medido. Ctrl-C restaura los JSON originales. Se detiene solo 60 min antes de la final. Por defecto no deja promocionada ninguna variante.
 - **Evidencia:** E-160, I-160.
 
+### D-180 — Variante `lfm` del writer: slate ajustado con el feedback de hoy (afinidad + carrito, por tipo de usuario)
+- **Date / owner / status:** 2026-11-14 / Javi (agente, T-018) / PROPOSED. Implementada y apagada por defecto; la activa el dueño del writer.
+- **Qué:** `policy.json` acepta `{"variant": "lfm"}` (todas las peticiones) y `{"variant": "ab_lfm"}` (50/50 por hash de usuario: control = qrank, tratado = lfm). lfm puntúa todos los productos activos con el modelo de E-180 y sirve los 10 mejores; quita lo ya comprado y lo visto en el histórico sin carrito.
+- **Por qué:** I-180, I-181, E-180. Es la pieza más grande sin cubrir: usuarios que vuelven (56% del tráfico a 0,72%).
+- **Cambios en código compartido:** `live.py` gana 2 variantes, `lfm_slates()` y tres ganchos de una línea (carga, eventos en vivo, refresco de catálogo). Con cualquier otra variante el comportamiento es idéntico. Si lfm falla en una petición, esa petición sigue por qrank/GBM. Necesita reiniciar el writer una vez para cargar el código (~1 min de fallback).
+- **Cómo medir:** `ab_lfm` durante 20 min y leer `api/state?by=model`: `v3-lfm-r1-k`/`-n`/`-kh`/`-nh` frente a `v2-qrank-r1` y `v1-gbm-cand-r1` (este último es el home del control).
+- **Rollout / rollback:** `{"variant": "qrank"}` en `policy.json`, sin reiniciar.
+- **Riesgo para la final:** los pesos salen del feedback de hoy; si mañana los compradores son todos nuevos solo aplica la mitad "nuevo" (carrito de hoy + afinidad de sesión). Reajustar con `python lfm_build.py --pull` antes de las 10:00 con todo el feedback de la noche.
+- **Revisit condition:** si `-k` no supera a qrank en usuarios que vuelven en el leaderboard, dejar lfm solo para usuarios nuevos o descartarlo.
+
 ## Decision template
 
 ```markdown

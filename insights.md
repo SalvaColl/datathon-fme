@@ -191,6 +191,25 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Evidence:** `on_time` horario de team_26: 73,5% (13:24) → 66,1% (13:29) → 57,2% (13:39), unos −1,5 puntos por minuto al principio, lo que equivale a minutos enteros casi sin respuestas a tiempo. En esos mismos snapshots `model_version` alterna entre `v1-gbm-cand-r1`, `v1-gbm-cand-r1-guard` y **`v1-gbm-cand:v1`**, una cadena que no produce el `live.py` de `javi/qrank-serving`.
 - **Implication (HYPOTHESIS):** puede haber dos procesos escribiendo (I-017) o un reinicio a medias. No lo he comprobado en `submissions` (este hilo no tiene acceso al Mac). Hay que resolverlo antes de cualquier A/B: con `on_time` bajo, el lift medido se diluye.
 
+### I-180 — El hueco con la referencia está en los usuarios que vuelven: 70% del tráfico y convierten 3 veces menos
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 14:30 UTC — Javi (agente, T-018, rama `javi/lfm-live-fit`)
+- **Evidence:** feedback propio 11:09–13:57 UTC, 30.280 peticiones (todas las políticas mezcladas), compras reales. Página producto: `is_new_user=false` **0,66%** (78/11.877) vs nuevo **2,00%** (102/5.107); categoría 0,87% (45/5.186) vs 1,37% (30/2.194); home 0,12% vs 0,39%. Pasa igual con el slate genérico del fallback (0,68% vs 1,34% en producto), así que no es solo culpa de v1. Con `v2-qrank-r1` el usuario que vuelve sigue en 0,53% (3/569) y 0,87% (2/231): qrank arregla al nuevo, no al que vuelve.
+- **Tamaño:** usuario que vuelve fuera de home = 56% de las peticiones a 0,72%. Si convirtiera como el nuevo (~2%) serían **+0,7 pp** globales, dos tercios del hueco con la referencia (2,04–2,09%). Usuario nuevo fuera de home = 24% a 1,8%; home = 20% a 0,20% (techo bajo).
+- **Por qué:** por impresión, a un usuario que vuelve un producto sin relación con él y con afinidad de frases <0,12 le vende **3 veces en 56.280 impresiones** (la mitad de lo que le enseñamos); con afinidad >0,20 vende 62–127 por 10.000. Lo que carritó en los 60 días y no compró: 28,6 por 10.000 de media, **110 en el slot 1**, y hasta 178 si además la afinidad es >0,20. El 96% de estos usuarios tiene algún carrito sin comprar (el 45% más de 10).
+- **Potential confounding/weakness:** qué se mostró no fue aleatorio; compras reales con ruido (285 en total). Precio: sin efecto visible (8,0 por 10.000 por debajo de 10 €, 6,2 por encima de 80 €), así que ordenar por dinero esperado no es la palanca de conversión.
+- **What changed:** variante `lfm` (D-180).
+
+### I-181 — El usuario nuevo compra lo que ha metido hoy en el carrito, y casi nunca se lo enseñamos
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 — Javi (agente, T-018)
+- **Evidence:** peticiones fuera de home de usuarios nuevos con algún producto añadido al carrito hoy y no comprado (antes de la petición): 2.514 de 7.301 (34%). Si el slate incluía alguno: **4,2% / 10,2% / 17,4%** de conversión con 1 / 2 / 3+ carritos (37 compras en 380 peticiones); si no: 1,8% / 3,9% / 5,0%. Por impresión: 3,7% en el slot 1 (9/241) y 4,0% en los slots 2–3, también cuando el producto es de otra categoría (218 por 10.000). Solo lo mostramos en 380 de 2.514 peticiones (15%).
+- **Contraste:** en usuarios que vuelven el carrito de hoy apenas vende (2/895 impresiones); a ellos les vende el carrito del histórico. Por eso el modelo tiene pesos distintos por tipo de usuario.
+- **Potential confounding/weakness:** 18 compras de carrito de hoy; quien tiene carrito ya es un comprador más activo (convierte 2,7% en otros productos).
+
+### I-182 — El leaderboard da la conversión del modelo oculto por `model_version`: sirve para medir segmentos sin ruido
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA) — 2026-11-14 — Javi (agente, T-018)
+- **Evidence:** `https://datathon.rawtree.dev/api/state?by=model` devuelve por equipo una lista `versions` con peticiones, conversión esperada, cold y €/petición de cada `model_version` de la última hora (las de menos de 300 peticiones salen sin clasificar). team_09 lo usa con 56 versiones.
+- **Implication:** si la versión lleva el segmento en el nombre, el leaderboard devuelve la conversión esperada de cada segmento. `lfm` etiqueta `v3-lfm-r1-k` (vuelve), `-n` (nuevo), `-kh` y `-nh` (home).
+
 ## Correction register (superseded briefing assumptions)
 
 - **SUPERSEDED:** `~1 request every 3 seconds` -> official **~3 requests/second**.

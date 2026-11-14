@@ -121,6 +121,7 @@ Rama `javi/qrank-serving` = writer robusto de Salva (`7176c03`) + ranker `recsys
 - Cambiar de variante sin reiniciar: escribir `recsys/data/policy.json` con `{"variant": "v1"}`, `{"variant": "qrank"}` o `{"variant": "ab_qrank"}`. El proceso lo relee cada ~20 s y lo anota en el log (`{"event": "policy", ...}`).
 - Prueba recomendada: `ab_qrank` durante 30–60 min y `python recsys/compare_versions.py 60` para comparar `v1-gbm-cand-r1` con `v2-qrank-r1` (compras reales; con ~5.000 peticiones por brazo y hora se distingue 1,3% de 2,1%). Para el leaderboard, un bloque de 10 min con `qrank` alineado con `updated_at`.
 - Rollback: `{"variant": "v1"}` en `policy.json`, o borrar el archivo y reiniciar.
+- Variante `lfm` (D-180): `{"variant": "ab_lfm"}` reparte 50/50 entre qrank y lfm; `{"variant": "lfm"}` lo pone al 100%. Sus respuestas salen como `v3-lfm-r1-k|-n|-kh|-nh` (vuelve, nuevo, y sus home), legibles por separado en `api/state?by=model`. Reajustar pesos: `python lfm_build.py --pull` y reiniciar el writer.
 - Reconstruir el artefacto: `cd recsys && python qrank_build.py --pull` (scikit-learn 1.9.1).
 
 ## Laboratorio nocturno contra el leaderboard — T-016 (2026-11-14)
