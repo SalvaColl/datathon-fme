@@ -37,3 +37,9 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 ```
 
 Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-fme-2026
+
+### D-011 — Offline league policy interface (implemented for T-013)
+- **Date / owner:** 2026-11-14 / Codex.
+- **Interface:** register a zero-argument factory in `tools.league_policies`; returned object implements `fit(training_snapshot)` and `recommend(request, features, catalog) -> list[str]`. Catalog is read-only and eligible as of request time; features currently empty; rewards/logged actions withheld from recommend. No serving interface/dependency change.
+- **Discipline:** independent chronological caches; train-only fitting, validation tuning, frozen policy/source selection and one-time final-test scoring. Previously evaluated legacy request IDs excluded. Plugins may not read outside the provided training data; trusted modules and external/transitive dependencies require review. See `tools/LEAGUE.md`.
+- **Rollback:** offline-only change; retain live champion and do not restart it. No promotion from these proxies alone.

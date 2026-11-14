@@ -102,3 +102,7 @@ Health expectations: `served_by='team'` nearly always, `fallback_reason` usually
 | Jury demo command and figures | TBD |
 
 Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-fme-2026
+
+## Offline league v2
+
+See `tools/LEAGUE.md` for train/validation/test preparation, policy registration and freeze/final-test commands. Use the existing team virtualenv; no installations required. This offline workflow does not launch, stop or modify the live champion. The cached historical test must stay unscored until policy selection is frozen. Rollback requires no live action: retain the current champion and discard/revert offline-only changes if needed.

@@ -106,3 +106,15 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 ## Rejected/superseded *tested* ideas
 
 _None tested/rejected by team yet. Corrected assumptions are listed above rather than erased._
+
+### I-010 — Shared first action hides slate differences
+- **Status / date / owner:** SUPPORTED / 2026-11-14 / Codex; E-010.
+- **OBSERVED DATA:** same_subcategory and mixed_category agree on slot 1 for all 10,000 legacy cached requests. They both begin with the top same-subcategory best seller when available; the mixed policy changes later items. Identical first-action weights, rewards, match counts and ESS follow on this sample.
+- **Implication:** slot-1 IPS/SNIPS cannot distinguish policies that change only later slots. Different hit@10 is an exposure-biased clicked-item coverage proxy, not evidence of full-slate purchase uplift. General agreement is not guaranteed if a subcategory is unavailable but a category fallback exists.
+
+### I-011 — Temporal hygiene and final-test discipline
+- **Status / date / owner:** SUPPORTED engineering change / 2026-11-14 / Codex; E-011.
+- **OBSERVED DATA:** history spans approximately 60 days, while the old cache lacks impression timestamps. New 70/15/15 periods use verified overlapping source coverage, deterministic sampling and separate checksummed caches. Already inspected legacy IDs are excluded. Training factories receive only training data; inference sees a label-free request and read-only as-of eligible catalog.
+- **Limitation:** historical base metadata has no field-level versions and there are no catalogue updates during history. Creation-time filtering prevents recommending future products, but cannot certify old prices or stock. Bootstrap intervals quantify sampling variation under an hourly-block approximation, not counterfactual identification or bias removal. Final test remains unopened for scoring; no policy selected for live promotion.
+- **Next action:** tune independently registered policies on validation, inspect matches/ESS/intervals and validity, freeze the chosen configuration, then score final test once. Never tune on final results. Establish live E2E reliability separately with the existing single writer.
+- **E-011 validation update (OFFLINE ESTIMATE):** 10,000 new validation rows, hit@10 baseline/category/subcategory/mixed = 0.3812/0.7572/0.2689/0.7154; SNIPS slot1 buy = 0.0296/0.0104/0.0108/0.0108. Subcategory/mixed again share all first actions; 825 matches yield only ~98 ESS. All reconstructed slates valid. Wider support/uncertainty context matters more than raw click coverage; these results do not establish full-slate conversion or justify deployment.

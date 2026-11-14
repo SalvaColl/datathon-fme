@@ -1,208 +1,217 @@
-"""Read-only offline league for the RawTree FME 2026 challenge.
-
-Run from the team project root:
-    python tools/local_league.py --sample 10000
-
-Downloads and caches a fixed chronological holdout from the official historical
-sessions, plus training-period best sellers and catalogue metadata. Scores all
-policies on the SAME impressions. Does NOT submit to the live competition.
-
-IMPORTANT: These are approximate OFF-POLICY metrics, not the true hidden-model
-score or guaranteed estimates of full-slate purchases. Note the effective sample
-size, position bias, and logged-policy support before promoting a challenger.
-"""
+"""Read-only league: prepare, validation, freeze, test. See LEAGUE.md."""
 from __future__ import annotations
-
 import argparse
+import hashlib
+import importlib
 import json
-import math
-import os
-import re
-from datetime import date, timedelta
+import sys
+from bisect import bisect_right
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
-import requests
-
-ROOT = Path(__file__).resolve().parent.parent
-for raw in (ROOT / ".env").read_text(encoding="utf-8").splitlines() if (ROOT / ".env").exists() else []:
-    line = raw.strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-    k, v = line.split("=", 1)
-    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-
-API = os.environ.get("RAWTREE_API_URL", "https://api.rawtree.com").rstrip("/")
-KEY = os.environ.get("RAWTREE_API_KEY", "")
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tools.league_data import sql, ROOT
+from tools.league_policies import train
+from tools.league_metrics import evaluate
 
 
-def sql(query: str):
-    resp = requests.post(
-        f"{API}/v1/query",
-        headers={"Authorization": f"Bearer {KEY}"},
-        json={"sql": query}, timeout=600,
-    )
-    resp.raise_for_status()
-    return resp.json()["data"]
+def stamp(value):
+    t = datetime.fromisoformat(str(value).replace('Z', '+00:00').replace(' ', 'T'))
+    return t.replace(tzinfo=timezone.utc) if t.tzinfo is None else t.astimezone(timezone.utc)
 
 
-def fetch_snapshot(n: int):
-    last = sql("SELECT toDate(max(ts::DateTime64(3))) AS d FROM shop.history_sessions")[0]["d"]
-    cut = (date.fromisoformat(str(last)[:10]) - timedelta(days=7)).isoformat()
-    print(f"Chronological split: training < {cut}, holdout >= {cut}", flush=True)
-    print("Fetching training-period best sellers ...", flush=True)
-    best_rows = sql(f"""
-        SELECT product_id::String AS product_id, count() AS n
-        FROM shop.history_events
-        WHERE event_type = 'purchase' AND ts < '{cut}'
-        GROUP BY product_id
-        ORDER BY n DESC, product_id DESC LIMIT 6000
-    """)
-    print("Fetching catalogue categories ...", flush=True)
-    catalog = sql("""
-        SELECT product_id::String AS product_id,
-               category::String AS category,
-               subcategory::String AS subcategory
-        FROM shop.catalog
-    """)
-    print(f"Fetching {n} holdout impressions (fixed cached sample) ...", flush=True)
-    records = sql(f"""
-        SELECT request_id::String AS request_id, recent_views, shown, propensity,
-               clicked, purchased
-        FROM shop.history_sessions
-        WHERE ts >= '{cut}'
-        ORDER BY rand() LIMIT {n}
-    """)
-    return {"cut": cut, "best": [r["product_id"] for r in best_rows],
-            "catalog": catalog, "requests": records}
+def iso(t):
+    return stamp(t).isoformat(timespec='milliseconds')
 
 
-def unique(items, best):
-    output, seen = [], set()
-    for p in list(items) + list(best):
-        if p not in seen:
-            seen.add(p)
-            output.append(p)
-            if len(output) == 10:
+def sqltime(t):
+    return stamp(t).strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+
+def digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def save(path, value):
+    path.write_text(json.dumps(value, indent=2, allow_nan=False), encoding='utf-8')
+
+
+def boundaries(coverage):
+    lo, hi = (stamp(coverage['sessions'][k]) for k in ('lo', 'hi'))
+    elo, ehi = (stamp(coverage['events'][k]) for k in ('lo', 'hi'))
+    lo, hi = max(lo, elo), min(hi, ehi)
+    if hi-lo < timedelta(days=3):
+        raise ValueError('Insufficient overlapping history coverage')
+    span = hi-lo
+    return [iso(lo), iso(lo+span*.70), iso(lo+span*.85), iso(hi+timedelta(milliseconds=1))]
+
+
+def check_period(rows, start, end):
+    ids = set()
+    for row in rows:
+        if not stamp(start) <= stamp(row['ts']) < stamp(end):
+            raise ValueError('Split leakage: timestamp outside period')
+        if row['request_id'] in ids:
+            raise ValueError('Duplicate request ID')
+        ids.add(row['request_id'])
+
+
+def prepare(directory, sample, seed):
+    directory.mkdir(parents=True, exist_ok=True)
+    if (directory/'manifest.json').exists():
+        raise ValueError('Immutable snapshot exists: choose a new --cache directory')
+    coverage = {}
+    for name, table in [('sessions', 'history_sessions'), ('events', 'history_events')]:
+        coverage[name] = sql(f'SELECT min(ts::DateTime64(3)) AS lo, max(ts::DateTime64(3)) AS hi, count() AS n FROM shop.{table}')[0]
+    cuts = boundaries(coverage)
+    legacy = ROOT/'data/local_eval/holdout.json'
+    excluded = {r['request_id'] for r in json.loads(legacy.read_text())['requests']} if legacy.exists() else set()
+    plan = {'boundaries': cuts, 'sample': sample, 'seed': seed, 'excluded_ids_sha256': digest(sorted(excluded)), 'excluded_count': len(excluded)}
+    plan_path = directory/'plan.json'
+    if plan_path.exists() and json.loads(plan_path.read_text()) != plan:
+        raise ValueError('Partial snapshot plan changed: choose a new directory')
+    save(plan_path, plan)
+    print(json.dumps({'coverage': coverage, 'boundaries': cuts}), flush=True)
+    save(directory/'coverage.json', coverage)
+    files, seen = {}, set()
+    for i, name in enumerate(('train', 'validation', 'test')):
+        start, end = cuts[i:i+2]
+        path = directory/f'{name}.json'
+        if path.exists():
+            snapshot = json.loads(path.read_text())
+            check_period(snapshot['requests'], start, end)
+            ids = {r['request_id'] for r in snapshot['requests']}
+            if ids & (seen | excluded):
+                raise ValueError('Overlapping split IDs or legacy holdout exposure')
+            seen.update(ids)
+            files[f'{name}.json'] = digest(snapshot)
+            continue
+        qstart, qend = sqltime(start), sqltime(end)
+        rows = sql(f"""SELECT request_id::String AS request_id, ts::String AS ts,
+            user_id, context, recent_views, shown, propensity, clicked, purchased
+            FROM shop.history_sessions WHERE ts::DateTime64(3) >= '{qstart}'
+            AND ts::DateTime64(3) < '{qend}'
+            ORDER BY cityHash64(concat(request_id::String, '{seed}')), request_id::String LIMIT {sample+len(excluded)}""")
+        rows = [r for r in rows if r['request_id'] not in excluded][:sample]
+        rows.sort(key=lambda r: (stamp(r['ts']), r['request_id']))
+        check_period(rows, start, end)
+        ids = {r['request_id'] for r in rows}
+        if ids & seen:
+            raise ValueError('Overlapping split IDs')
+        seen.update(ids)
+        if not rows:
+            raise ValueError(f'Empty {name} period')
+        snapshot = {'start': start, 'end': end, 'requests': rows}
+        if name == 'train':
+            snapshot['best'] = [r['product_id'] for r in sql(f"""SELECT product_id::String AS product_id,
+                count() AS n FROM shop.history_events WHERE event_type = 'purchase'
+                AND ts::DateTime64(3) >= '{qstart}' AND ts::DateTime64(3) < '{qend}'
+                GROUP BY product_id ORDER BY n DESC, product_id DESC LIMIT 10000""")]
+        save(directory/f'{name}.json', snapshot)
+        files[f'{name}.json'] = digest(snapshot)
+    if (directory/'catalog.json').exists():
+        metadata = json.loads((directory/'catalog.json').read_text())
+    else:
+        catalog = sql('SELECT product_id::String AS product_id, category, subcategory, brand, price_eur, created_at, is_active FROM shop.catalog')
+        updates = sql(f"SELECT * FROM shop.catalog_updates WHERE ts::DateTime64(3) < '{sqltime(cuts[-1])}' ORDER BY ts::DateTime64(3), product_id::String")
+        metadata = {'base': catalog, 'updates': updates, 'limitation':
+            'Base catalog lacks field-level history: pre-event category/price/stock changes cannot be verified or reconstructed. Initial base state is assumed; no current merged catalog used. Unknown created_at excluded.'}
+    save(directory/'catalog.json', metadata)
+    files['catalog.json'] = digest(metadata)
+    save(directory/'manifest.json', {'version': 2, 'coverage': coverage, 'boundaries': cuts,
+        'sample_per_period': sample, 'seed': seed, 'exclusions': plan, 'files': files})
+
+
+def load(directory, filename, manifest):
+    value = json.loads((directory/filename).read_text(encoding='utf-8'))
+    if digest(value) != manifest['files'][filename]:
+        raise ValueError(f'Snapshot checksum mismatch: {filename}')
+    return value
+
+
+class Catalog:
+    def __init__(self, metadata):
+        self.base = metadata['base']
+        self.updates = sorted(metadata['updates'], key=lambda r: stamp(r['ts']))
+        self.revisions = sorted({stamp(r['created_at']) for r in self.base if r.get('created_at')}
+                                | {stamp(r['ts']) for r in self.updates})
+        self.cached_key, self.cached_state = None, None
+
+    def at(self, ts):
+        t = stamp(ts)
+        key = bisect_right(self.revisions, t)
+        if key == self.cached_key:
+            return self.cached_state
+        state = {r['product_id']: dict(r) for r in self.base
+                 if r.get('created_at') and stamp(r['created_at']) <= t}
+        for update in self.updates:
+            if stamp(update['ts']) > t:
                 break
-    return output
-
-
-def policies(snapshot):
-    best = snapshot["best"]
-    catalog = {r["product_id"]: r for r in snapshot["catalog"]}
-    def reference(req):
-        return best[:10]
-    def prefs(req, by="category", max_preferred=10):
-        views = req.get("recent_views") or []
-        if not views or not isinstance(views[-1], dict):
-            return best[:10]
-        target = catalog.get(views[-1].get("product_id"), {}).get(by)
-        if not target:
-            return best[:10]
-        preferred = [p for p in best if catalog.get(p, {}).get(by) == target]
-        return unique(preferred[:max_preferred], best)
-    def same_cat(req):
-        return prefs(req, "category")
-    def same_subcat(req):
-        return prefs(req, "subcategory")
-    def mixed(req):
-        views = req.get("recent_views") or []
-        if not views or not isinstance(views[-1], dict):
-            return best[:10]
-        last = catalog.get(views[-1].get("product_id"), {})
-        sub = last.get("subcategory")
-        cat = last.get("category")
-        first = [p for p in best if sub and catalog.get(p, {}).get("subcategory") == sub][:5]
-        second = [p for p in best if cat and catalog.get(p, {}).get("category") == cat][:10]
-        return unique(first + second, best)
-
-    return {"baseline": reference, "same_category": same_cat,
-            "same_subcategory": same_subcat, "mixed_category": mixed}
-
-
-def summarize(name, policy, records):
-    n = len(records)
-    clicks = 0
-    hits = 0
-    matches = 0
-    wsum = 0.0
-    w2sum = 0.0
-    wr_click = 0.0
-    wr_purchase = 0.0
-    for row in records:
-        recommendations = policy(row)
-        if len(recommendations) != 10 or len(set(recommendations)) != 10:
-            raise ValueError(f"{name} returned an invalid top-10 for {row.get('request_id')}")
-        clicked = row.get("clicked")
-        purchased = row.get("purchased")
-        if clicked not in (None, ""):
-            clicks += 1
-            hits += int(clicked in recommendations)
-        shown = row.get("shown") or []
-        propensity = row.get("propensity") or []
-        if not shown or not propensity:
-            continue
-        try:
-            p = float(propensity[0])
-        except (ValueError, TypeError):
-            continue
-        if not (math.isfinite(p) and p > 0):
-            continue
-        if recommendations[0] == shown[0]:
-            w = 1.0 / p
-            matches += 1
-            wsum += w
-            w2sum += w * w
-            wr_click += w * int(clicked == shown[0])
-            wr_purchase += w * int(purchased == shown[0])
-    hit = hits / clicks if clicks else float("nan")
-    ips = wr_click / n if n else 0
-    snips = wr_click / wsum if wsum else float("nan")
-    snips_buy = wr_purchase / wsum if wsum else float("nan")
-    ess = wsum**2 / w2sum if w2sum else 0
-    return {"policy": name, "hit@10": hit, "IPS_slot1_click": ips,
-            "SNIPS_slot1_click": snips, "SNIPS_slot1_buy": snips_buy,
-            "slot1_matches": matches, "ESS": ess}
-
-
-def fmt(x):
-    if isinstance(x, float):
-        return f"{x:.4f}" if math.isfinite(x) else "n/a"
-    return str(x)
+            p = update['product_id']
+            state[p] = {**state.get(p, {}), **update}
+            if update.get('change') == 'out_of_stock':
+                state[p]['is_active'] = False
+            elif update.get('change') in ('back_in_stock', 'new_product'):
+                state[p]['is_active'] = True
+        self.cached_key = key
+        self.cached_state = {p: r for p, r in state.items() if r.get('is_active') in (True, 1, 'true')}
+        return self.cached_state
 
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--sample", type=int, default=10000)
-    p.add_argument("--cache", type=Path, default=ROOT / "data" / "local_eval" / "holdout.json")
-    p.add_argument("--refresh", action="store_true", help="Refresh the cached sample; keep unchanged for fair comparisons")
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('command', choices=['prepare', 'validation', 'freeze', 'test'])
+    p.add_argument('--cache', type=Path, default=ROOT/'data/local_eval/league_v2')
+    p.add_argument('--sample', type=int, default=10000)
+    p.add_argument('--seed', type=int, default=20261114)
+    p.add_argument('--policies', default='baseline,same_category,same_subcategory,mixed_category')
+    p.add_argument('--plugin', action='append', default=[])
+    p.add_argument('--bootstrap', type=int, default=500)
     a = p.parse_args()
-    if a.sample < 100 or a.sample > 100000:
-        raise SystemExit("--sample should be between 100 and 100000")
-    if not KEY:
-        raise SystemExit("Set RAWTREE_API_KEY in the project .env")
-    if a.cache.exists() and not a.refresh:
-        print(f"Loading fixed holdout from {a.cache}")
-        snapshot = json.loads(a.cache.read_text(encoding="utf-8"))
-    else:
-        snapshot = fetch_snapshot(a.sample)
-        a.cache.parent.mkdir(parents=True, exist_ok=True)
-        a.cache.write_text(json.dumps(snapshot), encoding="utf-8")
-        print(f"Saved fixed holdout to {a.cache}")
-    print(f"Cut: {snapshot['cut']} | requests: {len(snapshot['requests'])} | "
-          f"candidate products: {len(snapshot['best'])}")
-    results = [summarize(name, policy, snapshot["requests"])
-               for name, policy in policies(snapshot).items()]
-    print("\n" + " | ".join(results[0].keys()))
-    for result in results:
-        print(" | ".join(fmt(v) for v in result.values()))
-    print("\nWARNING: These metrics do not identify full-slate conversion. "
-          "IPS/SNIPS only evaluate the logged first slot and may be unreliable "
-          "when slot1_matches/ESS are small. Same cached requests allow consistent "
-          "comparisons; future policies can be registered in policies().")
-    print("Current catalogue metadata is used for categories; validate any changing "
-          "features with proper historical as-of joins before claiming unbiased results.")
+    if a.sample < 1 or a.bootstrap < 0:
+        p.error('sample must be positive; bootstrap must be nonnegative')
+    if a.command == 'prepare':
+        prepare(a.cache, a.sample, a.seed)
+        return
+    for module in a.plugin:
+        importlib.import_module(module)
+    manifest = json.loads((a.cache/'manifest.json').read_text())
+    training = load(a.cache, 'train.json', manifest)
+    check_period(training['requests'], *manifest['boundaries'][:2])
+    metadata = load(a.cache, 'catalog.json', manifest)
+    training['catalog'] = Catalog(metadata).at(iso(stamp(training['start'])-timedelta(milliseconds=1)))
+    names = a.policies.split(',')
+    fingerprint = {'manifest': digest(manifest), 'policies': names, 'plugins': a.plugin,
+        'sources': {str(f.relative_to(ROOT)): hashlib.sha256(f.read_bytes()).hexdigest()
+                    for f in sorted((ROOT/'tools').glob('*.py'))},
+        'plugin_sources': {m: hashlib.sha256(Path(importlib.import_module(m).__file__).read_bytes()).hexdigest() for m in a.plugin}}
+    freeze_path = a.cache/'frozen.json'
+    if a.command == 'freeze':
+        if freeze_path.exists():
+            raise ValueError('Already frozen')
+        save(freeze_path, fingerprint)
+        print('Frozen code/policies/snapshot; final test remains unopened.')
+        return
+    if a.command == 'test':
+        if json.loads(freeze_path.read_text()) != fingerprint:
+            raise ValueError('Frozen policy/code/snapshot mismatch')
+        marker = a.cache/'TEST_OPENED.json'
+        if marker.exists():
+            raise ValueError('Final test already opened: reuse saved report; no retuning')
+        save(marker, fingerprint)
+    elif (a.cache/'TEST_OPENED.json').exists():
+        raise ValueError('Validation tuning closed after final test access')
+    models = train(names, training)
+    period = load(a.cache, a.command+'.json', manifest)
+    idx = 1 if a.command == 'validation' else 2
+    check_period(period['requests'], *manifest['boundaries'][idx:idx+2])
+    if {r['request_id'] for r in training['requests']} & {r['request_id'] for r in period['requests']}:
+        raise ValueError('Request ID leakage')
+    report = evaluate(models, period['requests'], Catalog(metadata), a.bootstrap, a.seed)
+    report.update({'fingerprint': fingerprint, 'period': a.command, 'catalog_limitation': metadata['limitation']})
+    save(a.cache/(a.command+'_report.json'), report)
+    print(json.dumps(report, indent=2, allow_nan=False))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
