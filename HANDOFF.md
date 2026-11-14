@@ -4,10 +4,14 @@ Leer antes `AGENTS.md`. Este documento dice qué corre en vivo, cómo cambiarlo 
 
 ## Qué hay en vivo
 
-- **Un único writer**: `recsys/live.py` en el Mac de Javi, desde `main` en el commit `e98815f`, arrancado a las 14:28 UTC. Nunca lanzar un segundo proceso que escriba en `team_26.submissions`; para probar, `python live.py --dry-run`.
-- **Política activa**: `recsys/data/policy.json` = `{"variant": "ab_lfm"}` desde las 14:33 UTC: 50/50 por hash de usuario entre `qrank` (control) y `lfm` (modelo ajustado en vivo, `recsys/lfm.py`).
-- Arranque (desde `recsys/`, con el venv): `caffeinate -i nohup ../../.venv/bin/python live.py >> data/live_main.log 2>&1 &`. Tarda unos 40 s hasta `ready`, y `lfm` empieza a responder unos 80 s después del arranque (primer refresco completo de eventos); mientras tanto su brazo cae a qrank/v1.
-- El portátil no puede entrar en reposo: si se cierra la tapa se pierde todo el tráfico hasta que despierta.
+Actualizado 14 nov, 18:30 UTC (las secciones de más abajo conservan la historia de las 14:50).
+
+- **Un único writer**: `recsys/live.py` en el Mac de Javi, desde `main` en el commit `4ee67ed`, arrancado con relevo a las 17:48 UTC. Nunca lanzar un segundo proceso que escriba en `team_26.submissions`; para probar, `python live.py --dry-run`.
+- **Campeón demostrado**: lfm con los pesos r3 (categorías favoritas del usuario), `recsys/policy.champion.json`. Copiarlo a `recsys/data/policy.json` para fijarlo.
+- **Candidato en ronda desde las 18:25 UTC**: `recsys/policy.candidate.json`, r3 contra el brazo fusionado `f5c05` (señal producto a producto `cv` a 0,5 en páginas de producto/categoría, pesos de r3 en home). Evidencia en E-271 de `experiments.md`. Si `f5c05` gana la ronda, dejarlo solo.
+- Apagados: brazos de home (perdieron, E-271), D-130, calidad en vivo y el afinador `lfm_tuner.py` (no relanzar sin pedirlo).
+- Reinicio siempre con relevo (desde `recsys/`, con el venv): `caffeinate -i nohup ../../.venv/bin/python live.py --takeover >> data/live_main.log 2>&1 &`. No pierde peticiones. `lfm` empieza a responder unos 80 s después del arranque.
+- Las etiquetas públicas son códigos opacos (ver más abajo); la tabla está solo en el Mac, `recsys/data/label_table.txt`.
 
 ## Cambiar de variante sin reiniciar
 
