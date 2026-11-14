@@ -213,3 +213,36 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Qué no sabemos:** si la final usa los mismos compradores que la práctica. Si son nuevos, el estado del sábado no molesta (nadie lo consulta). Si son los mismos, conservarlo es lo correcto.
 - **Rollback:** quitar `state_window` de `policy.json`; sin esa clave el código nuevo devuelve exactamente el estado anterior (test `test_without_a_window_nothing_changes`).
 
+### D-280 — cold_lq se prueba como brazo de lfm, no por bloques de tiempo (T-028)
+
+- **Decisión:** la calidad de productos nuevos de `cold_lq` (T-CS01) se sirve por brazo: `{"tag": "c1", "file": "<pesos del ganador>", "lq": "cold"}` contra el ganador de r3/r5, 30 minutos, lectura por `-k` y `-n` en `api/state?by=model&from=`. `"cold_new"` la aplica solo a usuarios nuevos. Máximo dos brazos a la vez. `data/coldlq.json` no se usa.
+- **Coste:** un reinicio con relevo para cargar `lfm.py`, `live.py` y `cold_lq.py`. Sin ningún brazo con `"lq"` no se calcula nada y lfm sirve exactamente igual que antes.
+- **Rollback:** quitar el brazo de `lfm_arms` (sin reinicio). Si `cold_lq` falla o no hay productos nuevos, el brazo sirve sus pesos con la calidad de qrank.
+
+> D-280 queda sustituido por D-281.
+
+### D-281 — primera prueba de cold_lq: un brazo acotado, solo páginas con vistas (T-028)
+
+- **Comportamiento:** apagado por defecto. Un brazo con `"lq": "cold"` usa, solo en peticiones de producto/categoría con vistas recientes, la calidad corregida de los productos llegados por `new_product` y sin calidad histórica: prior de atributos + evidencia orgánica (K = 100, tasa al cuadrado, sin tocar), acotada a ±log(20) respecto a la calidad actual. Va por `lq` y por `seglq`. Home, productos establecidos, pesos y el brazo de control no cambian. Sin prior, con metadatos incompletos, números no finitos o cualquier error, se conserva la calidad actual (nunca el fallback por subcategoría de `LiveQuality`, I-CS02). El límite ±log(20) es un tope de riesgo fijado de antemano, no un parámetro ajustado.
+- **Configuración exacta** (con el campeón r3; si gana r5, los dos brazos llevan el mismo `file` y `w` del ganador y solo cambia `"lq"`):
+  `"lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "c1", "file": "lfm_coef_r3.json", "lq": "cold"}]`
+  Ficheros listos, sin activar: `recsys/policy.cold_lq_r3.json` (campeón r3) y `recsys/policy.cold_lq_f5c05.json` (si `f5c05` gana su ronda: mismo `file`, `w` y `home` en los dos brazos). Con `f5c05` como base no se ha hecho ensayo en seco.
+- **Lectura:** ventana fija de 30 minutos que empieza 2 minutos después de activar, `api/state?by=model&from=&to=` con el mismo `from`/`to` para los dos brazos. Se comparan `-k` con `-k` y `-n` con `-n`. Las filas `-kh`/`-nh` son idénticas por construcción y sirven de control de cordura. Coeficientes y home fijos durante la prueba; nada más cambia en `policy.json`.
+- **Éxito:** c1 por encima del control en `-k` y en `-n`, y al menos +0,25 pt en el conjunto de las dos (ponderado por peticiones). Entonces se repite un segundo bloque nuevo de 30 minutos; solo se queda si repite el signo.
+- **Regresión:** a los 30 minutos, c1 al menos 0,25 pt por debajo en el conjunto, o una única mirada intermedia a los 15 minutos con c1 al menos 0,5 pt por debajo en `-k` con 400 o más peticiones por brazo. Se quita el brazo.
+- **Indistinguible** (menos de 0,25 pt en cualquier sentido): se quita el brazo y se queda la política más simple.
+- **Parada inmediata:** envíos inválidos o ausentes, peticiones caducadas por encima de lo habitual, o eventos `cold_lq` con `reason` distinto de `null` de forma repetida.
+- **Rollback:** quitar el brazo de `lfm_arms` (sin reinicio). **Coste de activar:** un reinicio con relevo para cargar el código. Activa y revierte Javi; para la final solo entra si está confirmado antes de las 08:30 CET del domingo.
+
+### D-340 — la primera prueba de cold_lq es solo para usuarios nuevos (`cold_new`); sustituye el plan de D-281
+
+- **Hipótesis:** el ranker da a los productos lanzados hoy la mediana de su subcategoría; cambiarla por el prior de atributos más la evidencia orgánica anterior puede mejorar las recomendaciones a usuarios nuevos. La evidencia offline es de predicción de calidad; la conversión no está confirmada. Subir la exposición de productos nuevos no es el objetivo.
+- **Qué cambia:** solo la calidad (`lq` y `seglq`) de productos lanzados hoy, y solo cuando `is_new_user`, la página es producto o categoría y hay vistas recientes. Mismos coeficientes, overrides, grafo (`cv`) y home en control y retador: la lista se rechaza entera si el brazo `cold_new` no tiene un control con pesos idénticos. Usuarios que vuelven y home del brazo retador se sirven y se etiquetan como el control.
+- **Configuración exacta, sin activar:** `recsys/policy.cold_new_r3.json` si el campeón es r3; `recsys/policy.cold_new_f5c05.json` si `f5c05` gana su ronda. Etiquetas internas: control `v3-lfm-<campeón>-n`, retador `v3-lfm-cn1-n`. El control conserva su código público; el retador recibe uno nuevo derivado de la sal de `data/labels.json` (queda en el log como evento `label`).
+- **Cuándo:** después de cerrar r3 contra `f5c05`, sin interrumpirla. Un reinicio con relevo para cargar el código; la política se cambia después en caliente. Guardar antes la `policy.json` vigente.
+- **Lectura:** una ventana fija de 30 minutos que empieza 2 minutos después de activar, mismo `from`/`to`. Se juzga solo `…-n` del control contra `cn1-n` (usuarios nuevos, producto/categoría). Se anotan peticiones por brazo, `reference` en la misma ventana, envíos válidos y a tiempo y latencia del bucle. Sin miradas intermedias.
+- **Potencia:** unas 620–650 peticiones por brazo cada 30 minutos (E-271) y un ruido de 5–6,5 pt por petición dan un error típico de la diferencia de unos 0,35 pt por bloque. Solo cambia 1 de cada 5 slates, así que un bloque solo distingue efectos grandes.
+- **Criterios fijados de antemano:** primer bloque de cribado: si `cn1-n` supera al control en +0,5 pt o más, se hace un segundo bloque nuevo; se acepta solo si el segundo repite el signo y la diferencia conjunta de los dos es de +0,5 pt o más. Si en el primer bloque queda 0,5 pt o más por debajo, se quita. Cualquier otra cosa es no concluyente: se quita el brazo y sigue el campeón. Máximo tres bloques en total.
+- **Parada inmediata:** envíos inválidos o ausentes, más caducadas de lo habitual, o eventos `cold_lq` con `reason` distinto de `null` repetidos.
+- **Rollback:** restaurar la `policy.json` guardada (o quitar el brazo `cn1`), sin reinicio. Para la final solo entra con evidencia confirmada antes de las 08:30 CET del domingo; configuración congelada a las 09:00 CET.
+- **Riesgo conocido, anterior a este cambio:** `serving.repair` rellena con los más vendidos activos sin mirar lo ya comprado por el usuario. Solo actúa si un producto del slate se queda sin stock entre el ranking y el envío. No se toca aquí (`serving.py` es de T-014); el brazo no añade ningún camino nuevo.
