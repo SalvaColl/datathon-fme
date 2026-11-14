@@ -458,6 +458,18 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Cuánto cambia la lista:** con el peso ajustado, r6 y r3 comparten 8,7 de 10 productos y el primer puesto cambia en el 24% de las peticiones de conocidos. Valor estimado por el propio modelo (optimista, sirve solo en relativo): +1,6% en producto/categoría, +1,1% en home. Coste: 1,06 ms por petición de mediana con todo el cálculo de lfm.
 - **Lectura honesta:** la señal es real y nueva, pero el efecto esperado es moderado (del orden de +0,03 a +0,06 pt sobre conocidos con el peso ajustado). No explica por sí sola los ~0,45 pt que nos saca la referencia en no-cold. El feedback propio no puede medir el valor de productos que nunca enseñamos, así que el peso real puede ser mayor: se decide en el leaderboard.
 
+### E-273 — `cold_new` (brazo `cn1`) contra r3 en usuarios nuevos, primera ronda, modelo oculto
+- **Date / owner:** 2026-11-14 19:45 UTC · Javi (agente) · writer en `3b1596e`, política `recsys/policy.cold_new_r3.json` desde las 19:07 UTC. Etiqueta: HIDDEN MODEL, ventana fija 19:10–19:40 UTC, reparto 50/50 por usuario.
+
+| Grupo | Control r3 | `cn1` |
+|---|---:|---:|
+| Nuevos, producto/categoría | 3,26% (633) | 3,75% (667) |
+| € por petición | 2,02 | 1,31 |
+
+- Sin tocar por el brazo: conocidos en páginas 1,87% (3.025), home conocidos 0,55% (727), home nuevos 1,38% (315).
+- **Lectura:** +0,48 pt a favor de `cn1`, dentro de lo que oscila una ronda de 30 minutos (E-272: ±0,4 pt con 1.500 peticiones, y aquí hay ~650 por brazo). NO CONCLUYENTE: hace falta un bloque de confirmación antes de promover. El ingreso por petición baja; la puntuación es por conversión, pero conviene mirarlo en la confirmación.
+- Equipo en la ventana: 2,05%, 4.º (team_06 2,45%, team_42 2,16%, team_22 2,08%, `reference` 2,14%), 99,98% a tiempo.
+
 ## E-390 — Retador r6 acotado: validación offline con periodo fresco y bloque de confirmación (T-039, 2026-11-14)
 
 - **Tipo:** OFFLINE ESTIMATE sobre LIVE FEEDBACK. Evidencia de cribado: mide el orden dentro de las listas que ya enseñamos (elegidas sobre todo por r3), no la conversión que tendría otra lista. No demuestra mejora de conversión.
