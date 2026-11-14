@@ -55,6 +55,13 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - **Convivencia con D-130 (hilo de home, `home_cands.py`):** `qrank` solo responde peticiones CON `recent_views`; la variante `home` de D-130 solo las que NO tienen. Tráfico disjunto, se pueden activar a la vez. En cambio `drop_dead()` (D-130 b) filtra los candidatos de v1 en product/category, el mismo tráfico que `qrank` sustituye: **no medir los dos en el mismo bloque**. Con `qrank` activo, `drop_dead` deja de tener efecto en product/category (qrank no usa `candidates()`); si se quiere su lista de "muertos", se pasa como `bought` a `QR.slates` (`BOUGHT[u] | dead`), sin más cambios. Orden propuesto de bloques de 10 min: (1) v1 (control, ya corriendo) → (2) `v1_nodead` de D-130 → (3) `qrank` → (4) `qrank` + `home`. Cada bloque se compara con `baseline` de su misma ventana y con el bloque anterior.
 - **Revisit condition:** resultado del bloque; recalibrar `viewed_factor` (ahora 0,45) con el feedback de la propia variante.
 
+### D-160 — Laboratorio nocturno: rotar variantes del writer con `night_lab.py` (propuesta)
+- **Status / date / owner:** PROPOSED — 2026-11-14 — Javi (agente, T-016). Decide y arranca el dueño del writer.
+- **Qué:** la noche del 14 al 15 lanzar `recsys/night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home --until 08:30` junto al writer (pasos en `runbook.md`). Dos réplicas de cuatro brazos en bloques de 65 min, cada uno comparado con `baseline` y `reference` de su misma ventana.
+- **Cambios en código compartido:** ninguno. No toca `live.py`, `fe.py` ni RawTree; solo escribe `data/policy.json` y `data/d130.json`, que el writer ya relee en caliente. Requiere que el writer en marcha incluya las variantes del plan (PR #1, `aff_live.patch` del PR #2, hook del PR #3); `night_lab.py check` lo valida contra el `live.py` en disco.
+- **Riesgo y vuelta atrás:** un brazo malo corre como mucho ~13 min antes de que la guardia vuelva al mejor medido. Ctrl-C restaura los JSON originales. Se detiene solo 60 min antes de la final. Por defecto no deja promocionada ninguna variante.
+- **Evidencia:** E-160, I-160.
+
 ## Decision template
 
 ```markdown
