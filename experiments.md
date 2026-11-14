@@ -285,7 +285,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Riesgos / límites:** vistas de hoy en cubos de 10 minutos y retraso de feedback fijo de 30 s son aproximaciones del reloj real del writer. La tabla "slates nuevos" sigue siendo el modelo puntuando su propia elección (optimista).
 
 ### E-320 — Qué generaliza: compradores no vistos, historial tapado, productos lanzados, por segmentos (T-032)
-- **Date / owner / branch:** 2026-11-14 21:15 UTC · Javi (agente) · `javi/final-validation`. Etiqueta: LIVE FEEDBACK (sesgado: slates elegidos por nuestras propias políticas) + OFFLINE ESTIMATE. No es conversión del modelo oculto y no predice la de mañana.
+- **Date / owner / branch:** 2026-11-14 18:50 UTC · Javi (agente) · `javi/final-validation`. Etiqueta: LIVE FEEDBACK (sesgado: slates elegidos por nuestras propias políticas) + OFFLINE ESTIMATE. No es conversión del modelo oculto y no predice la de mañana.
 - **Comando:** `python eval_slices.py` (tras `lfm_build.py --pull --no-write`). Salida completa en `data/eval_slices.csv`.
 - **Diseño:** 41.358 compradores en 5 grupos por hash; cada grupo se puntúa con pesos ajustados sin ninguna petición suya y solo con peticiones anteriores a las 14:30 UTC (unas 28.800 peticiones y 260 compras por ajuste). Validación 14:30–16:30 (393 compras); confirmación desde las 16:30, leída una sola vez (332 compras). Intervalos al 95% remuestreando compradores enteros (lotes de lanzamiento en productos lanzados).
 - **Medida:** `gain` = nats por compra que los pesos ganan sobre conocer solo la posición (0 = no aporta nada). La corrección de posición es parcial, así que **no sirve para decidir entre dos pesos nuestros**; eso lo hace el leaderboard. MRR se da solo como referencia (favorece a los pesos que ordenaron el slate servido).
@@ -313,7 +313,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Calibración:** las probabilidades absolutas no se trasladan en el tiempo (el modelo predice el doble de compras de las que hubo por la tarde). No usar probabilidades offline como previsión de conversión.
 
 ### E-321 — Ensayo de robustez con el código real del writer (T-032)
-- **Date / owner / branch:** 2026-11-14 21:30 UTC · Javi (agente) · `javi/final-validation`. Etiqueta: comprobación de robustez, **no** estimación de conversión. `python tools/final_rehearsal.py` carga `live.py` en `--dry-run`, llama a `predict()` en lotes de 4 y bloquea cualquier escritura en RawTree; no escribe `policy.json`.
+- **Date / owner / branch:** 2026-11-14 18:57 UTC · Javi (agente) · `javi/final-validation`. Etiqueta: comprobación de robustez, **no** estimación de conversión. `python tools/final_rehearsal.py` carga `live.py` en `--dry-run`, llama a `predict()` en lotes de 4 y bloquea cualquier escritura en RawTree; no escribe `policy.json`.
 - **Entrada:** 1.500 peticiones registradas (18:47–18:55 UTC), catálogo de 5.300 productos (243 lanzados en el evento, activos), brazo r3. El código de servicio no consulta el leaderboard (comprobado en el arranque del ensayo).
 
 | escenario | n | inválidos | ms por petición p50 / p95 / máx |
