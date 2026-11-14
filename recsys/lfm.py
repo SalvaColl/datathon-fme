@@ -81,11 +81,14 @@ class Snap:
         return out
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, need=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
-    hist_cart: {product: times carted in the 60-day history, never bought}; live_cart: products carted today."""
+    hist_cart: {product: times carted in the 60-day history, never bought}; live_cart: products carted today.
+    need: feature demand. None (default, the training path) builds every column. Serving passes the set of optional
+    features its weights actually use (see demand()); an optional feature that is not demanded is left at 0 and its
+    computation is skipped. Only features listed in OPTIONAL can be skipped; everything else is always built."""
     n = S.n
     X = np.zeros((n, len(FEATS)))
     a = np.full(n, NEUTRAL); m = min(n, len(aff)); a[:m] = aff[:m]
@@ -121,13 +124,22 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         cv, sv = mix; t = float(cv.sum())
         X[:, 17] = ((cv[S.ucode] + UC_PRIOR / len(cv)) / (t + UC_PRIOR) - 1.0 / len(cv)) * (S.ucode >= 0)
         X[:, 18] = ((sv[S.scode] + UC_PRIOR / len(sv)) / (t + UC_PRIOR) - 1.0 / len(sv)) * (S.scode >= 0)
-    if S.g is not None:
+    if S.g is not None and (need is None or "cv" in need):
         acc = X[:, 19]
         for k in set(rows) | set(lc):
             e = S.g.get(k)
             if e is not None: acc[e[0]] += e[1]
         np.minimum(acc * CV_SCALE, CV_CAP, out=acc)
     return X if idx is None else X[idx]
+
+
+OPTIONAL = ("cv",)          # features whose computation serving may skip when the weights do not use them
+
+
+def demand(w) -> frozenset:
+    """Optional features a weight vector (aligned with FEATS) needs: those with a non-zero weight. A weight of exactly 0
+    multiplies the column away, so skipping it cannot change any score."""
+    return frozenset(f for f in OPTIONAL if w[FEATS.index(f)] != 0.0)
 
 
 class LiveFit:
@@ -264,7 +276,7 @@ class LiveFit:
         seg = "new" if req.get("is_new_user") else "known"
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
         X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None)
+                     mix=state[4] if len(state) > 4 else None, need=demand(w[seg]))
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])

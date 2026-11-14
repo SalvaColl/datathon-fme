@@ -262,3 +262,11 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Cuánto cambia el slate frente a r3 (3.000 peticiones del tramo final):** vuelven, páginas con vistas: 0,16 productos de 10 distintos y el primero cambia en el 3%; nuevos: 0,61 de 10 y el primero en el 11%. Con `cv` = 0,5 a mano serían 1,5 y 1,9 de 10 (primero 29% y 32%); con 1,0, 3,1 y 3,6.
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
+
+### E-271 — Los brazos sin peso en `cv` se saltan el grafo: paridad exacta y latencia
+- **Date / owner / branch:** 2026-11-14 18:35 UTC · Javi (agente) · `javi/cv-demand` (T-027b). Etiqueta: OFFLINE (medido en la nube, lejos del portátil del writer). No cambia ningún peso ni ninguna puntuación.
+- **Cambio:** `lfm.features(..., need=None)` construye todas las columnas (camino de entrenamiento, `lfm_build.py`, sin tocar). Al servir, `LiveFit.scores` pasa `need=lfm.demand(pesos del segmento)`: el conjunto de features opcionales (`lfm.OPTIONAL`, hoy solo `cv`) con peso distinto de 0. Un brazo con `cv` solo en un segmento lo calcula solo en ese segmento.
+- **Paridad (3.000 peticiones reales del feedback del 14-nov, estado reconstruido a la hora de cada una):** brazo r3, vector de puntuaciones idéntico bit a bit en 3.000 de 3.000 y slate idéntico en 3.000 de 3.000, todos con 10 productos distintos. Brazo r5 (con peso en `cv`): 3.000 de 3.000 idénticos antes y después.
+- **Latencia de `features()` (mínimo de 10 repeticiones intercaladas por petición, 5.100 productos):** con `cv` 0,370 ms de media (p95 0,736, p99 0,873); saltándolo 0,336 ms (p95 0,688, p99 0,816). Ahorro por petición: 0,034 ms de media, 0,080 en p95, 0,111 en p99 (9% de `features()`). En el tiempo total de `scores()` (0,55 ms de media) el ahorro queda por debajo del ruido entre pasadas.
+- **Lectura:** el coste del grafo era pequeño; el cambio vale por dejar explícito qué calcula cada brazo, no por latencia.
+- **Rollback:** revertir el commit; sin él todo brazo vuelve a calcular `cv` y las puntuaciones son las mismas.
