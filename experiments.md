@@ -262,6 +262,75 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Cuánto cambia el slate frente a r3 (3.000 peticiones del tramo final):** vuelven, páginas con vistas: 0,16 productos de 10 distintos y el primero cambia en el 3%; nuevos: 0,61 de 10 y el primero en el 11%. Con `cv` = 0,5 a mano serían 1,5 y 1,9 de 10 (primero 29% y 32%); con 1,0, 3,1 y 3,6.
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
+- **Corrección (E-300, T-030):** el corte de arriba puntuaba una base r3 ajustada hasta las 16:00:29 UTC en un tramo que empieza a las 15:30, y la tabla "slates nuevos" construía los slates sin el reparto de categorías. Cifras corregidas en E-300; la conclusión (mejora pequeña) no cambia.
+
+
+### E-300 — Evaluación offline corregida de lfm: estado completo, compras del carrusel, catálogo a la hora de la petición, cortes y calibración (T-030)
+- **Date / owner / branch:** 2026-11-14 18:20 UTC · Javi (agente) · `javi/eval-fixes`. Etiqueta: LIVE FEEDBACK (sesgado) + OFFLINE ESTIMATE. Nada de esto es conversión del modelo oculto ni una mejora demostrada.
+- **Comando:** `python lfm_build.py --pull --cut "2026-11-14 15:30" --base lfm_coef_r3.json --add cv --no-write` (sobre main 4ee67ed + esta rama). Datos: 76.969 peticiones respondidas hasta las 18:17 UTC, 769.690 impresiones, 1.053 compras, 3.361 clics. Ajuste: 46.838 peticiones antes de las 15:30; medida: 30.131 después (322 compras de usuarios que vuelven, 221 de nuevos).
+- **Procedencia de cada pieza aprendida en la tabla:** todos los pesos y la calibración se ajustan solo con peticiones anteriores a las 15:30. Grafo `cv`: solo `shop.history_events` (anterior al evento). Calidad `lq`: una sola foto de histórico (`qrank.joblib`), no reconstruible por hora. `lfm_coef_r3.json` (ajustado hasta 16:00:29) y `lfm_coef.json` solapan el tramo de medida: el script lo detecta por `meta.fitted_on`, rehace la base con sus 19 features en el tramo de ajuste y avisa.
+- **1. Estado del replay (C1).** `report()` pasaba 4 partes del estado a `LF.slate()` y valoraba con 5: los slates "nuevos" se construían sin `ucat`/`usub`. Efecto medido con los mismos pesos (19 features, 4.000 peticiones del tramo de medida): compras esperadas por 100 peticiones según el modelo 2,43 -> 2,78 (vuelven con vistas 2,13 -> 2,56; nuevos con vistas 4,42 -> 4,78; coincidencia con lo servido 6,5 -> 7,7 de 10). Informes afectados: solo la tabla "slates nuevos" de E-240 y E-270 (posteriores a r3). No afectados: tablas de corte temporal (AUC, verosimilitud), validación por usuarios de E-240/E-260, I-207 (E-250) y todo lo leído del leaderboard.
+- **2. Compras del carrusel (C2).** Cuentan como compradas desde la hora de su fila de feedback + 30 s (el writer las lee una vez por ciclo). Impresiones "muertas" (producto ya comprado o caducado): 96.965 con 12 compras, es decir 1,2 por 10.000 frente a 15,5 del resto.
+- **3. Catálogo a la hora de la petición (C3).** `lfm_catlog.parquet` = catálogo base + las 3.997 filas de `catalog_updates`. Precio (`p40`, `segcheap`) de los productos mostrados a su hora; universo de candidatos del replay sin productos aún no lanzados o sin stock. Solo 8 de 769.690 impresiones mostraron un producto no servible según el registro (retraso de refresco). No reconstruible, se usa el valor último y el script lo imprime: `lq`, frases de la descripción, categoría/subcategoría/marca, y el retraso real de refresco del writer. Dentro de `LF.slate()` el precio sigue siendo el último (afecta a `p40`/`segcheap`, pesos de -0,16).
+- **4. Cortes (C4), E-270 corregido** (base r3 rehecha antes de 15:30 -> base + `cv`):
+
+| segmento | compras | AUC compra | verosimilitud compra | MRR compra |
+|---|---|---|---|---|
+| vuelven | 322 | 0,908 -> 0,909 | -1.901,1 -> -1.899,1 (+2,0) | 0,577 -> 0,579 |
+| nuevos | 221 | 0,896 -> 0,900 | -1.277,8 -> -1.269,7 (+8,1) | 0,568 -> 0,571 |
+
+  `cv` sigue siendo una mejora pequeña, algo más visible en nuevos; el ajuste conjunto de las 20 features no la supera (-1.899,2 y -1.279,0). No cambia la decisión de E-270: solo el leaderboard la juzga.
+- **5. Calibración (C5).** `fit_add` heredaba la calibración de la base aunque movía término independiente y posición; ahora la reajusta con sus propias filas de ajuste. Las métricas de orden (AUC, MRR) no dependen de ella y se leen aparte. Aviso: aun calibrado en el tramo de ajuste, el modelo predice 417 compras donde hubo 322 (vuelven) y 379 donde hubo 221 (nuevos) en el tramo posterior: la tasa de compra bajó por la tarde, así que las probabilidades absolutas no se trasladan en el tiempo; las comparaciones de verosimilitud entre filas de la tabla sí son válidas.
+- **Tests:** `tests/test_lfm_build.py` (12): paridad estado/slate replay = servicio, que falla si se omite el reparto; fronteras de tiempo de eventos y feedback; catálogo por hora; detección de solape; calibración. 172 tests en total.
+- **Riesgos / límites:** vistas de hoy en cubos de 10 minutos y retraso de feedback fijo de 30 s son aproximaciones del reloj real del writer. La tabla "slates nuevos" sigue siendo el modelo puntuando su propia elección (optimista).
+
+### E-320 — Qué generaliza: compradores no vistos, historial tapado, productos lanzados, por segmentos (T-032)
+- **Date / owner / branch:** 2026-11-14 18:50 UTC · Javi (agente) · `javi/final-validation`. Etiqueta: LIVE FEEDBACK (sesgado: slates elegidos por nuestras propias políticas) + OFFLINE ESTIMATE. No es conversión del modelo oculto y no predice la de mañana.
+- **Comando:** `python eval_slices.py` (tras `lfm_build.py --pull --no-write`). Salida completa en `data/eval_slices.csv`.
+- **Diseño:** 41.358 compradores en 5 grupos por hash; cada grupo se puntúa con pesos ajustados sin ninguna petición suya y solo con peticiones anteriores a las 14:30 UTC (unas 28.800 peticiones y 260 compras por ajuste). Validación 14:30–16:30 (393 compras); confirmación desde las 16:30, leída una sola vez (332 compras). Intervalos al 95% remuestreando compradores enteros (lotes de lanzamiento en productos lanzados).
+- **Medida:** `gain` = nats por compra que los pesos ganan sobre conocer solo la posición (0 = no aporta nada). La corrección de posición es parcial, así que **no sirve para decidir entre dos pesos nuestros**; eso lo hace el leaderboard. MRR se da solo como referencia (favorece a los pesos que ordenaron el slate servido).
+
+| segmento (pesos con features de r3) | validación: compras, gain [IC] | confirmación: compras, gain [IC] |
+|---|---|---|
+| Todos los compradores no vistos | 393, 0,20 [0,13; 0,27] | 332, 0,10 [0,03; 0,16] |
+| Comprador nuevo (sin historial) | 172, 0,19 [0,10; 0,28] | 125, 0,08 [-0,03; 0,17] |
+| Vuelve, 20–199 eventos de historial | 79, 0,21 [0,06; 0,35] | 72, 0,17 [0,04; 0,28] |
+| Vuelve, 200+ eventos | 137, 0,16 [0,05; 0,27] | 135, 0,08 [-0,03; 0,19] |
+| Vuelve con historial TAPADO, pesos de nuevo | 222, -0,06 [-0,16; 0,04] | 207, -0,08 [-0,17; 0,02] |
+| Vuelve con historial TAPADO, pesos de vuelve | 222, -0,10 [-0,22; 0,03] | 207, -0,13 [-0,23; -0,02] |
+| Los mismos con su historial | 221, 0,20 [0,11; 0,28] | 207, 0,11 [0,02; 0,19] |
+| Página de producto | 244, 0,13 [0,05; 0,22] | 218, 0,08 [0,02; 0,16] |
+| Página de categoría | 126, 0,28 [0,17; 0,40] | 94, 0,08 [-0,05; 0,21] |
+| Home (sin vistas recientes) | 23, 0,42 [0,13; 0,68] | 20, 0,29 [-0,07; 0,63] |
+| Menos de 5 vistas en total (petición + día) | 20, 0,28 [0,03; 0,53] | 8, -0,06 [-0,54; 0,45] |
+| 5+ vistas | 371, 0,19 [0,11; 0,25] | 323, 0,10 [0,03; 0,16] |
+| Producto del catálogo anterior | 390, 0,20 [0,13; 0,28] | 327, 0,10 [0,04; 0,17] |
+| Producto lanzado hace 1 h+ | 3 (2 lotes), 0,35 | 5 (2 lotes), -0,16 |
+| `lfm_coef_r3.json` congelado (ajustado hasta 16:00:29) | — | 332, 0,17 [0,11; 0,23] |
+
+- **Lo que se sostiene:** (1) con compradores enteros apartados y en un periodo posterior, los pesos siguen aportando sobre la posición en nuevos y en los que vuelven; no hay sobreajuste a usuarios (el modelo no tiene parámetros por usuario). (2) Ningún segmento con datos suficientes se hunde: producto, categoría, home, pocas o muchas vistas.
+- **Lo que no se sostiene o queda abierto:** (1) **El valor de los pesos cae con el tiempo**: los ajustados antes de las 14:30 pasan de 0,20 a 0,10 dos horas después; el fichero r3 real, ajustado hasta las 16:00 (con compradores de todos los grupos, así que es fuera de tiempo pero no fuera de usuario), da 0,17 en ese mismo tramo. Los pesos del sábado valdrán menos el domingo y no sabemos cuánto. (2) **Sin historial, el orden dentro del slate no mejora a la posición** (gain negativo con cualquiera de los dos juegos de pesos; los de nuevo son algo mejores en los dos periodos, sin separación estadística). Es una cota pesimista para esta medida, porque los slates se eligieron con historial. Los compradores realmente nuevos sí funcionan. (3) **Productos lanzados durante el evento: casi sin datos** (1.413 impresiones, 8 compras, 55 productos de 3 lotes tras las 14:30). Se compraron 3,3 veces más de lo que predecía el modelo (8 frente a 2,4) mientras el resto se compró la mitad de lo previsto (717 frente a 1.423): el prior de producto nuevo se queda corto. Apoya probar el brazo de calidad de producto nuevo (PR #26, T-028), no lo demuestra. (4) r3 frente a r1 con esta medida no se separan (0,20 frente a 0,18 y 0,10 frente a 0,10): la ventaja de r3 la demostró el leaderboard, no este ensayo. `cv` tampoco se separa (0,21 y 0,10).
+- **Calibración:** las probabilidades absolutas no se trasladan en el tiempo (el modelo predice el doble de compras de las que hubo por la tarde). No usar probabilidades offline como previsión de conversión.
+
+### E-321 — Ensayo de robustez con el código real del writer (T-032)
+- **Date / owner / branch:** 2026-11-14 18:57 UTC · Javi (agente) · `javi/final-validation`. Etiqueta: comprobación de robustez, **no** estimación de conversión. `python tools/final_rehearsal.py` carga `live.py` en `--dry-run`, llama a `predict()` en lotes de 4 y bloquea cualquier escritura en RawTree; no escribe `policy.json`.
+- **Entrada:** 1.500 peticiones registradas (18:47–18:55 UTC), catálogo de 5.300 productos (243 lanzados en el evento, activos), brazo r3. El código de servicio no consulta el leaderboard (comprobado en el arranque del ensayo).
+
+| escenario | n | inválidos | ms por petición p50 / p95 / máx |
+|---|---|---|---|
+| peticiones tal cual | 1.500 | 0 | 1,2 / 1,9 / 7 |
+| comprador nuevo, id desconocido | 1.500 | 0 | 0,6 / 0,8 / 3 |
+| nuevo y sin vistas (home) | 1.500 | 0 | 0,6 / 0,7 / 1 |
+| solo vistas de productos recién lanzados (sin compras ni aristas) | 1.500 | 0 | 0,6 / 0,8 / 2 |
+| metadatos ausentes o desconocidos, vistas con ids inexistentes | 1.500 | 0 | 1,1 / 1,7 / 3 |
+| cambio brusco de categorías vistas | 500 | 0 | 1,0 / 1,3 / 2 |
+| un tercio del catálogo sin stock de golpe | 1.500 | 0 con 10 válidos; ver E-370 | 16,3 / 24,4 / 343 en main; 7,1 / 10,3 / 12 con T-037 |
+| RawTree sin responder (refresco parado) | 1.500 | 0 | 1,1 / 1,6 / 4 |
+
+  Inválido = no son 10 distintos, alguno fuera de catálogo o sin stock según el writer, o alguno ya comprado por ese comprador.
+- **Hallazgo:** en el corte de stock, main entrega 10 válidos pero el 96% de las peticiones cae al camino antiguo v1 (133 slates con un producto ya comprado). Arreglo en PR #33 (T-037, E-370).
+- **No cubierto:** el POST y el plazo de respuesta de extremo a extremo (los cubre `tools/handoff_rehearsal.py`), y un RawTree lento en vez de caído.
+
 
 ### E-360 — Ventanas de estado: cuánto dura el valor de un carrito y de una compra, y qué cambia el interruptor (T-036)
 - **Date / owner / branch:** 2026-11-14 18:40 UTC · Javi (agente) · `javi/state-windows`. Etiqueta: LIVE FEEDBACK (descriptivo, sin controlar por el resto de señales) + medida de latencia. No es conversión del modelo oculto.
