@@ -269,3 +269,22 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Resultado:** 851 peticiones, 0 errores, 100% de slates válidos (10 distintos). Caducadas: 54 en el arranque en frío de la nube y 5 después. Bucle p50 138 ms, p95 357 ms.
 - **Productos nuevos en las impresiones:** r3 0,2% (6 de 3.290); c1 10,2% (306 de 3.090): conocidos 10,8%, nuevos 7,2%, home conocidos 10,4%, home nuevos 11,3%. Slates de c1 con al menos uno nuevo: 63%. Slot 1 nuevo: 10%.
 - **Límite:** solo comprueba que el brazo sirve y cuánto cambia la exposición. No dice nada de conversión: eso solo lo decide el leaderboard. La exposición queda varias veces por encima de la cuota orgánica de vistas (2,4% con 200 productos, E-CS01b), así que puede restar.
+
+> E-280 queda sustituido: medía la primera versión del brazo (todas las páginas, sin límite). Valen E-281 y E-282.
+
+### E-281 — replay por petición del brazo cold_lq, a fecha de cada petición (T-028, encargo C6). Solo diagnóstico
+
+- **Qué:** `python cold_lq_replay.py --pull` (solo lectura). 4.240 peticiones respondidas entre 14:00 y 18:19 UTC del 14 nov (1 de cada 5), cada una puntuada dos veces con los pesos r3: control y `"lq": "cold"`. Catálogo, precio, existencia y stock reconstruidos con `catalog_updates` hasta el instante de la petición; evidencia orgánica de los tramos de 10 minutos ya cerrados; estado del usuario con `state_asof`/`mix_asof`/`aff_asof`; exclusiones de comprados, historial caducado y sin stock como en el servicio. 52 snapshots.
+- **Validez:** 100% de slates válidos en los dos brazos (10 distintos, activos, no comprados). Home y peticiones sin vistas: 0 slates distintos de 855.
+- **Exposición de productos nuevos (control → brazo), páginas con vistas:** 0,18% → 3,89% de las impresiones (3.385 peticiones); slates con alguno 1,8% → 31,2%; slot 1 0,1% → 2,5%. Conocidos/producto 0,21% → 4,46%; conocidos/categoría 0,31% → 5,23%; nuevos/producto 0,04% → 2,13%; nuevos/categoría 0,00% → 1,72%.
+- **Correcciones:** 200 productos a las 14:00 y 300 a las 18:10, ninguno rechazado; 18–30 tocan el límite ±log(20); corrección media +0,54 a +0,58 en log-calidad, al alza en 2 de cada 3.
+- **No reconstruido:** compras hechas por nuestro carrusel (solo compras orgánicas en el estado; encargo C2), el retraso de refresco del writer (20 s) y la resolución de 10 minutos de la evidencia.
+- **No es conversión.** Sustituye a `cold_lq_slates.py` (E-CS01d), que aplicaba eventos hasta las 15:00 a peticiones anteriores y no reproducía stock ni historial caducado.
+
+### E-282 — ensayo en seco del brazo cold_lq acotado (T-028), 14 nov ~18:40 UTC, contenedor en la nube
+
+- **Qué:** writer real con `--dry-run` (no escribe), 4 minutos cada vez: A = dos brazos de control (r3, r3); B = r3 contra `c1` (`"lq": "cold"`). Se descartan los primeros 60 bucles.
+- **Validez:** 0 errores y 100% de slates válidos en los dos ensayos (B: 530 peticiones).
+- **Latencia del bucle (A → B):** p50 136 → 136 ms; p95 313 → 355 ms; p99 448 → 1.051 ms; máximo 3.781 → 2.399 ms; caducadas 5 → 4. Las colas son ruidosas en la nube (el máximo es del ensayo sin el brazo). El cálculo de correcciones ocupa unos 125–155 ms del hilo de refresco cada ciclo (~20–30 s) y no hace ninguna consulta.
+- **Exposición en B:** c1 conocidos 6,4% de impresiones nuevas (139 peticiones), c1 nuevos 1,9% (42); r3 0,2–0,5%; home de c1 0,0% (44 peticiones). 300 productos corregidos, 29 en el límite.
+- **Límite:** medido lejos del Mac; la latencia real hay que mirarla en el writer tras activar.

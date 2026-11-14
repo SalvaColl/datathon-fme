@@ -51,7 +51,8 @@ def in_segment(device, region): return device == "android" and region in SEG_REG
 AFF_CAP, NEUTRAL = 0.35, 0.10
 
 
-LQ_MODES = ("cold", "cold_new")   # arm key "lq" (T-028): use cold_lq's quality for products launched today
+LQ_MODES = ("cold",)              # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm)
+LQ_PAGES = ("product", "category")   # ...only on these pages and only with recent views; home is never touched
 
 
 class Snap:
@@ -65,8 +66,16 @@ class Snap:
         self.cat = pd.factorize(c["category"])[0]; self.sub = pd.factorize(c["sub"])[0]; self.brand = pd.factorize(c["brand"])[0]
         g = (lq or {}).get
         self.lq = np.array([g(p, lq0) for p in ids], dtype=np.float64) - lq0
-        # T-028: second quality vector (cold_lq: new products get live_quality's estimate) for arms with "lq"; None = not available
-        self.lqc = None if not lq_cold else np.array([lq_cold.get(p, lq0) for p in ids], dtype=np.float64) - lq0
+        # T-028: corrected snapshot for arms with "lq": a COPY of the incumbent vector where only the products in lq_cold
+        # (cold_lq_arm.Corrector.corrections) change. Both vectors are read-only; None = no valid correction this refresh.
+        self.lq.flags.writeable = False
+        self.lqc = None
+        if lq_cold:
+            c = self.lq.copy()
+            for p, v in lq_cold.items():
+                k = self.row.get(p)
+                if k is not None and isinstance(v, (int, float)) and np.isfinite(v): c[k] = float(v) - lq0
+            if not np.array_equal(c, self.lq): c.flags.writeable = False; self.lqc = c
         price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c else np.full(n, 20.0)
         self.p40 = (price > 40).astype(float); self.cheap = (price < 20).astype(float)
         # home_cands keeps "viewed in the 60-day history, never carted" as one bitmap per user; map its bit order to ours
@@ -271,9 +280,10 @@ class LiveFit:
         aff = aff_obj.affinity_all(req["user_id"], rv)
         seg = "new" if req.get("is_new_user") else "known"
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
-        m = getattr(self, "alt_lq", {}).get(model) if model else None      # "cold": every shopper of the arm; "cold_new": new shoppers only
-        X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None, lq=S.lqc if m == "cold" or (m == "cold_new" and seg == "new") else None)
+        m = getattr(self, "alt_lq", {}).get(model) if model else None      # T-028: this arm asks for the corrected quality
+        page = req.get("page", "product")
+        X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
+                     mix=state[4] if len(state) > 4 else None, lq=S.lqc if m in LQ_MODES and rv and page in LQ_PAGES else None)
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])

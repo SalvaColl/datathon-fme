@@ -200,3 +200,17 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Decisión:** la calidad de productos nuevos de `cold_lq` (T-CS01) se sirve por brazo: `{"tag": "c1", "file": "<pesos del ganador>", "lq": "cold"}` contra el ganador de r3/r5, 30 minutos, lectura por `-k` y `-n` en `api/state?by=model&from=`. `"cold_new"` la aplica solo a usuarios nuevos. Máximo dos brazos a la vez. `data/coldlq.json` no se usa.
 - **Coste:** un reinicio con relevo para cargar `lfm.py`, `live.py` y `cold_lq.py`. Sin ningún brazo con `"lq"` no se calcula nada y lfm sirve exactamente igual que antes.
 - **Rollback:** quitar el brazo de `lfm_arms` (sin reinicio). Si `cold_lq` falla o no hay productos nuevos, el brazo sirve sus pesos con la calidad de qrank.
+
+> D-280 queda sustituido por D-281.
+
+### D-281 — primera prueba de cold_lq: un brazo acotado, solo páginas con vistas (T-028)
+
+- **Comportamiento:** apagado por defecto. Un brazo con `"lq": "cold"` usa, solo en peticiones de producto/categoría con vistas recientes, la calidad corregida de los productos llegados por `new_product` y sin calidad histórica: prior de atributos + evidencia orgánica (K = 100, tasa al cuadrado, sin tocar), acotada a ±log(20) respecto a la calidad actual. Va por `lq` y por `seglq`. Home, productos establecidos, pesos y el brazo de control no cambian. Sin prior, con metadatos incompletos, números no finitos o cualquier error, se conserva la calidad actual (nunca el fallback por subcategoría de `LiveQuality`, I-CS02). El límite ±log(20) es un tope de riesgo fijado de antemano, no un parámetro ajustado.
+- **Configuración exacta** (con el campeón r3; si gana r5, los dos brazos llevan el mismo `file` y `w` del ganador y solo cambia `"lq"`):
+  `"lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "c1", "file": "lfm_coef_r3.json", "lq": "cold"}]`
+- **Lectura:** ventana fija de 30 minutos que empieza 2 minutos después de activar, `api/state?by=model&from=&to=` con el mismo `from`/`to` para los dos brazos. Se comparan `-k` con `-k` y `-n` con `-n`. Las filas `-kh`/`-nh` son idénticas por construcción y sirven de control de cordura. Coeficientes y home fijos durante la prueba; nada más cambia en `policy.json`.
+- **Éxito:** c1 por encima del control en `-k` y en `-n`, y al menos +0,25 pt en el conjunto de las dos (ponderado por peticiones). Entonces se repite un segundo bloque nuevo de 30 minutos; solo se queda si repite el signo.
+- **Regresión:** a los 30 minutos, c1 al menos 0,25 pt por debajo en el conjunto, o una única mirada intermedia a los 15 minutos con c1 al menos 0,5 pt por debajo en `-k` con 400 o más peticiones por brazo. Se quita el brazo.
+- **Indistinguible** (menos de 0,25 pt en cualquier sentido): se quita el brazo y se queda la política más simple.
+- **Parada inmediata:** envíos inválidos o ausentes, peticiones caducadas por encima de lo habitual, o eventos `cold_lq` con `reason` distinto de `null` de forma repetida.
+- **Rollback:** quitar el brazo de `lfm_arms` (sin reinicio). **Coste de activar:** un reinicio con relevo para cargar el código. Activa y revierte Javi; para la final solo entra si está confirmado antes de las 08:30 CET del domingo.
