@@ -35,6 +35,9 @@ To retrain: `python train.py` (needs `data/hs.parquet` + `data/user_item_A.parqu
 | `ev.py` | Within-session ranking evaluation on the time-split holdout (hit@1 / MRR of purchased item) |
 | `live.py` | pull → predict → push loop: catalog/stock refresh, incremental live-event tables, candidates, model, guards |
 | `rt.py` | Tiny RawTree query helper (`python rt.py "SELECT ..."`) |
+| `qrank.py` | Ranker para product/category: calidad del producto × contexto, solo misma categoría, sin lo ya comprado (T-014, propuesta D-081) |
+| `qrank_build.py` | Construye y valida `data/qrank.joblib` con split temporal (`--pull` descarga los agregados) |
+| `qrank_eval.py` | Contrasta qrank con el feedback en vivo, solo lectura |
 | `explore_*.py` | The exploratory analyses behind the insights in `../insights.md` (I-010 … I-015) |
 
 ## Features (`fe.FEATS`)

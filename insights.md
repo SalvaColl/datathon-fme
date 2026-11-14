@@ -125,6 +125,24 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Status:** SUPPORTED (13:00–13:08, while baseline writer and v1 ran together)
 - **Evidence:** of requests answered by both, feedback `shown` matched the baseline slate 906 times vs v1 531 → with duplicates v1 reached only ~37% of shoppers. Run **one** writer.
 
+### I-082 — v1 en vivo malgasta slots: 31% de otra categoría, productos ya comprados, y casi nunca el último visto
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) — 2026-11-14 14:10 CET — Javi (agente, T-014, rama `javi/rv-first-slate`)
+- **Evidence:** E-081. Feedback propio de las peticiones servidas con `v1-gbm-cand` en páginas product/category, 12:01–13:02 UTC: 6.266 peticiones, 84 compras (1,34%; home aparte 0,14%). Por impresión: **otra categoría distinta de la última vista 19.092 impresiones (31%) → 13 compras (0,07%)**; misma categoría no vista 40.729 → 56 (0,14%); misma categoría vista en la sesión 1.721 → 15 (0,87%); **ya comprado hoy por ese usuario 1.118 → 0 compras** (251 veces en el slot 1). El último producto visto solo aparece en el 14% de los slates, y cuando aparece la petición convierte 2,8% frente a 1,15%.
+- **Potential confounding/weakness:** qué muestra v1 no es aleatorio; 84 compras. Posible causa: el modelo se entrenó solo con slates de una categoría y extrapola mal con candidatos del historial del usuario en otras categorías (hipótesis, no comprobado en el código que corre en el Mac).
+- **What changed:** nuevo ranker `recsys/qrank.py` restringido a la categoría de la última vista y sin lo ya comprado.
+
+### I-083 — El comprador simulado ≈ calidad del producto × contexto; "visto en la sesión" multiplica ×10 en el histórico pero bastante menos en vivo
+- **Status / date / owner:** SUPPORTED en histórico (OBSERVED DATA), INVESTIGATING en vivo — 2026-11-14 — Javi (agente, T-014)
+- **Evidence:** `history_sessions` desde 25 oct, product/category, 543k sesiones / 5,4M impresiones. Compra por impresión en slot 1: producto visto 6,6% (N=4.663) vs no visto 0,40%; **mismo producto, mismo slot, visto vs no visto: ×10,4** (Mantel-Haenszel, 620 productos, 626 compras), así que no es solo popularidad. El efecto es multiplicativo con la calidad del producto: en el quintil más alto de propensity 12,7% vs 1,1%; en el más bajo 0,24% vs 0,09%. Curva de slot (no vistos): 1 / 0,53 / 0,40 / 0,30 / 0,24 / 0,21 / 0,18 / 0,16 / 0,13 / 0,13.
+- **En vivo es más débil:** sobre las impresiones de v1, los vistos compran 0,35× lo que predice el modelo del histórico (15 compras vs 43,4 esperadas) y los no vistos 0,80× (56 vs 70,2). Por eso `qrank` escala los vistos por 0,45 (parámetro `viewed_factor`).
+- **Potential confounding/weakness:** el factor en vivo sale de 15 compras; intervalo amplio (aprox. 0,2–0,6).
+- **Next action:** recalibrar `viewed_factor` con más feedback; añadir carrito del usuario (I-013) como feature.
+
+### I-084 — La fiabilidad ya no es la brecha; nadie en el leaderboard se acerca a la referencia
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK + leaderboard) — 2026-11-14 13:45 CET — Javi (agente)
+- **Evidence:** feedback 12:00–13:00 UTC: 7.977 servidas por el equipo, 39 fallback (29 `invalid` por latencia >3 s, 10 `missing`) → 99,5% a tiempo, latencia p50 1,35 s, p95 2,1 s. El 84% del leaderboard era la hora anterior. Leaderboard 12:44 UTC: referencia 2,05%, mejor equipo 1,03% (team_09), nosotros 0,95% (ventana mixta baseline+v1), baseline 0,70%.
+- **Implication:** el margen está en el ranking de product/category (80% del tráfico), no en la fiabilidad. Vigilar el p95 de 2,1 s: queda poco colchón.
+
 ## Correction register (superseded briefing assumptions)
 
 - **SUPERSEDED:** `~1 request every 3 seconds` -> official **~3 requests/second**.
