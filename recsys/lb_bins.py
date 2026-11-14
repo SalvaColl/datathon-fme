@@ -1,4 +1,4 @@
-"""lb_bins — the hidden model's expected purchases per model_version in 5-minute blocks (T-031, I-310).
+"""lb_bins — the hidden model's expected purchases per model_version in 5-minute blocks (T-031b, I-310).
 
 The leaderboard API only answers windows of 15 minutes to 3 hours, aligned to 5 minutes:
 `/api/state?by=model&from=<epoch>&to=<epoch>` gives, per model_version, requests and expected conversion.

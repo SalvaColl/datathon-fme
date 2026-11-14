@@ -12,10 +12,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm
     from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm
     from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -77,11 +77,27 @@ def clean_lfm_arms(raw):
         if not isinstance(a, dict): continue
         tag, main = str(a.get('tag', '')), spec(a)
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {})})
+        lqm = a.get('lq')                                      # T-028/T-034: "cold" | "cold_new" = corrected quality for today's products
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
-    return arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
+    arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
+    # T-034: a "cold_new" arm must have a control in the same list with exactly its weights (file, w, home): the trial's
+    # only difference is the quality of new products, and the arm's untouched traffic is served and labelled as that control
+    return arms if all(a.get('lq') != 'cold_new' or lfm_control(a, arms) for a in arms) else []
+def lfm_control(arm, arms):
+    """The arm of `arms` without "lq" whose weight spec equals `arm`'s (None if there is none)."""
+    spec = {k: v for k, v in arm.items() if k not in ('tag', 'lq')}
+    return next((c for c in arms if 'lq' not in c and {k: v for k, v in c.items() if k != 'tag'} == spec), None)
+def lfm_route(arm, new, page, rv):
+    """Tag that answers (and labels) a request of a user hashed to `arm`. A "cold_new" arm only owns new shoppers on
+    product/category pages with recent views; everything else is the control's, so no duplicate label is created."""
+    if arm is None: return None
+    if arm.get('lq') == 'cold_new' and not lfm.lq_target('cold_new', new, page, rv):
+        ctl = lfm_control(arm, POLICY['lfm_arms'])
+        if ctl is not None: return ctl['tag']
+    return arm['tag']
 def lfm_arm(user_id):
     arms = POLICY['lfm_arms']
     return arms[zlib.crc32(('lfmarm:' + user_id).encode()) % len(arms)] if arms else None
@@ -165,8 +181,11 @@ BOUGHT = collections.defaultdict(set)      # user -> products bought today (orga
 AP = None                                  # aff_policy.AffPolicy, loaded by initialize(); None -> aff variants act as v1/qrank
 ATP = None                                 # attr_policy.AttrPolicy, loaded by initialize(); None -> attr variants act as v1/qrank_aff
 LF = None                                  # lfm.LiveFit, loaded by initialize(); None -> lfm variants act as v1/qrank
+CLQ = None                                 # cold_lq_arm.Corrector (T-028), loaded by initialize(); None -> arms with "lq" serve the incumbent quality
 def initialize():
-    global MODEL, BASE, U_ITEMS, QR, AP, ATP, LF
+    global MODEL, BASE, U_ITEMS, QR, AP, ATP, LF, CLQ
+    try: CLQ = cold_lq_arm.Corrector()
+    except Exception as e: print('cold_lq_arm not loaded, lq arms serve the incumbent quality:', type(e).__name__, e, flush=True)
     try: AP = aff_policy.AffPolicy.load(DATA)
     except Exception as e: print('aff_policy not loaded, affinity variants disabled:', type(e).__name__, e, flush=True)
     try: QR = qrank.Ranker.load(DATA / 'qrank.joblib')
@@ -327,6 +346,19 @@ def make_pools(cat, unavail, T):
 # user's own past items (base history), for candidates
 # U_ITEMS loaded by initialize(), never on import or inside the serving loop.
 
+COLD_LOG = {}
+def cold_lq_for_arms(cat, T):
+    """T-028: {product: corrected lq} for lfm arms with "lq": "cold"; None when no arm asks, when the corrector is not
+    ready or on any error, and then those arms serve exactly the incumbent quality. Refresher thread only: no query."""
+    try:
+        if CLQ is None or QR is None or not LF.alt_lq or not CLQ.ready: return None
+        out = CLQ.corrections(QR.q, QR.lq, cat, BASE["item"], T.item_frame(), AP.cold.desc, lq0=LF.lq0)
+        if CLQ.last != COLD_LOG.get('last'):
+            COLD_LOG['last'] = dict(CLQ.last); print(json.dumps(dict(event='cold_lq', **CLQ.last)), flush=True)
+        return out or None
+    except Exception as e:
+        print('cold_lq for arms failed', type(e).__name__, e, flush=True); return None
+
 def refresher():
     while True:
         try:
@@ -347,7 +379,7 @@ def refresher():
                 try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
-                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC)
+                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T))
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:
@@ -422,7 +454,7 @@ def lfm_slates(reqs, unavail, versions):
         if not idx: return out
         with feature_lock: states = [LF.user_state(reqs[k]['user_id']) for k in idx]
         for k, st in zip(idx, states):
-            r = reqs[k]; new = is_new(r); arm = lfm_arm(r['user_id']); tag = arm['tag'] if arm else None
+            r = reqs[k]; new = is_new(r); tag = lfm_route(lfm_arm(r['user_id']), new, r.get('page', 'product'), r['rv'])
             req = dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new, device=r.get('device'), region=r.get('region'))
             try: s = LF.slate(req, st, AP.aff, exclude=unavail, model=tag)
             except Exception as e:
@@ -484,10 +516,40 @@ def attr_slates(reqs, unavail, versions):
     except Exception as e:
         print('attr error', type(e).__name__, e, flush=True); return {}
 
+def user_bought(u):
+    """Everything the shopper already bought, from the three sources: 60-day history (LF.hbought), today's organic
+    stream and our own carousel feedback (BOUGHT, mirrored in LF.lbought). Lock-free and never raises: it runs on the
+    send path, where a stalled or failed call would cost the answer."""
+    for _ in range(2):
+        try:
+            b = set(BOUGHT.get(u, ()))
+            if LF is not None: b |= set(LF.hbought.get(u, ())) | set(LF.lbought.get(u, ()))
+            return b
+        except RuntimeError: continue      # a set changed size under us (refresher thread): try once more
+        except Exception: break
+    return set()
+
+def repair_for(u, items, best, active):
+    """serving.repair, but the filler products skip what the shopper already bought (the guard list used to show
+    them: 78 slots in 102 returning-user requests, 14 Nov). Falls back to the plain repair if that leaves < 10."""
+    if isinstance(items, list) and len(items) == 10 and len(set(items)) == 10 and all(isinstance(p, str) and p in active for p in items):
+        return items
+    bought = user_bought(u)
+    if bought:
+        try: return repair(items, [p for p in best if p not in bought], active)
+        except ValueError: pass
+    return repair(items, best, active)
+
 def fallback_answers(reqs, version=None):
     _, unavail, _, _, best = snapshot()
-    items = [p for p in best if p not in unavail][:10]
-    return [{"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"} for r in reqs]
+    avail = [p for p in best if p not in unavail]
+    out = []
+    for r in reqs:
+        bought = user_bought(r.get("user_id"))
+        items = [p for p in avail if p not in bought][:10] if bought else avail[:10]
+        if len(items) < 10: items = avail[:10]
+        out.append({"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"})
+    return out
 
 def pull(seen):
     rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, context.device::String device, context.region::String region, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60", timeout=(0.5, 2.0))
@@ -520,7 +582,7 @@ def send_answers(reqs, answers, journal, seen, dry=False):
             seen.add(rid)
             continue
         original = by_id.get(rid, {})
-        items = repair(original.get('items'), best, active)
+        items = repair_for(r.get('user_id'), original.get('items'), best, active)
         version = original.get('model_version', VERSION + '-guard')
         if items != original.get('items'):
             version = VERSION + '-guard'
