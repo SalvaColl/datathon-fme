@@ -263,6 +263,22 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
 
+### E-271 — Brazos de home (T-025) y ronda r3 contra r5 con `cv` a 0,5, modelo oculto
+- **Date / owner:** 2026-11-14 18:30 UTC · Javi (agente) · main `4ee67ed`. Etiqueta: HIDDEN MODEL (leaderboard, `api/state?by=model&from=&to=`).
+- **Brazos de home, 17:05–17:35 UTC, usuarios conocidos en home:** control (home de lfm r3) 0,49% (157 peticiones); `conv` 0,38% (167); `catbest` 0,21% (184); `trend` 0,14% (180). Ninguno gana al control: apagados a las 17:45 UTC (`data/home_arms.json.off`). Las listas genéricas rinden menos de la mitad que la lista personalizada. RECHAZADO; no borrar el código.
+- **r3 contra r5 con `cv` = 0,5 (brazo `r5c05`), 17:50–18:20 UTC, reparto 50/50:**
+
+| Segmento | r3 | r5 `cv` 0,5 |
+|---|---:|---:|
+| Producto/categoría, conocidos | 1,57% (1.489) | 1,77% (1.521) |
+| Producto/categoría, nuevos | 2,61% (645) | 2,61% (619) |
+| Home, conocidos | 0,79% (362) | 0,46% (432) |
+| Home, nuevos | 0,56% (168) | 1,05% (145) |
+| Total del brazo | 1,65% | 1,71% |
+
+- **Lectura:** `cv` ayuda en páginas de producto/categoría de usuarios conocidos (+0,20 pt) y no mueve a los nuevos; en home pierde. Una sola ronda de 30 minutos: la diferencia total (+0,06 pt) está dentro del ruido. Equipo en la ventana: 1,68% (4.º; team_06 1,97%, `reference` 1,78%), 99,98% a tiempo.
+- **Siguiente:** brazo fusionado `f5c05` (`cv` 0,5 en páginas, pesos de r3 en home) contra r3 desde las 18:25 UTC; política en `recsys/policy.candidate.json`. El campeón demostrado sigue siendo r3 solo (`recsys/policy.champion.json`) hasta que `f5c05` gane una ronda.
+
 ### E-280 — cold_lq como brazo de lfm (T-028), ensayo en seco, 14 nov 18:10–18:15 UTC
 
 - **Qué:** writer real en la nube con `--dry-run` (sin escribir), 5 minutos, `lfm_arms` = `r3` contra `c1` (mismos pesos r3 + `"lq": "cold"`). 300 productos nuevos en catálogo (tandas de 10:00, 14:00 y 18:00 UTC).

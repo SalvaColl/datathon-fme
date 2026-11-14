@@ -52,6 +52,16 @@ class ArmTests(unittest.TestCase):
         a = live.clean_lfm_arms([{"tag": "r3", "file": "lfm_coef_r3.json", "home": {}}, {"tag": "c1", "file": "lfm_coef_r3.json", "home": {}, "lq": "cold"}])
         self.assertEqual(a[1], {"tag": "c1", "file": "lfm_coef_r3.json", "home": {}, "lq": "cold"})
 
+    def test_committed_trial_policies_differ_from_their_control_only_by_lq(self):
+        import json
+        from pathlib import Path
+        for name in ("policy.cold_lq_r3.json", "policy.cold_lq_f5c05.json"):
+            raw = json.loads((Path(lfm.__file__).parent / name).read_text())["lfm_arms"]
+            arms = live.clean_lfm_arms(raw)
+            self.assertEqual(arms, raw); self.assertEqual(len(arms), 2); self.assertNotIn("lq", arms[0])
+            self.assertEqual({k: v for k, v in arms[1].items() if k not in ("tag", "lq")}, {k: v for k, v in arms[0].items() if k != "tag"})
+            self.assertEqual(arms[1]["lq"], "cold")
+
     def test_control_is_exactly_the_unmodified_champion(self):
         for r in CASES:
             a, b = scores(self.champ, self.aff0, r, "r3"), scores(self.lf, self.aff, r, "r3")
