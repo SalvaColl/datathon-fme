@@ -11,10 +11,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy
+    from . import fe, qrank, aff_policy, d130
     from .serving import Journal, WriterLock, age, repair, serve
 else:
-    import fe, qrank, aff_policy
+    import fe, qrank, aff_policy, d130
     from serving import Journal, WriterLock, age, repair, serve
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -77,6 +77,9 @@ def initialize():
     history = pd.read_parquet(DATA / 'user_item_all.parquet')
     BASE = build_tables(history)
     U_ITEMS = history.query('a>0 or v>=2').groupby('u').i.apply(list).to_dict()
+    # D-130 hook (home_cands): inert unless data/d130.json says {"mode": "nodead"|"home"}; never blocks start-up.
+    try: d130.install(globals(), history)
+    except Exception as e: print('d130 not installed, serving unchanged:', type(e).__name__, e, flush=True)
 
 state = {"live": None, "cat": None, "unavail": set(), "stock_out": set(), "stock_checked": 0,
          "pools": None, "best": None, "ev_ts": "2026-11-14 07:00:00"}
