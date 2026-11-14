@@ -74,6 +74,8 @@ class RotatorTests(unittest.TestCase):
             try: self.assertEqual(pub, {live.public_label("v3-lfm-cx3" + s) for s in pr.SUFFIXES})
             finally: live.LABELS.update(salt=None, map={}, seen={})
             self.assertIn("zz", pub); self.assertEqual(len(pub), 4)
+            (Path(d) / "labels.json").write_text(json.dumps({"map": {}}))                 # no salt: the writer still codes every label
+            self.assertEqual(pr.read_labels(d), ("", {})); self.assertTrue(all(x.startswith("m") for x in pr.expected_labels(conf, pr.read_labels(d))))
 
     def test_block_is_verified_only_when_the_planned_arm_served_it(self):
         exp = {"a-k", "a-n"}; t0 = 1794700800

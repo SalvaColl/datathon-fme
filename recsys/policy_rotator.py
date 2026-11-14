@@ -140,8 +140,7 @@ def read_labels(data_dir):
     """(salt, map) of data/labels.json as live.py reads it, or (None, {}) when there is no usable file."""
     try:
         conf = json.loads((Path(data_dir) / "labels.json").read_text())
-        salt, mp = conf.get("salt"), conf.get("map") or {}
-        if isinstance(salt, str) and isinstance(mp, dict): return salt, mp
+        return str(conf.get("salt") or ""), {str(k): str(v) for k, v in (conf.get("map") or {}).items()}     # exactly live.read_labels
     except Exception: pass
     return None, {}
 
