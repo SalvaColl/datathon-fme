@@ -253,3 +253,29 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Validación 2, corte temporal (ajuste antes de 14:33 UTC, medida después):** AUC de compra 0,868 -> 0,900 (vuelve, 170 compras) y 0,865 -> 0,910 (nuevo, 116). El acierto del producto comprado entre los 3 primeros es mixto en slates servidos por lfm (0,64 -> 0,60 en los que vuelven), donde el orden registrado favorece a r1.
 - **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
 - **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.
+
+### E-250 — Ensayo de generalización I-207: usuarios que vuelven puntuados sin historial (T-027)
+- **Date / owner / branch:** 2026-11-14 16:45 UTC / Javi (agente) / `javi/i207-run`. Script `recsys/explore_i207.py` (escrito en `javi/i207-generalization`, 9fd2a64). Offline, sin consultas ni escrituras durante el ensayo; datos refrescados antes con `lfm_build.py --pull --no-write` (58.046 peticiones, 731 compras, hasta 16:35 UTC).
+- **Cambio al script en la primera ejecución:** main ya tenía las features `ucat` / `usub` (T-024), que también salen del historial; se añadió `mix_amnesia` para que la versión sin historial las calcule solo con las vistas de hoy. El resto corrió tal cual.
+- **Diseño:** ajuste antes de 14:55 UTC (todas las features, incluidas las de r3), medida después. Orden dentro de los 10 productos enseñados.
+
+| Páginas | Features | Pesos | Peticiones | Compras | Clics | AUC compra | AUC clic | MRR compra | MRR clic | Clic en 1.º |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| todas | completas | known | 12.231 | 196 | 637 | 0,906 | 0,820 | 0,527 | 0,500 | 0,297 |
+| todas | sin historial | known | 12.233 | 196 | 638 | 0,763 | 0,700 | 0,440 | 0,411 | 0,224 |
+| todas | sin historial | new | 12.233 | 196 | 638 | 0,765 | 0,710 | 0,420 | 0,403 | 0,201 |
+| todas | compradores nuevos (referencia) | new | 5.181 | 144 | 332 | 0,907 | 0,822 | 0,580 | 0,516 | 0,328 |
+| producto/categoría | completas | known | 9.697 | 181 | 560 | 0,897 | 0,821 | 0,515 | 0,498 | 0,300 |
+| producto/categoría | sin historial | known | 9.698 | 181 | 561 | 0,752 | 0,691 | 0,445 | 0,406 | 0,219 |
+| producto/categoría | sin historial | new | 9.698 | 181 | 561 | 0,755 | 0,701 | 0,420 | 0,397 | 0,194 |
+| producto/categoría | compradores nuevos (referencia) | new | 4.161 | 140 | 313 | 0,893 | 0,803 | 0,576 | 0,516 | 0,332 |
+| home | completas | known | 2.534 | 15 | 77 | 0,926 | 0,797 | 0,664 | 0,512 | 0,273 |
+| home | sin historial | known | 2.535 | 15 | 77 | 0,684 | 0,690 | 0,386 | 0,449 | 0,260 |
+| home | sin historial | new | 2.535 | 15 | 77 | 0,732 | 0,709 | 0,414 | 0,445 | 0,247 |
+| home | compradores nuevos (referencia) | new | 1.020 | 4 | 19 | 0,948 | 0,843 | 0,708 | 0,508 | 0,263 |
+
+- **Pérdida del segmento que vuelve sin historial:** MRR de clic 0,500 -> 0,403, diferencia **+0,097 (IC 95% por bootstrap de peticiones +0,060 … +0,124; 637 peticiones con clic)**. AUC de compra 0,906 -> 0,765.
+- **Pesos `new` frente a `known` para quien no tiene historial:** -0,008 de MRR de clic (IC -0,024 … +0,012): no hay diferencia. Las AUC favorecen a `new` por milésimas y las MRR a `known`; en home (15 compras) no se puede decir nada.
+- **Recomendación:** no cambiar la regla para la final. Seguir eligiendo pesos por `is_new_user` (un comprador que vuelve sin historial recibe `known`, uno nuevo recibe `new`); el ensayo no da motivo para una regla nueva, y una regla nueva sería código sin probar en vivo.
+- **Límites:** las etiquetas vienen de carruseles elegidos CON historial, así que los productos que el historial subió están sobrerrepresentados entre los 10 enseñados: la pérdida medida es una cota optimista de la pérdida real, no su tamaño. Mide el orden dentro del slate enseñado, no el slate que construiría el modelo sin historial. Clics y compras son el observable ruidoso, no la expectativa del modelo oculto. Los pesos del ensayo son un reajuste con todas las features, no `lfm_coef.json`.
+- **Otro dato:** solo 968 de 122.330 impresiones del hold-out las marca como muertas el historial, con 0 compras.
