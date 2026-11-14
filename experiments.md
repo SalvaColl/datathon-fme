@@ -107,3 +107,10 @@ Sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-f
 - **Integrity / latency:** en seco sobre las últimas 2.000 peticiones home y el catálogo actual (5.100 productos, 37 no disponibles): 2.000 / 2.000 slates con 10 ids distintos y en stock; 0,11–0,16 ms por petición; construir el índice 7,7 s; `refresh` 0,02 s.
 - **Limitations:** la compra orgánica no es la compra del carrusel (orgánicamente se recompra, en el carrusel no); N pequeño en nuevos (93). No hay medida del modelo oculto: falta el bloque de 10 min en el leaderboard.
 - **Decision:** pedir prueba en vivo vía `policy.json` (D-130). No promovido.
+
+### E-133 — D-130 `home` en vivo contra `lfm` en home (modelo oculto, `/api/state?by=model`)
+- **Date / owner:** 2026-11-14 15:06–15:19 UTC · agente de Javi · writer único desde `main`, `policy.json` en `lfm` 100%, `d130.json` `{"mode": "home"}` (activado por el hilo de despliegue)
+- **Comparison:** slates de home de `lfm` (14:33–15:00 UTC) frente a `HomeCands.slate()` (15:06–15:19 UTC). Conversión esperada del modelo oculto por versión, no compras realizadas.
+- **Results:** home con usuario conocido: D-130 **0,459%** (339 peticiones) frente a lfm 0,520% (471); ingresos 0,16 frente a 0,28 € por petición. Home con usuario nuevo: D-130 1,104% (133) frente a lfm 0,973% (190); ingresos 0,25 frente a 1,02 €. Home combinado: 0,641% frente a 0,650%.
+- **Limitations:** ventanas consecutivas, no simultáneas (cambia la mezcla de usuarios); 133–471 peticiones por brazo.
+- **Decision:** **NO promover** D-130 `home`: no mejora a lfm en conocidos y pierde el desempate por ingresos; la ventaja en nuevos es pequeña y con N bajo. Recomendado volver a `off`. La hipótesis "carrito pendiente primero + categoría afín" (I-131) no sube home-conocidos por encima de ~0,5% en el modelo oculto: REJECTED como palanca grande. El hallazgo I-130 (no mostrar lo ya comprado) sigue en pie y ya lo aplican qrank/lfm.
