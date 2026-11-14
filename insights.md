@@ -436,3 +436,12 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Segundo dato:** el modelo sobreestima sus propios slates. Para `v3-lfm-r1-n` predice 4,8 compras por 100 peticiones y el leaderboard dice 2,9; para `-k` predice 2,75 y son 2,15–2,33. La estimación "modelo sobre su slate" ya no sirve para decidir entre variantes parecidas.
 - **Implicación:** las mejoras de +0,05–0,1 pp del tablero (I-201, I-202, I-204, I-209) no se pueden validar offline. Sí se pueden leer en `api/state?by=model` sin ruido: 3 brazos a la vez dan unas 900 peticiones por brazo y hora en el segmento más pequeño fuera de home.
 - **What changed:** brazos de pesos de lfm configurables en caliente (D-210).
+
+
+## Synthetic alpha (T-SA01, d4xn+Claude)
+
+### I-SA01 — Los carritos de hoy predicen la compra del usuario nuevo más allá de lfm v2 (frases y subcategoría), aún sin significación
+- **Status:** HYPOTHESIS con dos estimaciones del mismo signo (E-SA01c/d: +40 y +38 nats por 1.000 compras, IC incluyen 0; control plano). `ncp` y `csub` positivos en usuarios nuevos, ~0 en los que vuelven. **owner: d4xn** hasta repetir la confirmación con más compras.
+
+### I-SA02 — Ni la edad del producto ni su id llevan señal que no capture prior + actualización bayesiana
+- **Status:** REJECTED (E-SA01a/b). Las vistas orgánicas no son uniformes entre productos (dispersión 68, Spearman 0,97 con el histórico): la cuota de vistas orgánicas sí es una referencia de exposición para productos nuevos (relevante para D-CS01: 5,9% de exposición frente a 2,4% de cuota).

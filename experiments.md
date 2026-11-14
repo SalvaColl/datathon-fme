@@ -233,3 +233,15 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Pausas del recolector de basura (medidas):** una recolección completa recorre todos los objetos con el GIL tomado y para todos los hilos. En la nube: 0,2 s al arrancar y hasta 0,8 s durante la carga del día, creciendo con los datos; tras `gc.freeze()` la misma recolección tarda 3,6 ms y no hay ninguna pausa >200 ms en 7 min. Es la explicación más probable de los parones de 3–6 s del Mac (proceso entero congelado, cada pocos minutos, sin errores de red), pero allí no está medida: el writer nuevo deja `{"event": "gc_pause"}` en el log para comprobarlo.
 - **Ensayo de relevo (flujo real, sin escribir; `tools/handoff_rehearsal.py`):** writer A sirviendo, proceso B con `--takeover`. 300 peticiones en la ventana: 300 respondidas una vez, 0 nunca, 0 dos veces; en ±10 s del relevo 60 de 60, peor edad al POST 1,25 s; A no respondió nada después del relevo; B esperó 365 ms por el candado tras un SIGINT. Edad al POST p50 0,95 / p95 1,52 / máx 2,18 s con un POST simulado de 300 ms.
 - **Límites:** medido en un contenedor de 4 núcleos, no en el Mac. Dos procesos a la vez ocupan ~2,8 GB cada uno (pico) durante el minuto de calentamiento. No se ha escrito nada en `submissions`. Comandos: `python -m unittest discover -s tests` (118 OK), `python live.py --dry-run`, y los tres pasos del ensayo.
+
+
+## E-SA01 — Búsqueda de alpha sintético en cold start (T-SA01, d4xn+Claude, `feat/team26-synthetic-alpha`)
+
+| ID | Datos | N | Resultado | Decisión |
+|---|---|---|---|---|
+| E-SA01a (H2) | `shop.events` orgánico por producto y 10 min hasta 16:10 UTC; referencia = receta de `live_quality` (prior + K=100) con datos anteriores a cada bloque; corrección de reloj; control con lanzamientos falsos | 200 productos nuevos, 2 tandas | O/E por edad 0–10 / 10–30 / 30–60 / 60–120 / 120+ min: descubrimiento 1,10 / 1,00 / 1,04 / 1,00 / 0,98; validación 1,12 / 1,07 / 1,15 / 0,95 / 1,09; todos los IC95 contienen 1; control 0,95–1,12 | REJECTED: la edad no aporta sobre prior + Bayes |
+| E-SA01b (IDs) | 5.000 productos, tasa histórica | 5 pruebas | Spearman id −0,005; dígitos y mod 67/69: p ≥ 0,09 | REJECTED |
+| E-SA01c (H1, descubrimiento) | `lfm_build.load/impressions` (features de lfm v2 en el instante de la petición) + familia de carritos de hoy; split 70/30 | test 165.588 impresiones, 318 compras | Δ log-verosimilitud de compra +12,8 [−3,8, +29,0]; AUC nuevos 0,887 → 0,900; control −7,3 | → confirmación preregistrada (sin `nbp2`) |
+| E-SA01d (H1, confirmación preregistrada 16:28 UTC) | entrenamiento ts < 16:35, test ≥ 16:35 (pull 17:10) | test 62.954 impresiones, 100 compras | +3,8 [−1,7, +10,2] (+38 nats/1.000 compras); AUC nuevos 0,898 → 0,911; control −0,3 | INCONCLUSO: repetir con ~300 compras de test |
+
+- **Limitaciones:** impresiones de nuestras propias políticas (predictivo entre lo mostrado, no contrafactual); compras reales con ruido. Detalle en `recsys/ALPHA_T-SA01.md`.
