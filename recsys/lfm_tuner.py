@@ -32,9 +32,9 @@ TEAM = "team_26"
 SEGS = {"known": ("-k", "-kh"), "new": ("-n", "-nh")}       # sufijos de versión de cada segmento (páginas con vistas, home)
 # Orden de búsqueda: (peso, paso inicial). Primero lo que más mueve el slate según E-210 y el tablero de ideas.
 PLAN = {
-    "known": [("aff10", 0.5), ("hcart", 1.0), ("islast", 0.7), ("chn", 0.5), ("scat2", 0.5), ("ssub2", 0.5), ("oinrv", 0.7),
+    "known": [("ucat", 1.5), ("usub", 0.7), ("aff10", 0.5), ("hcart", 1.0), ("islast", 0.7), ("chn", 0.5), ("scat2", 0.5), ("ssub2", 0.5), ("oinrv", 0.7),
               ("lq", 0.25), ("cl", 0.7), ("bsub", 0.4), ("na", 0.3), ("p40", 0.5)],
-    "new": [("aff10", 0.4), ("cl", 0.7), ("nbp", 0.5), ("bsub", 0.5), ("islast", 0.7), ("scat2", 0.5), ("ssub2", 0.5), ("oinrv", 0.7),
+    "new": [("ucat", 1.0), ("aff10", 0.4), ("cl", 0.7), ("nbp", 0.5), ("bsub", 0.5), ("islast", 0.7), ("scat2", 0.5), ("ssub2", 0.5), ("oinrv", 0.7),
             ("lq", 0.25), ("segcheap", 0.4), ("na", 0.3), ("hcart", 1.0)],
 }
 W_LIMIT = 15.0

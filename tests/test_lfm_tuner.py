@@ -74,7 +74,7 @@ class TunerTests(unittest.TestCase):
         labels = {"salt": "s3"}
         b = FakeBoard(self.d, {"known": {"aff10": COEF["known"]["w"]["aff10"] + 1.0}, "new": {}}, labels=labels)
         (self.d / "labels.json").write_text(json.dumps(labels))
-        t = self.tuner(b); t.run(rounds=2)
+        t = self.tuner(b); t.run(rounds=4)
         self.assertGreater(t.weight("known", "aff10"), COEF["known"]["w"]["aff10"])
         saved = dict(live.LABELS); live.LABELS.update(salt="s3", map={}, seen={})
         try: self.assertEqual(T.public_label("v3-lfm-c000-k", labels), live.public_label("v3-lfm-c000-k"))
