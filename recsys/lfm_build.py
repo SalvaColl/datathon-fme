@@ -74,11 +74,12 @@ def load():
     except Exception as e:
         print("qrank.joblib not readable, lq = 0:", type(e).__name__); lq = {}
     lq0 = float(np.median(list(lq.values()))) if lq else 0.0
+    newp = (set(cat.index) - set(lq)) if lq else None                  # launched during the event (T-036), as live.new_products
     sub_med = pd.Series(lq).reindex(cat.index).groupby(cat["sub"]).transform("median")     # new products: subcategory median, as qrank does
     lq = {p: (lq[p] if p in lq else (float(sub_med[p]) if pd.notna(sub_med[p]) else lq0)) for p in cat.index}
     hc = home_cands.HomeCands(hist, cat)
     LF = lfm.LiveFit({k: dict(w={f: 0.0 for f in lfm.FEATS}, b=0.0) for k in ("known", "new")} | {"lq0": lq0}, hist)
-    LF.set_catalog(cat, set(), aff, lq, hc)
+    LF.set_catalog(cat, set(), aff, lq, hc, newp=newp)
     ev = pd.read_parquet(DATA / "lfm_ev.parquet"); ev["t0"] = pd.to_datetime(ev.t0)
     carts, buys = {}, {}
     for u, i, e, t in zip(ev.u.values, ev.i.values, ev.e.values, ev.t0.values):

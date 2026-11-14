@@ -361,6 +361,16 @@ def make_pools(cat, unavail, T):
 # user's own past items (base history), for candidates
 # U_ITEMS loaded by initialize(), never on import or inside the serving loop.
 
+def new_products(cat, max_share=0.25):
+    """T-036: products launched during the event = in the live catalogue without a 60-day quality (QR.q). None (the lfm
+    feature `newp` stays 0, every arm serves as before) when qrank is not loaded or the set looks wrong (over 25%)."""
+    try:
+        if QR is None or not QR.q: return None
+        new = set(cat.index) - set(QR.q)
+        return new if 0 < len(new) <= max_share * len(cat) else None
+    except Exception as e:
+        print('new_products failed', type(e).__name__, e, flush=True); return None
+
 COLD_LOG = {}
 def cold_lq_for_arms(cat, T):
     """T-028: {product: corrected lq} for lfm arms with "lq": "cold"; None when no arm asks, when the corrector is not
@@ -394,7 +404,7 @@ def refresher():
                 try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
-                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T))
+                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat))
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:

@@ -469,3 +469,23 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - Sin tocar por el brazo: conocidos en páginas 1,87% (3.025), home conocidos 0,55% (727), home nuevos 1,38% (315).
 - **Lectura:** +0,48 pt a favor de `cn1`, dentro de lo que oscila una ronda de 30 minutos (E-272: ±0,4 pt con 1.500 peticiones, y aquí hay ~650 por brazo). NO CONCLUYENTE: hace falta un bloque de confirmación antes de promover. El ingreso por petición baja; la puntuación es por conversión, pero conviene mirarlo en la confirmación.
 - Equipo en la ventana: 2,05%, 4.º (team_06 2,45%, team_42 2,16%, team_22 2,08%, `reference` 2,14%), 99,98% a tiempo.
+
+### E-360 — Feature `newp` (producto lanzado durante el evento) sobre r3 y brazo `np1` (T-036)
+- **Date / owner / branch:** 2026-11-14 20:30 UTC · Javi (agente) · `javi/new-product-arm`. LIVE FEEDBACK (sesgado: solo lo que lfm enseñó) + OFFLINE ESTIMATE. No es conversión del modelo oculto.
+- **Comandos:** `python lfm_build.py --pull --base lfm_coef_r3.json --add newp --no-write`; `python explore_t036_newp.py --cut "2026-11-14 17:10" --known 1.0 --new 0`.
+- **Qué es:** `newp` = 1 si el producto está en el catálogo vivo y no tiene calidad de 60 días (hoy, exactamente los 300 lanzados), solo en páginas de producto/categoría con vistas; 0 en home. Peso 0 en todos los ficheros de pesos: ningún brazo existente cambia.
+- **Peso ajustado con r3 fijo (92.434 peticiones, 1.354 compras):** conocidos 1,96 ± 0,14 (16 compras y 28 clics en 1.256 impresiones: 127 compras por 10.000 frente a 13); nuevos 0,86 ± 0,46 (1 compra en 342). Ajustado solo antes de las 17:10: conocidos 1,88 ± 0,22; nuevos sin información.
+- **Corte temporal (ajuste antes de 17:09 UTC, lectura después; 303 compras de conocidos):** MRR de compra 0,581 -> 0,594, AUC 0,905 -> 0,908. Nuevos: sin cambio (0,584, AUC 0,896 -> 0,894).
+- **Replay a fecha de cada petición (2.500–4.000 peticiones tras las 17:10), conocidos en páginas:**
+
+| Peso de `newp` | Productos cambiados de 10 | Slot 1 cambia | Productos nuevos en las impresiones | Compras esperadas por 100 (peticiones cold de conocidos, estimación del modelo) |
+|---:|---:|---:|---:|---:|
+| 0 (r3) | — | — | 0,7% | 2,65 |
+| 1,0 | 0,8 | 9% | 8,5% | 3,01 |
+| 1,4 | 1,7 | 19% | 18% | 3,16 |
+| 1,9 (ajustado) | 3,9 | 38% | 40% | (2,36 -> 2,85 en otra muestra) |
+
+  Home y usuarios nuevos: 0 slates distintos (579 + 265 de home; nuevos en páginas 0,9% por desempates). 100% de slates válidos.
+- **Límite:** el peso ajustado sale de 1.256 impresiones elegidas por lfm (productos nuevos con mucha afinidad); llevarlo al 40% de las impresiones es extrapolar. Por eso el primer brazo usa 1,0 (exposición del 8,5%, cerca del 6% que pesan en el catálogo) y el peso se sube solo si gana.
+- **Ensayo en seco (writer real en la nube, `--dry-run`, `policy.newp_r3.json`, 5,5 min):** 956 peticiones, 0 errores, bucle p50 141 ms / p95 365 ms; 56 caducadas, las del arranque en frío del contenedor como en E-280.
+- **Tests:** `tests/test_lfm_newp.py` (6 nuevos; 243 en total, todos pasan).

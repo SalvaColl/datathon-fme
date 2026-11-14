@@ -38,7 +38,10 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # r5 (T-027): product-to-product co-occurrence with what the shopper is looking at right now
          "cv",
          # r6 (T-035): collaborative filtering, the shopper's 60-day history factorised against everybody else's
-         "mf"]
+         "mf",
+         # T-036: product launched during the event (no 60-day history). Our own carousel sold these ~10 times more often
+         # than lfm expected for returning shoppers (16 buys vs 1.6 expected, E-360); weight 0 in every committed file
+         "newp"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -70,7 +73,7 @@ def lq_target(mode, is_new_user, page, rv) -> bool:
 class Snap:
     """Arrays aligned with the rows of AttrAffinity.A (one row per product). Built once per catalog refresh."""
 
-    def __init__(self, ids, A, cat: pd.DataFrame, unavail, lq: dict | None, lq0: float, hc=None, lq_cold: dict | None = None):
+    def __init__(self, ids, A, cat: pd.DataFrame, unavail, lq: dict | None, lq0: float, hc=None, lq_cold: dict | None = None, newp=None):
         n = len(ids); self.ids = ids; self.n = n; self.A = A[:n]
         self.row = {p: k for k, p in enumerate(ids)}
         c = cat.reindex(ids)
@@ -88,6 +91,8 @@ class Snap:
                 k = self.row.get(p)
                 if k is not None and isinstance(v, (int, float)) and np.isfinite(v): c[k] = float(v) - lq0
             if not np.array_equal(c, self.lq): c.flags.writeable = False; self.lqc = c
+        # T-036: 1.0 for products launched during the event; None (feature stays 0) when the caller does not know them
+        self.newp = np.isin(np.array(ids, dtype=object), list(newp)).astype(np.float64) if newp else None
         price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c else np.full(n, 20.0)
         self.p40 = (price > 40).astype(float); self.cheap = (price < 20).astype(float)
         # home_cands keeps "viewed in the 60-day history, never carted" as one bitmap per user; map its bit order to ours
@@ -159,6 +164,7 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         Q, rows_mf, rows_s = S.mf                        # Q: every product of the history; rows_s[k] <-> rows_mf[k]
         sc = Q @ mfu; sd = float(sc.std())
         if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
+    if getattr(S, "newp", None) is not None and rv and page in LQ_PAGES: X[:, 21] = S.newp      # never on home or without views
     return X if idx is None else X[idx]
 
 
@@ -255,10 +261,10 @@ class LiveFit:
                 d = self.lcart_t.setdefault(u, {})
                 if ta > d.get(i, ""): d[i] = ta
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None):
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None):
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
-        S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold)
+        S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold, newp)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
