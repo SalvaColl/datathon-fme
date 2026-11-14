@@ -495,6 +495,19 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Lectura de la validación:** estimaciones puntuales de compra positivas, todas con intervalos que incluyen el cero. En datos frescos no se reproduce con claridad el +0,024 de E-350 (que venía de un periodo que el propio peso había visto en parte, y de CV). Con la corrección por posición la señal es más nítida, pero esa corrección es parcial. Es compatible con un efecto pequeño y con ningún efecto. Según el plan: "apoya" de momento, pendiente del bloque de confirmación.
 - **Listas (4.000 peticiones de la cohorte):** 8,70 de 10 productos en común con r3, el primer puesto cambia en el 24,0%; 100% válidas (10 distintos, ninguno comprado, ninguno sin stock). **Fuera de la cohorte (4.000 peticiones): lista ordenada idéntica en el 100%.**
 
+- **Bloque de confirmación (leído una sola vez, 20:50 UTC), 19:42:06,715–20:45:00 UTC**, mismo código sin cambios (`python eval_r6_target.py --from "2026-11-14 19:42:06.715" --to "2026-11-14 20:45:00"`). Cohorte: 6.270 peticiones, 5.579 usuarios, 60.714 impresiones vivas, 337 clics, 94 compras.
+
+| Evento | Medida | n | r3 | r6 | r6 − r3 | IC 95% (usuarios) |
+|---|---|---:|---:|---:|---:|---|
+| Compra | MRR | 94 | 0,570 | 0,576 | +0,006 | [−0,030; +0,040] |
+| Compra | Primer puesto | 94 | 39,4% | 40,4% | +1,1 pt | [−4,3; +6,4] |
+| Compra | Ganancia corregida por posición (nats) | 94 | 0,139 | 0,151 | +0,012 | [−0,044; +0,069] |
+| Clic | MRR | 337 | 0,528 | 0,539 | +0,012 | [−0,007; +0,031] |
+| Clic | Ganancia corregida por posición (nats) | 337 | 0,075 | 0,092 | +0,017 | [−0,007; +0,041] |
+
+- **Listas en confirmación (4.000 + 4.000 peticiones):** 8,72 de 10 productos en común, el primer puesto cambia en el 23,7%; fuera de la cohorte, lista ordenada idéntica en el 100%; 100% válidas.
+- **Lectura final según la regla escrita de antemano:** "apoya": la estimación puntual de compra es positiva en validación (+0,005) y en confirmación (+0,006). Pero es un apoyo débil: en los dos bloques todos los intervalos de compra incluyen el cero, y el tamaño es unas cuatro veces menor que el +0,024 de E-350. No hay señal de daño (ninguna medida negativa en confirmación). Sigue siendo cribado dentro de listas elegidas por nuestras propias políticas; no es una mejora de conversión demostrada. Decide la prueba online de D-390, donde lo más probable es un resultado no concluyente.
+
 ## E-391 — Ensayo de robustez y latencia del retador r6 acotado con el código real del writer (T-039, 2026-11-14 19:57 UTC)
 
 - **Tipo:** ensayo en seco en otra máquina (contenedor en la nube, no el Mac del writer). `tools/final_rehearsal.py`: carga `recsys/live.py --dry-run` real, cualquier escritura a RawTree lanza error. Tres pasadas: campeón (r3), retador (`policy.r6_target_r3.json` copiado a `data/policy.json` solo en esa máquina) y retador sin `lfm_mf.npz`.
