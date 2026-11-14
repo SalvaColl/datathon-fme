@@ -436,3 +436,21 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Segundo dato:** el modelo sobreestima sus propios slates. Para `v3-lfm-r1-n` predice 4,8 compras por 100 peticiones y el leaderboard dice 2,9; para `-k` predice 2,75 y son 2,15–2,33. La estimación "modelo sobre su slate" ya no sirve para decidir entre variantes parecidas.
 - **Implicación:** las mejoras de +0,05–0,1 pp del tablero (I-201, I-202, I-204, I-209) no se pueden validar offline. Sí se pueden leer en `api/state?by=model` sin ruido: 3 brazos a la vez dan unas 900 peticiones por brazo y hora en el segmento más pequeño fuera de home.
 - **What changed:** brazos de pesos de lfm configurables en caliente (D-210).
+
+## T-022 — páginas de producto y categoría, usuario conocido (Javi (agente), 2026-11-14, rama `javi/known-session`; IDs I-22x)
+### I-220 — lfm r2 gasta 3 de cada 10 slots en genéricos que no venden mientras deja fuera carritos pendientes
+- **Status / date / owner:** SUPPORTED offline (OBSERVED DATA + estimación), pendiente del modelo oculto · 2026-11-14 16:45 UTC · E-220, E-221, D-220
+- **Evidence:** usuario conocido en producto/categoría, 20.029 peticiones propias con 207 compras. Compras por 10.000 impresiones según qué es el producto para el usuario y en qué slot va (slot 1 / 2–3 / 4–6 / 7–10): carrito pendiente **102 / 52 / 24 / 21**; relacionado con lo último visto (misma subcategoría o categoría) 16 / 8 / 8 / 5; genérico (ni carrito, ni visto, ni relacionado) **11 / 5 / 0,9 / 0,6** (8 compras en 37.126 impresiones). Un carrito en los slots 7–10 vende 35 veces más que un genérico en esos slots.
+- **Qué hace r2 hoy (repetición de 2.372 peticiones):** por slate pone 2,96 carritos, 3,69 relacionados y **3,14 genéricos**; el usuario mediano tiene 9 carritos pendientes y en el 70% de las peticiones queda al menos un carrito fuera mientras se muestra un genérico. El motivo: el peso de calidad y de afinidad deja a un genérico muy bueno por encima de un carrito normal.
+- **Los carritos de menos calidad también venden:** carritos del cuartil bajo de calidad 30 compras por 10.000 (10 / 3.288), con afinidad 0–0,5 29 por 10.000 (14 / 4.857). Solo los de afinidad negativa no venden (1 / 1.445).
+- **Tamaño:** subir el peso del carrito mete 1,3 (brazo `c2`) o 2,8 (`c4`) carritos más por slate en lugar de genéricos y relacionados flojos. Estimación con tasas observadas por celda: +0,32 y +0,59 compras por 100 peticiones sobre 1,66 (+19% y +36%). Es un techo: el modelo paramétrico, que extrapola por afinidad y calidad, da entre 0 y +2%. Con un +10% real en este segmento serían unos +0,08 puntos globales.
+- **Implication:** probar en vivo `c2` y `c4` contra r2 (D-220); es la versión medible de I-203.
+
+### I-221 — El último producto visto solo vende en el slot 1 y solo si es afín y de calidad; r2 ya lo trata así
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA, N pequeño) · 2026-11-14 16:45 UTC · E-220
+- **Evidence:** último visto (vivo) en el slot 1: 12 compras en 498 (2,4%; carrito en slot 1: 0,92%); en el slot 2: 1 en 283; slots 3–10: 1 en 957. Por afinidad en el slot 1: tercio alto 10 / 166 (6,0%), medio 2 / 166, bajo 0 / 166. En usuarios nuevos igual: slot 1 18 / 428, slot 2 1 / 164.
+- **Por qué no hay brazo:** en la repetición, los últimos vistos afines que r2 no pone primeros tienen calidad mediana 1,4 frente a 5,1 de los observados en el slot 1; por debajo de 3 solo hay 18 impresiones (1 compra). No hay datos para decir que vendan. Es una zona sin explorar, no una mejora demostrada.
+
+### I-222 — Co-vista y vista→compra orgánicas no añaden nada sobre subcategoría y categoría
+- **Status / date / owner:** REJECTED · 2026-11-14 16:30 UTC · E-222
+- **Evidence:** matriz producto-producto de 291.581 sesiones orgánicas de hoy anteriores al corte. En hold-out temporal (253 clics, 85 compras): r2 AUC de compra 0,847, MRR de compra 0,536; con co-vista 0,848 / 0,532; con vista→compra 0,847 / 0,513; con ambas 0,849 / 0,514. Lo que la co-vista sabe ya lo dicen `ssub2` y `scat2`.
