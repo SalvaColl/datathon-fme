@@ -1,0 +1,108 @@
+# Shared insights, hypotheses, tests and discarded ideas
+
+**Living team notebook.** `challenge.md` is for verified organizer facts; use this file for hypotheses, actual observations and what failed. **Do not delete ideas** after experimentation — change status to `REJECTED`/`SUPERSEDED` and link to evidence.
+
+Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCKED`. A hypothesis is not `SUPPORTED` merely because it seems plausible. Add owner, date and experiment ID with results when available.
+
+## Verified facts that changed our approach (from official specification)
+
+| Insight | Evidence | Implication |
+|---|---|---|
+| ~**3 requests/second**; deadline 3 seconds from request `ts` to insertion at RawTree | [Official README](https://github.com/rawtreedb/datathon-fme-2026) | Optimize throughput and latency of polling + batched writer; not a leisurely single-request API |
+| ~**2M historical carousel logs** with `shown`, `propensity`, `clicked`, `purchased`; **12M organic events** | Official README | Historical ranking is feasible; avoid exposure and position bias |
+| Scoring: **50 conversion, 10 cold, 10 reliability, 30 jury** | [Challenge](https://datathon.rawtree.dev/) | Need real offline method and explainable pipeline; conversion primarily beats price/revenue |
+| Conversion uses **hidden expected probability**, not random observed purchase count | Official FAQ/README | Feedback is noisy; avoid chasing tiny short-term win/loss fluctuations |
+| Cold requests include new user OR request with a newly added product in `recent_views` | Official README | New-product description/category embedding becomes high priority |
+| **New shoppers/products/trends** introduced in Sunday final 10:00–12:00 CET; leaderboard dark | Official README | Generalization and live adaptation matter more than memorized old IDs |
+| Valid submission means **exactly 10 distinct active IDs**, ordered, submitted once | Official README | Stock cache and atomic last-minute eligibility check are mandatory |
+| **Starter offline notebook** contains IPS estimation of historic click rates | Official repo | Use as an initial *proxy* estimator and inspect variance/support, not a guaranteed oracle for full-slate conversion |
+| OpenAI/Claude coding agents **allowed**, team must explain work | Official FAQ | Keep code and validation understandable to jury |
+
+## Hypothesis registry (UNTESTED unless evidence attached)
+
+### I-001 — Strong personalized heuristic vs static best sellers
+- **Status:** IDEA (not yet empirically tested)
+- **Hypothesis:** Recent views, co-views, subcategory/brand affinity and organic purchase history beat the starter's all-time best sellers.
+- **Test:** B0 vs B1 on temporally separated `history_sessions`, particularly product-page sessions and cold requests; live results if safe to deploy.
+- **Risk:** Historical exposure bias; noisy old users; profile leakage.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-002 — Live trends from organic `shop.events`
+- **Status:** IDEA (data source confirmed; effect untested)
+- **Hypothesis:** Recent category/subcategory momentum improves predictions under moving trends and generalizes to final round.
+- **Test:** Compare global historic vs 15-min/1-hour/3-hour smoothed trends, sliding chronological holdout and live ablation; compare high-traffic and low-traffic categories.
+- **Risk:** Seasonal noise, biased buyer mix and few purchases; 50/s organic stream may make views stronger signal than own carousel feedback.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-003 — Optimize slots and slate diversity
+- **Status:** IDEA (position effect is official, diversity benefit untested)
+- **Hypothesis:** Rank strongest items early; optionally penalize close substitutes so ten-item carousel covers relevant alternatives.
+- **Test:** Fixed candidates/no penalty vs soft penalty; compare click/purchase proxies and category-specific slices.
+- **Risk:** Strongly category-focused shoppers might convert better on similar items.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-004 — Bounded Thompson Sampling or Bayesian exploration
+- **Status:** IDEA (feedback available; attribution/statistics not yet validated)
+- **Hypothesis:** A tiny exploration allocation helps react faster to new products and taste shifts.
+- **Test:** Reproducible shadow + carefully controlled live test against greedy ranker; report realized conversion uncertainty and cold performance.
+- **Risk:** Rewards may be one purchase/slate and highly dependent on slot; uncontrolled exploration harms reliability/conversion.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-005 — Supervised gradient-boosted ranking
+- **Status:** IDEA (training dataset now confirmed)
+- **Hypothesis:** Purchase-prediction ranker based on context, recent views, product metadata, history and organic signals beats engineered weights.
+- **Test:** LightGBM/CatBoost vs logistic/heuristic with time-split evaluation, IPS support checks, calibration and cold-start ablation.
+- **Risk:** Historical best-seller exposure/position bias; new product distribution shift; train/inference cost.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-006 — PPO isn't first priority
+- **Status:** IDEA, **DEFERRED** for engineering priority; not an experimental rejection
+- **Hypothesis:** Deep RL is slower/less robust than ranker + online bandit without access to a faithful simulator; purchase propensity mostly an immediate contextual objective.
+- **Test:** Only reconsider with a realistic simulator and evidence of long-term sequential reward advantage.
+- **Risk:** Wasting scarce build hours and overfitting to an imagined simulator.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-007 — Content-based cold start
+- **Status:** IDEA (new product descriptions and cold-start score confirmed)
+- **Hypothesis:** TF-IDF/text embeddings + category/brand/price priors make new-item ranking competitive with no interactions.
+- **Test:** Simulate product launches with temporal held-out catalogue products and compare to only subcategory/popularity priors.
+- **Risk:** Description text may be generic; embeddings may not separate simulated buyer preferences.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-008 — Inventory freshness more valuable than marginal ranker quality
+- **Status:** IDEA (invalid-slate penalty confirmed)
+- **Hypothesis:** Fast stock-update ingestion and strict eligibility validation produce a larger effective score gain than a small model AUC boost.
+- **Test:** Measure fallback `invalid` rate under different stock refresh cadences, in replay/stress tests and live feedback.
+- **Risk:** Extra RawTree query overhead; ensure freshness without violating deadline.
+- **Owner/evidence:** TBD / no team experiment yet.
+
+### I-009 — Historical propensity-aware evaluation
+- **Status:** INVESTIGATING (method provided by organizers; not yet run by team)
+- **Hypothesis:** Controlling for old-policy exposure helps select challengers better than naive replay, if full-slate support and effective sample size are adequate.
+- **Test:** Examine `starter/offline_eval.ipynb`; compare naive metric vs clipped IPS, effective sample size, variance, temporal slices and compatibility with purchase vs click reward.
+- **Risk:** Per-slot propensities may not give usable support for unseen slates; extremely high-variance inverse weights. Never claim unbiased conversion from invalid estimator.
+- **Owner/evidence:** TBD / public notebook exists, no team experiment yet.
+
+## Correction register (superseded briefing assumptions)
+
+- **SUPERSEDED:** `~1 request every 3 seconds` -> official **~3 requests/second**.
+- **SUPERSEDED:** `leaderboard every hour` -> official **updates every 10 min, rolling last hour**.
+- **SUPERSEDED:** `selling more / revenue might be official objective` -> **expected purchases** is core automatic objective; revenue tie-breaker.
+- **SUPERSEDED:** `lack of historical data` -> official historical impressions with propensities and organic events are available.
+- **SUPERSEDED:** `need to construct full simulator first` -> organizer notebook and real historical logs should be first evaluation target; synthetic league optional for robustness.
+
+## Record a new experiment-derived insight
+
+```markdown
+### I-XXX — Description
+- **Status / date / owner:** IDEA | INVESTIGATING | SUPPORTED | REJECTED | SUPERSEDED | BLOCKED
+- **Claim or hypothesis:**
+- **Evidence:** Source link or experiment ID, exact data/time range, sample size and metric
+- **Potential confounding/weakness:**
+- **What changed:** Strategy, feature, model, or ops
+- **Next action:**
+```
+
+## Rejected/superseded *tested* ideas
+
+_None tested/rejected by team yet. Corrected assumptions are listed above rather than erased._
