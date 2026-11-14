@@ -24,13 +24,23 @@ for line in ENV.read_text().splitlines() if ENV else []:
     k, _, v = line.partition("="); os.environ.setdefault(k.strip(), v.strip())
 API = os.environ.get('RAWTREE_API_URL', 'https://api.rawtree.com').rstrip('/'); TEAM = os.environ.get("TEAM_ID", '')
 transport = threading.local()
+class ReadOnlySession(requests.Session):
+    """Dry-run transport: the ONLY request that can leave the process is read-only SQL on /v1/query.
+    Anything else (POST /v1/tables/submissions, INSERT/ALTER/... SQL) raises before touching the network."""
+    def request(self, method, url, *args, **kwargs):
+        body = kwargs.get('json')
+        sql = str((body.get('sql') if isinstance(body, dict) else '') or '').lstrip().upper()
+        if not str(url).split('?')[0].endswith('/v1/query') or not sql.startswith(('SELECT', 'WITH')):
+            raise PermissionError(f'dry-run: refused {method} {str(url).split("?")[0]}')
+        return super().request(method, url, *args, **kwargs)
 def session():
     # requests.Session is mutable: never share one across poll/refresh/stock threads.
     if not hasattr(transport, 'http'):
-        transport.http = requests.Session()
+        transport.http = ReadOnlySession() if DRY else requests.Session()
         transport.http.headers['Authorization'] = f"Bearer {os.environ['RAWTREE_API_KEY']}"
     return transport.http
-DRY = "--dry-run" in sys.argv
+# --dry-run or RAWTREE_DRY_RUN=1: compute everything, never write (enforced by ReadOnlySession, not only by flags).
+DRY = "--dry-run" in sys.argv or os.environ.get('RAWTREE_DRY_RUN') == '1'
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand-r1"
 VERSION_Q = "v2-qrank-r1"
