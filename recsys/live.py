@@ -2,20 +2,21 @@
 
     .venv/bin/python live.py --dry-run     # compute answers, measure latency, do NOT write submissions
     .venv/bin/python live.py               # LIVE: writes to TEAM_ID.submissions (only ONE writer per team!)
+    .venv/bin/python live.py --takeover    # restart with no gap: warm up next to the running writer, then take its lock
 
 pull -> predict -> push like the starter. Falls back to in-stock best sellers on any per-request error.
 """
 from __future__ import annotations
-import os, sys, time, json, threading, traceback, zlib, collections
+import os, sys, time, json, threading, traceback, zlib, collections, gc, signal
 from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
     from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
-    from .serving import Journal, WriterLock, age, repair, serve
+    from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
     import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
-    from serving import Journal, WriterLock, age, repair, serve
+    from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
 
@@ -167,7 +168,7 @@ def initialize():
     except Exception as e: print('lfm not loaded, lfm variants disabled:', type(e).__name__, e, flush=True)
 
 state = {"live": None, "cat": None, "unavail": set(), "stock_out": set(), "stock_checked": 0,
-         "pools": None, "best": None, "ev_ts": "2026-11-14 07:00:00"}
+         "pools": None, "best": None, "ev_ts": os.environ.get("EVENTS_SINCE", "2026-11-14 07:00:00"), "cycles": 0}
 lock = threading.Lock()
 feature_lock = threading.Lock()
 
@@ -198,17 +199,41 @@ def refresh_catalog():
     unavail = set(cat.index[(~cat.active.astype(bool)) | (cat.last_change == "out_of_stock")])
     return cat, unavail
 
-def refresh_events():
-    rows = query(f"""SELECT user_id::String u, product_id::String i, toUInt32(countIf(event_type='view')) v,
+EVENT_SQL = """SELECT user_id::String u, product_id::String i, toUInt32(countIf(event_type='view')) v,
       toUInt32(countIf(event_type='add_to_cart')) a, toUInt32(countIf(event_type='purchase')) p, max(ts::DateTime64(3))::String mx
-      FROM shop.events WHERE ts::DateTime64(3) > toDateTime64('{state['ev_ts']}',3) GROUP BY u,i""", timeout=60)
-    with feature_lock:
-        for r in rows:
-            LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
-            if r["p"]: BOUGHT[r["u"]].add(r["i"])
-            if AP is not None: AP.add(r["u"], r["i"], r["v"])
-            if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"])
-    if rows: state["ev_ts"] = max(r["mx"] for r in rows)
+      FROM shop.events WHERE ts::DateTime64(3) > toDateTime64('{lo}',3){hi} GROUP BY u,i"""
+BACKFILL_WINDOW_H = 1.0     # first refresh after start: one query per hour of stream instead of one giant response
+EVENT_CHUNK = 2000          # rows applied per feature_lock hold; the serving loop gets the lock between chunks
+
+def event_windows(lo, now, hours=BACKFILL_WINDOW_H):
+    """[(lo, hi)] covering (lo, now]; the last window is open-ended (hi=None), exactly like the old single query."""
+    out, a = [], pd.Timestamp(lo)
+    step = pd.Timedelta(hours=hours)
+    while a + step < now:
+        out.append((str(a), str(a + step))); a = a + step
+    out.append((str(a), None))
+    return out
+
+def apply_events(rows, chunk=EVENT_CHUNK, pause=time.sleep):
+    """Apply (user, product) deltas in small lock holds. One hold for a whole start-up backfill (1.3 M rows by
+    15:00 UTC on 14 Nov) kept predict() waiting ~60 s for feature_lock: every restart lost ~300 requests to it."""
+    for k in range(0, len(rows), chunk):
+        with feature_lock:
+            for r in rows[k:k + chunk]:
+                LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+                if r["p"]: BOUGHT[r["u"]].add(r["i"])
+                if AP is not None: AP.add(r["u"], r["i"], r["v"])
+                if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+        if k + chunk < len(rows): pause(0.002)      # threading.Lock is not fair: yield so a waiting predict() gets in
+
+def refresh_events():
+    now = pd.Timestamp.now("UTC").tz_localize(None)
+    for lo, hi in event_windows(state["ev_ts"], now):
+        rows = query(EVENT_SQL.format(lo=lo, hi=f" AND ts::DateTime64(3) <= toDateTime64('{hi}',3)" if hi else ""), timeout=60)
+        apply_events(rows)
+        gc.freeze()      # these objects live until the process ends: keep them out of every later full collection (see settle_gc)
+        if hi: state["ev_ts"] = hi
+        elif rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
         fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != '' AND f.ts::DateTime64(3) > now() - INTERVAL 2 MINUTE")
         for r in fb:
@@ -239,10 +264,14 @@ class LiveTables(dict):
     def __init__(self):
         super().__init__(item=_Lookup(["it_v", "it_a", "it_p"]), usub=_Lookup(["us_v", "us_p"]), ucat=_Lookup(["uc_v", "uc_p"]),
                          utot=_Lookup(["ut_v", "ut_p"]), uit=_Lookup(["ui_v", "ui_a", "ui_p"]))
+        self._cat, self._sk = None, {}
     def add(self, u, i, v, a, p):
         c = fe.C
-        if i not in c.index: return
-        s, k = c.at[i, "sub"], c.at[i, "category"]
+        if c is not self._cat:      # new catalogue object (every refresh): product -> (sub, category) as a plain dict
+            self._sk = dict(zip(c.index, zip(c["sub"], c["category"]))); self._cat = c
+        sk = self._sk.get(i)
+        if sk is None: return
+        s, k = sk
         self["item"].add(i, (v, a, p)); self["uit"].add((u, i), (v, a, p)); self["usub"].add((u, s), (v, p))
         self["ucat"].add((u, k), (v, p)); self["utot"].add(u, (v, p))
     def item_frame(self):
@@ -444,6 +473,12 @@ def pull(seen):
         fresh.append(r)
     return fresh
 
+def post_batch(batch, remaining):
+    """The ONE place that writes to submissions (tools/handoff_rehearsal.py swaps it for a recorder)."""
+    response = session().post(f'{API}/v1/tables/submissions', params={'database': TEAM},
+        json=batch, timeout=(min(0.3, remaining/2), max(0.05, remaining-0.3)))
+    response.raise_for_status()
+
 def send_answers(reqs, answers, journal, seen, dry=False):
     """Recheck eligibility/deadline, durably claim once, then perform ONE POST."""
     _, unavailable, cat, _, best = snapshot()
@@ -479,9 +514,7 @@ def send_answers(reqs, answers, journal, seen, dry=False):
     started = time.perf_counter()
     remaining = min(3-age(r) for r in reqs if r['request_id'] in {a['request_id'] for a in batch})
     try:
-        response = session().post(f'{API}/v1/tables/submissions', params={'database': TEAM},
-            json=batch, timeout=(min(0.3, remaining/2), max(0.05, remaining-0.3)))
-        response.raise_for_status()
+        post_batch(batch, remaining)
     except Exception as exc:
         journal.finish([a['request_id'] for a in batch], 'uncertain')
         print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
@@ -494,17 +527,72 @@ def send_answers(reqs, answers, journal, seen, dry=False):
         oldest_age_ms=round(1000*max(age(r) for r in reqs), 1))), flush=True)
 
 
+STOP = threading.Event()          # set by SIGINT/SIGTERM: finish the current loop, release the lock, exit
+def request_stop(signum=None, frame=None): STOP.set()
+
+def arg_value(name, default=None, argv=None):
+    argv = sys.argv if argv is None else argv
+    return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else default
+
+def settle_gc():
+    """Move everything loaded so far out of the collector's reach. The process holds tens of millions of long-lived
+    objects (history + today's stream); a full collection walks all of them with the GIL held and freezes every
+    thread, the serving loop included. Frozen objects are skipped, so later full collections only see new garbage."""
+    t = time.perf_counter(); gc.collect()
+    print(json.dumps(dict(event='gc_settle', full_collection_ms=round(1000 * (time.perf_counter() - t), 1))), flush=True)
+    gc.freeze()
+
+_gc_started = [0.0]
+def gc_watch(phase, info):
+    """Log every collection that held the GIL for more than 200 ms (all threads are frozen meanwhile)."""
+    if phase == 'start': _gc_started[0] = time.perf_counter()
+    else:
+        ms = 1000 * (time.perf_counter() - _gc_started[0])
+        if ms > 200: print(json.dumps(dict(event='gc_pause', generation=info.get('generation'), ms=round(ms, 1))), flush=True)
+
+def warm_up(seconds=8.0, pause=0.25):
+    """Score real requests WITHOUT sending anything (takeover: the old writer is still answering them)."""
+    seen, n, worst, end = set(), 0, 0.0, time.monotonic() + seconds
+    while time.monotonic() < end and not STOP.is_set():
+        try:
+            reqs = [r for r in pull(seen) if age(r) <= 2.5][:8]
+            seen.update(r['request_id'] for r in reqs)
+            if reqs:
+                t = time.perf_counter(); predict(reqs)
+                n += len(reqs); worst = max(worst, time.perf_counter() - t)
+        except Exception as exc: print('warm-up error', type(exc).__name__, str(exc), flush=True)
+        time.sleep(pause)
+    print(json.dumps(dict(event='warm_up', scored=n, worst_batch_ms=round(1000 * worst, 1))), flush=True)
+
 def main():
     import tempfile
-    directory = Path(tempfile.gettempdir()) / ('rawtree-' + TEAM)
-    writer_lock = None if DRY else WriterLock(directory / 'writer.lock')
-    journal = None if DRY else Journal(directory / 'attempts.sqlite3')
+    directory = Path(os.environ.get('RAWTREE_LOCK_DIR') or Path(tempfile.gettempdir()) / ('rawtree-' + TEAM))
+    lock_path = directory / 'writer.lock'
+    # --takeover: load and warm up NEXT TO the running writer, then ask it to stop and start writing the moment the
+    # OS hands the lock over. This process never writes without the lock, so there are never two writers.
+    takeover = '--takeover' in sys.argv and not DRY
+    old_pid = int(arg_value('--replace-pid', 0)) or None      # only for an old writer that left no pid file
+    writer_lock = None if DRY or takeover else WriterLock(lock_path)
+    journal = None
     try:
+        signal.signal(signal.SIGINT, request_stop); signal.signal(signal.SIGTERM, request_stop)
+        gc.callbacks.append(gc_watch)
         initialize()
         threading.Thread(target=refresher, daemon=True).start()
         threading.Thread(target=stock_refresher, daemon=True).start()
-        while state['pools'] is None:
+        while state['pools'] is None and not STOP.is_set():
             time.sleep(0.1)
+        if takeover:
+            while (state['live'] is None or not state['stock_checked']) and not STOP.is_set():
+                time.sleep(0.1)              # first full refresh done: today's stream is applied, every model is live
+            warm_up()
+            settle_gc()
+            if STOP.is_set(): return
+            writer_lock = take_over(lock_path, old_pid)
+        else:
+            settle_gc()
+        if not DRY:
+            journal = Journal(directory / 'attempts.sqlite3')
         print('ready', 'DRY RUN' if DRY else 'LIVE', 'A/B 50/50' if AB else '', flush=True)
         seen = set()
         if not DRY:
@@ -520,7 +608,7 @@ def main():
             ctrl = [r for r in reqs if AB and zlib.crc32(r['user_id'].encode()) % 2 == 0]
             model = [r for r in reqs if r not in ctrl]
             return (predict(model) if model else []) + fallback_answers(ctrl, 'baseline-ctrl')
-        while True:
+        while not STOP.is_set():
             started = time.perf_counter()
             try:
                 reqs = pull(seen)
@@ -538,6 +626,7 @@ def main():
                 time.sleep(0.1)
             # Network round trips already consumed time; don't add a fixed .25s tax.
             time.sleep(max(0, 0.1-(time.perf_counter()-started)))
+        print(json.dumps(dict(event='stopped', reason='signal')), flush=True)
     finally:
         if journal:
             journal.close()

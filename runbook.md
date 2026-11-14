@@ -161,3 +161,17 @@ caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home 
 **Por la mañana.** `recsys/data/night_lab/report.md` tiene la tabla por brazo y por bloque (se reescribe al cerrar cada bloque; `python night_lab.py report` la regenera). Mira el rango entre réplicas antes de creer una diferencia, y `lift_ot` para separar ranking de latencia. Decidid el campeón y dejadlo fijo antes de las 09:00 CET.
 
 **Límites.** El leaderboard mide todo el tráfico junto: no separa home de product/category. El cold start (`lift cold`) sale de menos peticiones. La columna "ajuste" supone conversión constante dentro del bloque y solo es fiable con tráfico estable.
+
+## Reinicio sin pérdida y arranque — T-022 (2026-11-14)
+
+- **Reiniciar con relevo** (en el Mac, desde `recsys/`, con el writer viejo en marcha; no pararlo antes):
+  `caffeinate -i nohup ../../.venv/bin/python live.py --takeover >> data/live_main.log 2>&1 &`
+  Si el writer viejo es anterior a T-022 (no dejó `writer.pid`), añadir `--replace-pid <pid>`. El nuevo tarda 1–2 min en cargar y calentar; el viejo sigue respondiendo todo ese tiempo.
+- **Qué mirar en el log:** `{"event": "warm_up", ...}`, luego `{"event": "takeover", "old_pid": ..., "waited_ms": ..., "signals": [...]}` y `ready LIVE`. El viejo escribe `{"event": "stopped"}` (si es de T-022). Comprobar con `pgrep -fl live.py` que queda uno solo.
+- **Si el relevo falla** (`Takeover failed: ...`): el nuevo sale sin escribir nada y el viejo sigue. Señales al viejo: SIGINT al momento, SIGTERM a los 3 s, SIGKILL a los 6 s; se rinde a los 12 s.
+- **Parar a mano:** `kill -INT <pid>` o `kill <pid>`; el writer de T-022 termina el bucle en curso y suelta el candado.
+- **Arranque en frío** (sin writer previo): `python live.py` como siempre. Ya no hay bloqueo de ~60 s tras `ready`: responde desde el primer bucle con features históricas mientras aplica el día en trozos.
+- **Memoria:** durante el relevo hay dos procesos de ~2,8 GB. Cerrar lo que sobre en el Mac antes de lanzarlo.
+- **`EVENTS_SINCE`:** el writer aplica `shop.events` desde `2026-11-14 07:00:00` (fijo en el código hasta ahora). Para la final, arrancar con `EVENTS_SINCE='2026-11-15 07:00:00'` (u otra hora) si no se quiere arrastrar el sábado como "hoy"; la carga va por ventanas de una hora, así que un rango largo ya no puede agotar el tiempo de la consulta.
+- **Parones:** cualquier recolección de basura de más de 200 ms queda como `{"event": "gc_pause", ...}`. Si tras este cambio sigue habiendo bucles de varios segundos sin `gc_pause` al lado, la causa es otra (red o reposo del Mac).
+- **Ensayo sin escribir** (en otra máquina, nunca junto al writer): ver la cabecera de `tools/handoff_rehearsal.py`.
