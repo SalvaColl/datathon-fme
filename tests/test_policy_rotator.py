@@ -32,7 +32,7 @@ class RotatorTests(unittest.TestCase):
         state["teams"][0]["conversion"] = 0.4; self.assertIn("baseline", pr.guard_trips(pr.guard_reading(state), 99.0))
         self.assertIsNone(pr.guard_trips(pr.guard_reading({"teams": []}), 99.0))
 
-    # ---- T-044: absolute deadline, block size, served-policy check, phase balance ----
+    # ---- T-046: absolute deadline, block size, served-policy check, phase balance ----
     def test_until_must_be_absolute(self):
         self.assertEqual(pr.parse_utc("2026-11-15 07:00"), 1794726000)
         for bad in ("07:00", "2026-11-15", "mañana", ""):

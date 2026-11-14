@@ -1,4 +1,4 @@
-"""policy_rotator — alterna políticas completas de lfm en bloques fijos (T-042; seguridad y verificación T-044).
+"""policy_rotator — alterna políticas completas de lfm en bloques fijos (T-042; seguridad y verificación T-046).
 
     python policy_rotator.py check --plan r3,cx3,r3,og1 --block-min 15 --until "2026-11-15 07:00"
     python policy_rotator.py run   --plan r3,cx3,r3,og1 --block-min 15 --until "2026-11-15 07:00" --epoch e2
@@ -9,7 +9,7 @@ un solo brazo). `run` espera al siguiente múltiplo de 5 minutos UTC (o a `--sta
 cambio queda en `data/policy_changes.log` con hora UTC y motivo. Al terminar (hora límite, Ctrl-C, SIGTERM o guardia)
 deja la política segura (`--safe`, por defecto r3).
 
-Hora de fin (T-044): `--until` es una fecha y hora UTC ABSOLUTA ("YYYY-MM-DD HH:MM"). Una hora suelta ("07:00") se
+Hora de fin (T-046): `--until` es una fecha y hora UTC ABSOLUTA ("YYYY-MM-DD HH:MM"). Una hora suelta ("07:00") se
 rechaza: relanzada pasada esa hora saltaba al día siguiente y habría rotado durante la final. No arranca si el fin ya
 pasó, si el fin cae después del congelado (`--freeze`, por defecto 2026-11-15 08:00 UTC = 09:00 CET), si no cabe ningún
 bloque entero, o si `--block-min` no es un múltiplo positivo de 5.
@@ -18,7 +18,7 @@ Guardia: cada minuto lee el leaderboard público (ventana exacta de los últimos
 del equipo queda por debajo de `--min-on-time` en dos lecturas seguidas, o la conversión del equipo cae por debajo del
 baseline en dos lecturas seguidas, escribe la política segura y termina.
 
-Qué se sirvió de verdad (T-044): escribir `policy.json` no demuestra que el writer lo cargara. El leaderboard público
+Qué se sirvió de verdad (T-046): escribir `policy.json` no demuestra que el writer lo cargara. El leaderboard público
 da, por `model_version`, las peticiones de cada ventana y la hora de la primera y la última. El rotador calcula las
 etiquetas que debe emitir el brazo del bloque (las internas `v3-lfm-<tag>-k|-n|-kh|-nh`, o sus códigos públicos si
 existe `data/labels.json`, con la misma regla que live.py) y:
@@ -28,7 +28,7 @@ existe `data/labels.json`, con la misma regla que live.py) y:
 Un bloque sin verificar no debe entrar en la lectura. Las etiquetas públicas no se escriben ni en el log ni en ese fichero
 con su significado: solo cuentas por grupo (previsto / otro).
 
-Calendario y fase (T-044): `check` imprime, para el calendario completo, cuántos bloques de cada brazo caen en cada
+Calendario y fase (T-046): `check` imprime, para el calendario completo, cuántos bloques de cada brazo caen en cada
 cuarto de hora y cuántos dentro de una ráfaga de tendencia (`--bursts`, por defecto :30 de las horas UTC impares, 45
 minutos), y el sesgo esperado de cada retador frente al campeón si la ráfaga mueve nuestra distancia a la referencia
 `--burst-effect` puntos. Un cambio de plan es una época nueva (`--epoch`): se anota en el log y en cada línea de
