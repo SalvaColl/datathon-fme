@@ -289,3 +289,20 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Regla, fijada de antemano:** un retador sustituye a r3 solo si su diferencia emparejada media es positiva en las dos mitades de la noche y supera 2 errores típicos entre ciclos, con al menos 6 bloques válidos (a tiempo ≥ 99%), sin caída de la conversión cold y sin que las compras reales lo contradigan. Si no, sigue r3. Lectura única a las 07:15 UTC; elección a las 07:30, congelación a las 08:00.
 - **Límites de la rotación:** los primeros ~40 s de cada bloque todavía sirven la variante anterior (4% del bloque, sesga hacia cero). El estado del comprador (carritos, compras) pasa de un bloque al siguiente, así que es una comparación entre políticas alternadas, no entre usuarios separados.
 - **`cold_new` y `np1` (D-420):** quedan para después del relevo con el PR #41. `cold_new` no se puede probar sin el arreglo. Si el relevo llega después de las 01:45 UTC solo cabe la fase A; si llega después de las 04:30 UTC no cabe ninguna y la final va sin `cold_new` ni `np1`. `np1` sí puede entrar en la rotación como una variante más sin reinicio, porque no usa `lq`; es decisión de Javi.
+
+### D-422 — Enmiendas a D-421: emparejamiento por ráfagas y lectura continua con umbral secuencial
+- **Fecha:** 2026-11-14 23:40 UTC · Javi (agente, T-042). Escrito antes de leer ningún bloque de la rotación (empezó a las 23:00 UTC).
+- **Por qué (1), ráfagas:** la auditoría de reglas encontró ráfagas de una subcategoría de 45 minutos a y media de las horas impares UTC (09:30, 11:30, 13:30, 15:30, 19:30, 21:30; ninguna a las 17:30). Con la secuencia :00 r3, :15 cx3, :30 r3, :45 og1, el bloque de cx3 nunca cae en ráfaga y uno de sus dos vecinos r3 siempre. Comprobado aquí con el leaderboard (15:30–23:30 UTC, bloques con ≥ 99% a tiempo): equipo menos referencia −0,09 pt en ráfaga (6 bloques) y −0,14 en calma (17 bloques, desviación 0,08). La diferencia (+0,05) no es significativa por sí sola, pero el desequilibrio de diseño es real y sesgaría contra cx3 unos 0,03 pt, del orden del error típico.
+- **Cambio (1):** el emparejamiento principal usa solo vecinos r3 en el mismo estado (ráfaga o calma) que el bloque del retador. Para cx3 eso es el r3 de :00 en las horas impares y el de :30 en las pares; og1 conserva sus dos vecinos, que siempre comparten su estado. Las ráfagas reales de la noche se comprueban en `shop.events` y se pasan con `--bursts`; si una hora no tuvo ráfaga, sus bloques cuentan como calma. El emparejamiento con los dos vecinos se sigue imprimiendo (`paired_all_neighbours`).
+- **Por qué (2), lectura continua:** Javi (23:28 UTC) retira la lectura única de las 07:15 UTC y la espera hasta las 08:00: está despierto y decide sobre la marcha.
+- **Cambio (2):** se lee al cierre de cada ciclo de una hora (primera lectura a las 00:00 UTC) y se publica la tabla. Mirar muchas veces infla los falsos positivos, así que el umbral para actuar es más exigente al principio:
+
+| Bloques emparejados del retador | Sustituye a r3 si | Se descarta si |
+|---|---|---|
+| 3 o 4 | z ≥ 3,0 | z ≤ −2,5 |
+| 5 o 6 | z ≥ 2,5 y positivo en las dos mitades | z ≤ −2,0 |
+| 7 o más | z ≥ 2,0 y positivo en las dos mitades | z ≤ −2,0, o media + 2 errores típicos < +0,05 pt (no puede ser una mejora útil) |
+
+  z = diferencia emparejada media dividida por su error típico entre ciclos. Con menos de 3 bloques no se decide nada. Bloques con menos del 99% a tiempo no cuentan. Además, para sustituir: conversión cold sin caída de más de 2 errores típicos.
+- **Lo que no cambia:** equipo menos referencia por bloque, r3 como base, y que lo observado esta noche no se atribuye a la final. Un retador descartado se sustituye por el siguiente candidato en su hueco de la rotación; un retador que gana pasa a ser la base y la cuenta de bloques empieza de nuevo contra él.
+- **Aviso honesto:** estos umbrales reducen los falsos positivos de mirar cada hora, no los eliminan. Con 3 retadores y 8 lecturas, alguna señal de z ≈ 2 aparecerá por azar.
