@@ -103,6 +103,22 @@
    "se": 0.0035,
    "fitted_on": "2026-11-14 11:09:47.360000 .. 2026-11-14 18:33:39.355000 UTC",
    "requests": 79868
-  }
+  },
+  "provenance": [
+   {
+    "component": "base",
+    "fitted_on": "2026-11-14 11:09:47.360000 .. 2026-11-14 16:00:29.336000 UTC"
+   },
+   {
+    "component": "mf",
+    "fitted_on": "2026-11-14 11:09:47.360000 .. 2026-11-14 18:33:39.355000 UTC"
+   },
+   {
+    "component": "lfm_mf.npz",
+    "fitted_on": "2026-09-15 07:00:06.371000 .. 2026-11-14 07:08:13.507000 UTC",
+    "note": "SVD of shop.history_events only; nothing from the live stream"
+   }
+  ],
+  "note": "fitted_on is the base (r3) fit; the mf weight was fitted later, see provenance. Use lfm_build.fitted_until() for cutoffs."
  }
 }

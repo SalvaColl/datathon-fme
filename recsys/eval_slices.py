@@ -39,7 +39,15 @@ import numpy as np, pandas as pd
 import lfm, lfm_build as B
 
 RANDOM_MRR = float(np.mean(1.0 / np.arange(1, 11)))
-R3_FEATS = [f for f in lfm.FEATS if f != "cv"]
+# Feature sets, written out. They are NOT derived from lfm.FEATS: that list grows with every new feature, and a set
+# defined as "everything except cv" silently became r3 + mf when mf was added (T-039). Each set is the feature list of
+# the committed file it stands for (meta.feats of lfm_coef_r3.json / _r5.json / _r6.json); tests pin both.
+R3_FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home", "lq", "sbrand",
+            "nbp", "bsub", "hcart", "p40", "segcheap", "seglq", "ucat", "usub"]
+R3_CV_FEATS = R3_FEATS + ["cv"]
+R3_MF_FEATS = R3_FEATS + ["mf"]
+FEATURE_SETS = {"r3 features": R3_FEATS, "r1 features": B.R1_FEATS, "r3 + cv": R3_CV_FEATS, "r3 + mf": R3_MF_FEATS}
+assert all(set(v) <= set(lfm.FEATS) for v in FEATURE_SETS.values())
 
 
 def arg(name, default):
@@ -110,7 +118,7 @@ def main():
         if cache: pd.to_pickle((I, IM), cache)
 
     # cross-fitting over shoppers: each shopper is scored by weights fitted WITHOUT any of their requests
-    models = {"r3 features": R3_FEATS, "r1 features": B.R1_FEATS, "r3 + cv": lfm.FEATS}
+    models = dict(FEATURE_SETS)
     for m in models: I[m] = np.nan
     IM["masked, new-shopper weights"] = np.nan; IM["masked, returning weights"] = np.nan; I["p_r3"] = np.nan
     for f in range(FOLDS):

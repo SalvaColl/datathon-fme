@@ -272,10 +272,52 @@ def fit_add(I, base, add):
 R1_FEATS = lfm.FEATS[:11]
 
 
-def fitted_until(coef):
-    """End of the data a coefficient file was fitted on (meta.fitted_on = "start .. end UTC"), or None if it does not say."""
-    try: return pd.Timestamp(str(coef["meta"]["fitted_on"]).split("..")[1].replace("UTC", "").strip())
+def _end(text):
+    """End of a "start .. end UTC" range as a Timestamp; raises when it is not one."""
+    t = pd.Timestamp(str(text).split("..")[1].replace("UTC", "").strip())
+    if pd.isna(t): raise ValueError("no end")
+    return t
+
+
+def provenance(coef, _seen=()):
+    """[(component, end of the data it was fitted on)] for EVERY learned part of a coefficient file, or None when any
+    part does not say what it saw (missing provenance is never trusted).
+
+    Parts: the file's own fit (meta.fitted_on); every nested block of meta that carries a fitted_on (for example
+    meta.mf_fit); and, for a file built on another one (meta.base / meta.added, as fit_add writes them), one entry of
+    meta.provenance per inherited or added part: "base" plus each added feature. The base file itself is read too
+    when it is in the repository, so a base that was refitted later cannot hide behind an old note.
+    A file may also declare external learned inputs there (for example the factorisation behind `mf`)."""
+    try:
+        meta = coef["meta"]; out = [("fit", _end(meta["fitted_on"]))]
+        def nested(d, path):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    if "fitted_on" in v: out.append((path + k, _end(v["fitted_on"])))
+                    nested(v, path + k + ".")
+        nested(meta, "meta.")
+        declared = meta.get("provenance")
+        if declared is not None:
+            for e in declared: out.append((str(e["component"]), _end(e["fitted_on"])))
+        base, added = meta.get("base"), list(meta.get("added") or [])
+        if base or added:
+            names = {str(e["component"]) for e in (declared or [])}
+            if "base" not in names or any(f not in names for f in added): return None
+        if base:
+            path = lfm.HERE / str(base)
+            if path.exists() and str(base) not in _seen:
+                inner = provenance(json.loads(path.read_text()), _seen + (str(base),))
+                if inner is None: return None
+                out += [(f"{base}:{c}", t) for c, t in inner]
+        return out
     except Exception: return None
+
+
+def fitted_until(coef):
+    """End of the data ANY learned part of a coefficient file saw (the latest of provenance()), or None if some part
+    does not say."""
+    p = provenance(coef)
+    return max(t for _, t in p) if p else None
 
 
 def leaks(coef, cut):
@@ -392,7 +434,10 @@ def main():
     coef = fit_add(I, base, add) if add else fit(I, feats)
     coef["lq0"] = LF.lq0
     coef["meta"] = dict(fitted_on=f"{d.ts.min()} .. {d.ts.max()} UTC", requests=int(len(d)), buy_weight=BUY_W, C=C_REG, label="click, purchases x3", feats=feats)
-    if add: coef["meta"].update(base=sys.argv[sys.argv.index("--base") + 1], added=add, feats=base.get("meta", {}).get("feats", feats) + add)
+    if add:
+        coef["meta"].update(base=sys.argv[sys.argv.index("--base") + 1], added=add, feats=base.get("meta", {}).get("feats", feats) + add,
+                            provenance=[dict(component="base", fitted_on=base.get("meta", {}).get("fitted_on"))]
+                                       + [dict(component=f, fitted_on=coef["meta"]["fitted_on"]) for f in add])
     if "--no-write" not in sys.argv:
         out.write_text(json.dumps(coef, indent=1)); print("\nwrote", out.name)
     for seg in ("known", "new"): print(seg, coef[seg])
