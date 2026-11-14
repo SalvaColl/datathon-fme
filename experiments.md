@@ -278,3 +278,18 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Lectura:** `cv` ayuda en páginas de producto/categoría de usuarios conocidos (+0,20 pt) y no mueve a los nuevos; en home pierde. Una sola ronda de 30 minutos: la diferencia total (+0,06 pt) está dentro del ruido. Equipo en la ventana: 1,68% (4.º; team_06 1,97%, `reference` 1,78%), 99,98% a tiempo.
 - **Siguiente:** brazo fusionado `f5c05` (`cv` 0,5 en páginas, pesos de r3 en home) contra r3 desde las 18:25 UTC; política en `recsys/policy.candidate.json`. El campeón demostrado sigue siendo r3 solo (`recsys/policy.champion.json`) hasta que `f5c05` gane una ronda.
+
+### E-272 — r3 contra brazo fusionado `f5c05` (`cv` 0,5 en páginas, r3 en home), modelo oculto
+- **Date / owner:** 2026-11-14 19:00 UTC · Javi (agente) · writer en `4ee67ed`. Etiqueta: HIDDEN MODEL, ventana 18:25–18:55 UTC, reparto 50/50.
+
+| Segmento | r3 | `f5c05` |
+|---|---:|---:|
+| Producto/categoría, conocidos | 2,08% (1.539) | 1,67% (1.476) |
+| Producto/categoría, nuevos | 3,09% (626) | 2,35% (587) |
+| Home, conocidos (mismos pesos) | 0,44% (372) | 0,48% (372) |
+| Home, nuevos (mismos pesos) | 0,66% (165) | 0,85% (146) |
+
+- **Dos rondas juntas (E-271 + esta), páginas:** conocidos r3 1,83% (3.028) contra `cv` 0,5 1,72% (2.997); nuevos r3 2,85% (1.271) contra 2,48% (1.206). El +0,20 pt de la primera ronda se invierte a -0,41 en la segunda.
+- **Decisión:** `cv` a 0,5 RECHAZADO; campeón r3 solo (`recsys/policy.champion.json`). No borrar el código ni `lfm_coef_r5.json`.
+- **Lección de medida:** con ~1.500 peticiones por brazo, una ronda de 30 minutos se mueve ±0,4 pt entre rondas con el mismo par de brazos. No promover con una sola ronda; hacen falta dos rondas concordantes o una ventana de 1 h o más.
+- Equipo en la ventana: 1,79%, 2.º (team_06 2,04%, team_42 1,78%, `reference` 1,91%), 99,56% a tiempo.
