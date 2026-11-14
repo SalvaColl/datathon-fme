@@ -264,8 +264,8 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
 
 ### E-310 — Ventanas de estado: cuánto dura el valor de un carrito y de una compra, y qué cambia el interruptor (T-031)
-- **Date / owner / branch:** 2026-11-14 20:15 UTC · Javi (agente) · `javi/state-windows`. Etiqueta: LIVE FEEDBACK (descriptivo, sin controlar por el resto de señales) + medida de latencia. No es conversión del modelo oculto.
-- **Datos:** 76.969 peticiones respondidas (11:09–18:17 UTC), estado reconstruido a la hora de cada petición. La práctica dejó de emitir eventos y peticiones a las 18:31 UTC.
+- **Date / owner / branch:** 2026-11-14 18:40 UTC · Javi (agente) · `javi/state-windows`. Etiqueta: LIVE FEEDBACK (descriptivo, sin controlar por el resto de señales) + medida de latencia. No es conversión del modelo oculto.
+- **Datos:** 76.969 peticiones respondidas (11:09–18:17 UTC), estado reconstruido a la hora de cada petición.
 - **Carritos por antigüedad (compras por 10.000 impresiones de un producto en el carrito, no comprado):**
 
 | antigüedad del carrito | vuelven (n, compras) | nuevos (n, compras) |
