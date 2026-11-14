@@ -34,7 +34,7 @@ Product id (hex) vs historical purchase rate, 5,000 products: Spearman −0.005 
 `id mod 67` / `mod 69` Kruskal p = 0.30 / 0.81 / 0.81 / 0.09 (5 tests, none significant after correction). New ids
 interleave with old ones. No seed search was attempted.
 
-## H1 — today's carts reveal phrase/subcategory taste beyond lfm v2 (INCONCLUSO: same sign twice, not significant)
+## H1 — today's carts reveal phrase/subcategory taste beyond lfm v2 (DESCARTADO vs r5, see final re-run)
 
 lfm v2 (T-021) already models the purchase side: `nbp` (phrases shared with something bought today), `bsub`
 (same subcategory as a purchase), `aff10` with today's views, `cl` (the carted product itself). One new family, all
@@ -80,3 +80,20 @@ today's carts) and a refit with his `lfm_build.py`, served as an `lfm_arms` arm 
   shares, aimed at returning users). The cart family targets new users and is probably still residual, but this is
   **not re-tested**: the re-run should use r3's feature set as the control.
 - One day of data; the final round has only new shoppers, where the effect would matter most if it holds.
+
+## Final re-run against lfm r5 (17:55 UTC) — H1 DESCARTADO
+
+The pre-registered confirmation was re-run unchanged (family `ncp` + `csub`, fit on ts < 16:35 UTC, test on ts >= 16:35).
+The only difference is the control: the current `main` feature set (`4ee67ed`, lfm r5 = r3 + `ucat`/`usub` + `cv`, 20 features).
+The output JSON still names the control `lfm_v2`.
+
+Test: 147,194 impressions, 250 purchases, 852 clicks.
+
+| Model | AUC buy | AUC buy (new users) | Δ purchase log-lik vs control [95% CI] |
+|---|---|---|---|
+| lfm r5 features | 0.898 | 0.908 | — |
+| + `ncp`, `csub` | 0.900 | 0.912 | **−0.5 [−7.0, +6.6]** (−1.8 nats / 1,000 buys) |
+| negative control | 0.897 | 0.906 | −6.3 [−9.0, −3.8] |
+
+The cart signal measured against v2 is absorbed by r3/r5's user-category shares and graph co-occurrence: `csub` drops
+to ~0, and `ncp` keeps a weight but adds no likelihood. **H1: DESCARTADO.** No change proposed for Javi.
