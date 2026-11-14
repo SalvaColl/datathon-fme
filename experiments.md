@@ -331,3 +331,74 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Hallazgo:** en el corte de stock, main entrega 10 válidos pero el 96% de las peticiones cae al camino antiguo v1 (133 slates con un producto ya comprado). Arreglo en PR #33 (T-037, E-370).
 - **No cubierto:** el POST y el plazo de respuesta de extremo a extremo (los cubre `tools/handoff_rehearsal.py`), y un RawTree lento en vez de caído.
 
+
+### E-271 — Brazos de home (T-025) y ronda r3 contra r5 con `cv` a 0,5, modelo oculto
+- **Date / owner:** 2026-11-14 18:30 UTC · Javi (agente) · main `4ee67ed`. Etiqueta: HIDDEN MODEL (leaderboard, `api/state?by=model&from=&to=`).
+- **Brazos de home, 17:05–17:35 UTC, usuarios conocidos en home:** control (home de lfm r3) 0,49% (157 peticiones); `conv` 0,38% (167); `catbest` 0,21% (184); `trend` 0,14% (180). Ninguno gana al control: apagados a las 17:45 UTC (`data/home_arms.json.off`). Las listas genéricas rinden menos de la mitad que la lista personalizada. RECHAZADO; no borrar el código.
+- **r3 contra r5 con `cv` = 0,5 (brazo `r5c05`), 17:50–18:20 UTC, reparto 50/50:**
+
+| Segmento | r3 | r5 `cv` 0,5 |
+|---|---:|---:|
+| Producto/categoría, conocidos | 1,57% (1.489) | 1,77% (1.521) |
+| Producto/categoría, nuevos | 2,61% (645) | 2,61% (619) |
+| Home, conocidos | 0,79% (362) | 0,46% (432) |
+| Home, nuevos | 0,56% (168) | 1,05% (145) |
+| Total del brazo | 1,65% | 1,71% |
+
+- **Lectura:** `cv` ayuda en páginas de producto/categoría de usuarios conocidos (+0,20 pt) y no mueve a los nuevos; en home pierde. Una sola ronda de 30 minutos: la diferencia total (+0,06 pt) está dentro del ruido. Equipo en la ventana: 1,68% (4.º; team_06 1,97%, `reference` 1,78%), 99,98% a tiempo.
+- **Siguiente:** brazo fusionado `f5c05` (`cv` 0,5 en páginas, pesos de r3 en home) contra r3 desde las 18:25 UTC; política en `recsys/policy.candidate.json`. El campeón demostrado sigue siendo r3 solo (`recsys/policy.champion.json`) hasta que `f5c05` gane una ronda.
+
+### E-272 — r3 contra brazo fusionado `f5c05` (`cv` 0,5 en páginas, r3 en home), modelo oculto
+- **Date / owner:** 2026-11-14 19:00 UTC · Javi (agente) · writer en `4ee67ed`. Etiqueta: HIDDEN MODEL, ventana 18:25–18:55 UTC, reparto 50/50.
+
+| Segmento | r3 | `f5c05` |
+|---|---:|---:|
+| Producto/categoría, conocidos | 2,08% (1.539) | 1,67% (1.476) |
+| Producto/categoría, nuevos | 3,09% (626) | 2,35% (587) |
+| Home, conocidos (mismos pesos) | 0,44% (372) | 0,48% (372) |
+| Home, nuevos (mismos pesos) | 0,66% (165) | 0,85% (146) |
+
+- **Dos rondas juntas (E-271 + esta), páginas:** conocidos r3 1,83% (3.028) contra `cv` 0,5 1,72% (2.997); nuevos r3 2,85% (1.271) contra 2,48% (1.206). El +0,20 pt de la primera ronda se invierte a -0,41 en la segunda.
+- **Decisión:** `cv` a 0,5 RECHAZADO; campeón r3 solo (`recsys/policy.champion.json`). No borrar el código ni `lfm_coef_r5.json`.
+- **Lección de medida:** con ~1.500 peticiones por brazo, una ronda de 30 minutos se mueve ±0,4 pt entre rondas con el mismo par de brazos. No promover con una sola ronda; hacen falta dos rondas concordantes o una ventana de 1 h o más.
+- Equipo en la ventana: 1,79%, 2.º (team_06 2,04%, team_42 1,78%, `reference` 1,91%), 99,56% a tiempo.
+
+### E-280 — cold_lq como brazo de lfm (T-028), ensayo en seco, 14 nov 18:10–18:15 UTC
+
+- **Qué:** writer real en la nube con `--dry-run` (sin escribir), 5 minutos, `lfm_arms` = `r3` contra `c1` (mismos pesos r3 + `"lq": "cold"`). 300 productos nuevos en catálogo (tandas de 10:00, 14:00 y 18:00 UTC).
+- **Resultado:** 851 peticiones, 0 errores, 100% de slates válidos (10 distintos). Caducadas: 54 en el arranque en frío de la nube y 5 después. Bucle p50 138 ms, p95 357 ms.
+- **Productos nuevos en las impresiones:** r3 0,2% (6 de 3.290); c1 10,2% (306 de 3.090): conocidos 10,8%, nuevos 7,2%, home conocidos 10,4%, home nuevos 11,3%. Slates de c1 con al menos uno nuevo: 63%. Slot 1 nuevo: 10%.
+- **Límite:** solo comprueba que el brazo sirve y cuánto cambia la exposición. No dice nada de conversión: eso solo lo decide el leaderboard. La exposición queda varias veces por encima de la cuota orgánica de vistas (2,4% con 200 productos, E-CS01b), así que puede restar.
+
+> E-280 queda sustituido: medía la primera versión del brazo (todas las páginas, sin límite). Valen E-281 y E-282.
+
+### E-281 — replay por petición del brazo cold_lq, a fecha de cada petición (T-028, encargo C6). Solo diagnóstico
+
+- **Qué:** `python cold_lq_replay.py --pull` (solo lectura). 4.240 peticiones respondidas entre 14:00 y 18:19 UTC del 14 nov (1 de cada 5), cada una puntuada dos veces con los pesos r3: control y `"lq": "cold"`. Catálogo, precio, existencia y stock reconstruidos con `catalog_updates` hasta el instante de la petición; evidencia orgánica de los tramos de 10 minutos ya cerrados; estado del usuario con `state_asof`/`mix_asof`/`aff_asof`; exclusiones de comprados, historial caducado y sin stock como en el servicio. 52 snapshots.
+- **Validez:** 100% de slates válidos en los dos brazos (10 distintos, activos, no comprados). Home y peticiones sin vistas: 0 slates distintos de 855.
+- **Exposición de productos nuevos (control → brazo), páginas con vistas:** 0,18% → 3,89% de las impresiones (3.385 peticiones); slates con alguno 1,8% → 31,2%; slot 1 0,1% → 2,5%. Conocidos/producto 0,21% → 4,46%; conocidos/categoría 0,31% → 5,23%; nuevos/producto 0,04% → 2,13%; nuevos/categoría 0,00% → 1,72%.
+- **Correcciones:** 200 productos a las 14:00 y 300 a las 18:10, ninguno rechazado; 18–30 tocan el límite ±log(20); corrección media +0,54 a +0,58 en log-calidad, al alza en 2 de cada 3.
+- **No reconstruido:** compras hechas por nuestro carrusel (solo compras orgánicas en el estado; encargo C2), el retraso de refresco del writer (20 s) y la resolución de 10 minutos de la evidencia.
+- **No es conversión.** Sustituye a `cold_lq_slates.py` (E-CS01d), que aplicaba eventos hasta las 15:00 a peticiones anteriores y no reproducía stock ni historial caducado.
+
+### E-282 — ensayo en seco del brazo cold_lq acotado (T-028), 14 nov ~18:40 UTC, contenedor en la nube
+
+- **Qué:** writer real con `--dry-run` (no escribe), 4 minutos cada vez: A = dos brazos de control (r3, r3); B = r3 contra `c1` (`"lq": "cold"`). Se descartan los primeros 60 bucles.
+- **Validez:** 0 errores y 100% de slates válidos en los dos ensayos (B: 530 peticiones).
+- **Latencia del bucle (A → B):** p50 136 → 136 ms; p95 313 → 355 ms; p99 448 → 1.051 ms; máximo 3.781 → 2.399 ms; caducadas 5 → 4. Las colas son ruidosas en la nube (el máximo es del ensayo sin el brazo). El cálculo de correcciones ocupa unos 125–155 ms del hilo de refresco cada ciclo (~20–30 s) y no hace ninguna consulta.
+- **Exposición en B:** c1 conocidos 6,4% de impresiones nuevas (139 peticiones), c1 nuevos 1,9% (42); r3 0,2–0,5%; home de c1 0,0% (44 peticiones). 300 productos corregidos, 29 en el límite.
+- **Límite:** medido lejos del Mac; la latencia real hay que mirarla en el writer tras activar.
+
+### E-340 — replay a fecha de cada petición del modo `cold_new` (T-034). Solo diagnóstico, no conversión
+
+- **Qué:** `python cold_lq_replay.py --pull --mode cold_new --n 6000` (solo lectura). 6.534 peticiones respondidas entre 14:00 y 18:50 UTC del 14 nov, pesos r3, control contra `"lq": "cold_new"`, estado a fecha de cada petición (como E-281). 59 snapshots, hasta 300 productos corregidos, 29–30 en el límite, ninguno rechazado.
+- **Tráfico no objetivo (usuarios que vuelven, home, sin vistas):** 0 slates distintos de 4.987.
+- **Cohorte objetivo (usuario nuevo, producto/categoría con vistas):** 1.547 peticiones, 100% de slates válidos en los dos brazos; cambia el 19,1% de los slates y el 1,4% del slot 1; productos nuevos en las impresiones 0,05% → 2,06% (producto 0,06% → 1,87%; categoría 0,04% → 2,51%).
+- **Poca evidencia de sesión** (una sola vista reciente, sin carritos ni compras): 139 peticiones, 100% válidas, cambia el 15,8% de los slates, 0,00% → 1,73%. Con más evidencia (1.408): 19,4%, 0,06% → 2,10%.
+- **Latencia en el contenedor de la nube (no es garantía para el Mac):** camino de la petición, un slate de lfm: control p50 0,77 ms / p95 1,75 ms; brazo p50 0,76 ms / p95 1,71 ms. Refresco: correcciones p50 120 ms / p95 196 ms; `set_catalog` p50 18 ms / p95 28 ms, una vez por ciclo de refresco.
+- **No reconstruido:** compras hechas por nuestro carrusel en el estado offline (en el writer sí se excluyen), retraso de refresco y resolución de 10 minutos de la evidencia.
+
+### E-341 — ensayo en seco con `policy.cold_new_r3.json` (T-034), 14 nov ~19:05 UTC, contenedor en la nube
+
+- **Qué:** writer real con `--dry-run` (no escribe), 3,5 minutos. 0 errores, 100% de slates válidos, bucle p50 139 ms / p95 393 ms (445 peticiones tras el arranque, 4 caducadas).
+- **Etiquetas emitidas por lfm:** `r3-k` (204), `r3-kh` (54), `r3-nh` (23), `r3-n` (37) y `cn1-n` (34). No aparece ninguna etiqueta `cn1` fuera de la cohorte objetivo. Productos nuevos en las impresiones: `cn1-n` 1,76%, `r3-n` 0,27%.

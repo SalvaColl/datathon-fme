@@ -1,0 +1,1 @@
+{"variant": "lfm", "lfm_arms": [{"tag": "f5c05", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}}, {"tag": "cn1", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}, "lq": "cold_new"}]}
