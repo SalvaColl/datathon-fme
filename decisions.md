@@ -38,6 +38,18 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - OLD: no historical data assumed -> **historical propensities, sessions, organic events available**.
 - OLD: need server endpoint -> **continuous RawTree polling and insert loop, no recommendation webserver required**.
 
+### D-080 — Variante `trend` en el writer: candidatos y boost de subcategorías calientes
+- **Date / owner / status:** 2026-11-14 / Javi (agente, T-008) / **PROPOSED** (no aplicada; `live.py` es del dueño del writer)
+- **Question and alternatives:** ¿usar `recsys/trends.py` en `live.py`? Alternativas: (a) nada; (b) solo candidatos; (c) candidatos + multiplicador.
+- **Decision (propuesta):** (c), detrás de una variante `trend` en `policy.json`, apagada por defecto. Cambio de ~6 líneas en `live.py`:
+  1. `import trends` y, en `refresher()`, tras `refresh_events()`: `snap = trends.snapshot(query, cat["sub"].to_dict())` y guardarlo en `state["trend"]` (1,7 s en el hilo de refresco; si falla devuelve un snapshot neutro).
+  2. En `candidates()`: si `snap.hot`, añadir `snap.hot_items(pools["sub"], 10)` cuando no hay `recent_views` (home) o cuando la categoría de la última vista coincide con la de la subcategoría caliente.
+  3. En `predict()`: `X["s"] *= snap.multiplier(X.i.values)` (√lift con tope 3; vale exactamente 1,0 fuera de subcategorías calientes, así que sin ráfaga la variante es idéntica a v1).
+  - Mantener el filtro de "ya comprado por este usuario" también para estos candidatos (los ya comprados casi no se revenden en el carrusel, hallazgo del hilo de home).
+- **Why, evidence/experiment:** I-080, I-081, E-080.
+- **Affected modules/interfaces/owners:** `recsys/live.py` (dueño del writer). `fe.py` no cambia; el modelo no se reentrena.
+- **Rollout / rollback:** bloque de 10 min alineado con `updated_at` **mientras `python trends.py` muestre una subcategoría caliente**; comparar el bloque contra `baseline` y contra el bloque v1 anterior. Rollback = quitar `trend` de `policy.json`.
+- **Revisit condition:** resultado del bloque en vivo, o si las ráfagas de la tarde no son de subcategoría.
 ### D-081 — Variante `qrank` en el writer para páginas product/category
 - **Date / owner / status:** 2026-11-14 / Javi (agente, T-015) / **IMPLEMENTED en rama de integración, sin desplegar** (el despliegue lo decide el dueño del writer)
 - **Question and alternatives:** v1 pierde slots en otra categoría y en productos ya comprados (I-082). Alternativas: (a) reglas sobre v1 (quitar comprados y otra categoría); (b) sustituir el ranking de product/category por `qrank`; (c) nada.

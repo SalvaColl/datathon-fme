@@ -36,6 +36,8 @@ To retrain: `python train.py` (needs `data/hs.parquet` + `data/user_item_A.parqu
 | `live.py` | pull → predict → push loop: catalog/stock refresh, incremental live-event tables, candidates, model, guards |
 | `serving.py` | Deadline, at-most-once journal, writer lock and slate repair helpers used by `live.py` (Salva, T-014) |
 | `rt.py` | Tiny RawTree query helper (`python rt.py "SELECT ..."`) |
+| `trends.py` | Detector de subcategorías calientes en `shop.events` (15 min vs 3 h), multiplicador y candidatos; solo lectura (`python trends.py` muestra qué está caliente ahora) |
+| `trends_replay.py` | Replay offline de las tendencias de hoy (E-080): `python trends_replay.py --pull` |
 | `night_lab.py` | Laboratorio nocturno (T-016): rota `data/policy.json` / `data/d130.json` por bloques y mide cada variante contra el leaderboard; guardia y tabla de ablación. No escribe en RawTree. Ver `runbook.md` |
 | `qrank.py` | Ranker para product/category: calidad del producto × contexto, solo misma categoría, sin lo ya comprado (T-015, propuesta D-081) |
 | `qrank_build.py` | Construye y valida `data/qrank.joblib` con split temporal (`--pull` descarga los agregados) |
