@@ -51,10 +51,20 @@ def in_segment(device, region): return device == "android" and region in SEG_REG
 AFF_CAP, NEUTRAL = 0.35, 0.10
 
 
+LQ_MODES = ("cold", "cold_new")    # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm);
+                                   # "cold" = returning and new shoppers, "cold_new" = new shoppers only (T-034)
+LQ_PAGES = ("product", "category")   # ...only on these pages and only with recent views; home is never touched
+
+
+def lq_target(mode, is_new_user, page, rv) -> bool:
+    """Does a request get the corrected quality under arm mode `mode`? The single rule for scoring and for routing."""
+    return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
+
+
 class Snap:
     """Arrays aligned with the rows of AttrAffinity.A (one row per product). Built once per catalog refresh."""
 
-    def __init__(self, ids, A, cat: pd.DataFrame, unavail, lq: dict | None, lq0: float, hc=None):
+    def __init__(self, ids, A, cat: pd.DataFrame, unavail, lq: dict | None, lq0: float, hc=None, lq_cold: dict | None = None):
         n = len(ids); self.ids = ids; self.n = n; self.A = A[:n]
         self.row = {p: k for k, p in enumerate(ids)}
         c = cat.reindex(ids)
@@ -62,6 +72,16 @@ class Snap:
         self.cat = pd.factorize(c["category"])[0]; self.sub = pd.factorize(c["sub"])[0]; self.brand = pd.factorize(c["brand"])[0]
         g = (lq or {}).get
         self.lq = np.array([g(p, lq0) for p in ids], dtype=np.float64) - lq0
+        # T-028: corrected snapshot for arms with "lq": a COPY of the incumbent vector where only the products in lq_cold
+        # (cold_lq_arm.Corrector.corrections) change. Both vectors are read-only; None = no valid correction this refresh.
+        self.lq.flags.writeable = False
+        self.lqc = None
+        if lq_cold:
+            c = self.lq.copy()
+            for p, v in lq_cold.items():
+                k = self.row.get(p)
+                if k is not None and isinstance(v, (int, float)) and np.isfinite(v): c[k] = float(v) - lq0
+            if not np.array_equal(c, self.lq): c.flags.writeable = False; self.lqc = c
         price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c else np.full(n, 20.0)
         self.p40 = (price > 40).astype(float); self.cheap = (price < 20).astype(float)
         # home_cands keeps "viewed in the 60-day history, never carted" as one bitmap per user; map its bit order to ours
@@ -81,7 +101,7 @@ class Snap:
         return out
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -108,7 +128,8 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         X[:, 7] = (S.A @ S.A[last]) * ~inrv
         X[:, 10] = S.brand == S.brand[last]
     X[:, 8] = 1.0 if page == "home" else 0.0
-    X[:, 9] = S.lq
+    q = S.lq if lq is None else lq                      # lq: an arm's own quality vector (Snap.lqc), serving only
+    X[:, 9] = q
     bt = [k for k in (r(p) for p in bought_today) if k is not None]
     if bt:
         X[:, 11] = (S.A @ S.A[bt].T).max(axis=1)
@@ -116,7 +137,7 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         X[bt, 11] = 0.0; X[bt, 12] = 0.0
     if page == "home": X[:, 13] = (X[:, 1] > 0) | (X[:, 2] > 0)
     X[:, 14] = S.p40
-    if seg: X[:, 15] = S.cheap; X[:, 16] = S.lq
+    if seg: X[:, 15] = S.cheap; X[:, 16] = q
     if mix is not None and S.ucode is not None:         # mix = (views per category code, views per subcategory code)
         cv, sv = mix; t = float(cv.sum())
         X[:, 17] = ((cv[S.ucode] + UC_PRIOR / len(cv)) / (t + UC_PRIOR) - 1.0 / len(cv)) * (S.ucode >= 0)
@@ -134,6 +155,7 @@ class LiveFit:
     def __init__(self, coef: dict, history: pd.DataFrame | None = None):
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
+        self.alt_lq = {}              # arm tag -> "cold" | "cold_new" (T-028), see set_arms()
         self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
         self.lq0 = float(coef.get("lq0", 0.0)); self.meta = coef.get("meta", {})
         self.hcart, self.hbought = {}, {}
@@ -182,6 +204,7 @@ class LiveFit:
             alt[a["tag"]] = build(a)
             if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
         self.alt = alt
+        self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
 
     # ---- refresher thread ----
     def add(self, u, i, v=0, a=0, p=0):
@@ -190,10 +213,10 @@ class LiveFit:
         if p: self.lbought.setdefault(u, set()).add(i)
         if a: self.lcart.setdefault(u, set()).add(i)
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None):
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None):
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
-        S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc)
+        S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
@@ -263,8 +286,10 @@ class LiveFit:
         aff = aff_obj.affinity_all(req["user_id"], rv)
         seg = "new" if req.get("is_new_user") else "known"
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
-        X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None)
+        m = getattr(self, "alt_lq", {}).get(model) if model else None      # T-028: this arm asks for the corrected quality
+        page = req.get("page", "product")
+        X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
+                     mix=state[4] if len(state) > 4 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])
