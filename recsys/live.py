@@ -65,13 +65,20 @@ POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-")
 #   {"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}, {"tag": "x1", "w": {"known": {"islast": 3.0}}}]}
 # An arm with only a tag is the committed weights (control). Users are split evenly by hash across 2-4 arms.
 def clean_lfm_arms(raw):
-    arms = []
-    for a in (raw or [])[:4]:
-        tag, f, w = str(a.get('tag', '')), a.get('file'), a.get('w') or {}
-        ok = tag.isalnum() and len(tag) <= 8 and (f is None or (isinstance(f, str) and f.startswith('lfm_coef') and f.endswith('.json') and '/' not in f))
+    def spec(a):      # weights spec {"file": ..., "w": ...} -> cleaned dict, or None if anything is off
+        if not isinstance(a, dict): return None
+        f, w = a.get('file'), a.get('w') or {}
+        ok = f is None or (isinstance(f, str) and f.startswith('lfm_coef') and f.endswith('.json') and '/' not in f)
         ok = ok and isinstance(w, dict) and set(w) <= {'known', 'new'} and all(
             isinstance(o, dict) and all(k in lfm.FEATS and isinstance(v, (int, float)) and abs(v) <= 20 for k, v in o.items()) for o in w.values())
-        if ok: arms.append({'tag': tag.lower(), **({'file': f} if f else {}), **({'w': w} if w else {})})
+        return {**({'file': f} if f else {}), **({'w': w} if w else {})} if ok else None
+    arms = []
+    for a in (raw or [])[:4]:
+        if not isinstance(a, dict): continue
+        tag, main = str(a.get('tag', '')), spec(a)
+        home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     return arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
