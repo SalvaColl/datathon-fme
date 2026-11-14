@@ -442,3 +442,11 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Evidence (carrusel propio, 11:09–16:00 UTC, usuarios que vuelven, páginas de producto y categoría, productos no muertos):** producto que el usuario nunca echó al carrito, según la parte de sus vistas de 60 días que cae en la categoría del producto: más del 20% -> 20,4 compras por 10.000 impresiones (86 compras, 42.222 impresiones); 13–20% -> 3,1 (9 / 28.799); menos del 13% -> 1,3 (14 / 106.171). El 79% de esas compras sale del 24% de las impresiones. Con productos del carrito pasa lo mismo, más suave: 53,9 frente a 13,5–18,1.
 - **Qué más se midió y no se usa:** (a) el 73% de las compras del carrusel de estos usuarios son productos carrito-sin-comprar; tienen 14 vivos de media y lfm enseña 3; un modelo ajustado a compras pide algo más de carrito (peso `chn` 1,8 frente a 1,2) pero estima una ganancia de centésimas, y es justo lo que explora `lfm_tuner.py`. (b) En los eventos orgánicos el 30% de las compras de usuarios que vuelven son productos vistos en el historial y nunca echados al carrito, pero en el carrusel esos productos venden 3 veces menos que uno nuevo con la misma afinidad (5 compras frente a 14 esperadas): se quedan excluidos. Las compras orgánicas no sirven de guía directa para el carrusel.
 - **Use:** D-240.
+
+## Synthetic alpha (T-SA01, d4xn+Claude)
+
+### I-SA01 — Los carritos de hoy predicen la compra del usuario nuevo más allá de lfm v2 (frases y subcategoría), aún sin significación
+- **Status:** HYPOTHESIS con dos estimaciones del mismo signo (E-SA01c/d: +40 y +38 nats por 1.000 compras, IC incluyen 0; control plano). `ncp` y `csub` positivos en usuarios nuevos, ~0 en los que vuelven. **owner: d4xn** hasta repetir la confirmación con más compras.
+
+### I-SA02 — Ni la edad del producto ni su id llevan señal que no capture prior + actualización bayesiana
+- **Status:** REJECTED (E-SA01a/b). Las vistas orgánicas no son uniformes entre productos (dispersión 68, Spearman 0,97 con el histórico): la cuota de vistas orgánicas sí es una referencia de exposición para productos nuevos (relevante para D-CS01: 5,9% de exposición frente a 2,4% de cuota).

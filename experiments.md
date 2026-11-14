@@ -253,3 +253,14 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Validación 2, corte temporal (ajuste antes de 14:33 UTC, medida después):** AUC de compra 0,868 -> 0,900 (vuelve, 170 compras) y 0,865 -> 0,910 (nuevo, 116). El acierto del producto comprado entre los 3 primeros es mixto en slates servidos por lfm (0,64 -> 0,60 en los que vuelven), donde el orden registrado favorece a r1.
 - **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
 - **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.
+
+## E-SA01 — Búsqueda de alpha sintético en cold start (T-SA01, d4xn+Claude, `feat/team26-synthetic-alpha`)
+
+| ID | Datos | N | Resultado | Decisión |
+|---|---|---|---|---|
+| E-SA01a (H2) | `shop.events` orgánico por producto y 10 min hasta 16:10 UTC; referencia = receta de `live_quality` (prior + K=100) con datos anteriores a cada bloque; corrección de reloj; control con lanzamientos falsos | 200 productos nuevos, 2 tandas | O/E por edad 0–10 / 10–30 / 30–60 / 60–120 / 120+ min: descubrimiento 1,10 / 1,00 / 1,04 / 1,00 / 0,98; validación 1,12 / 1,07 / 1,15 / 0,95 / 1,09; todos los IC95 contienen 1; control 0,95–1,12 | REJECTED: la edad no aporta sobre prior + Bayes |
+| E-SA01b (IDs) | 5.000 productos, tasa histórica | 5 pruebas | Spearman id −0,005; dígitos y mod 67/69: p ≥ 0,09 | REJECTED |
+| E-SA01c (H1, descubrimiento) | `lfm_build.load/impressions` (features de lfm v2 en el instante de la petición) + familia de carritos de hoy; split 70/30 | test 165.588 impresiones, 318 compras | Δ log-verosimilitud de compra +12,8 [−3,8, +29,0]; AUC nuevos 0,887 → 0,900; control −7,3 | → confirmación preregistrada (sin `nbp2`) |
+| E-SA01d (H1, confirmación preregistrada 16:28 UTC) | entrenamiento ts < 16:35, test ≥ 16:35 (pull 17:10) | test 62.954 impresiones, 100 compras | +3,8 [−1,7, +10,2] (+38 nats/1.000 compras); AUC nuevos 0,898 → 0,911; control −0,3 | INCONCLUSO: repetir con ~300 compras de test |
+
+- **Limitaciones:** impresiones de nuestras propias políticas (predictivo entre lo mostrado, no contrafactual); compras reales con ruido. Detalle en `recsys/ALPHA_T-SA01.md`.
