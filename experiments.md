@@ -235,11 +235,31 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Límites:** medido en un contenedor de 4 núcleos, no en el Mac. Dos procesos a la vez ocupan ~2,8 GB cada uno (pico) durante el minuto de calentamiento. No se ha escrito nada en `submissions`. Comandos: `python -m unittest discover -s tests` (118 OK), `python live.py --dry-run`, y los tres pasos del ensayo.
 
 
-### E-K30 ? returning product/category users, cart ? phrase affinity
-- **Owner/branch/status:** Codex / `salva/k30`, base `main@d842407`; READY FOR REVIEW, UNTESTED ONLINE. No writer, policy edits, training, submissions or sealed league test access.
+### E-K30 - returning product/category users, cart x phrase affinity
+- **Owner/branch/status:** Codex / `salva/k30`, initial base `main@d842407`, latest `main@9e87814` integrated; READY FOR REVIEW, UNTESTED ONLINE. No writer, policy edits, training, submissions or sealed league test access.
 - **HYPOTHESIS:** Javi's `known-session` branch increases all cart weights. This separate arm gives pending carts a maximum +1 ranking logit only in proportion to existing phrase affinity above 0.10, saturating at 0.35; returning product/category requests with recent views only. Coefficients are frozen r2, identical in both arms. Bonus fixed before reading labels.
-- **OBSERVED DATA / OFFLINE DIAGNOSTIC:** coverage checked first (79,116 requests, 09:00?16:19 UTC). Cache: 600 previously served requests / 592 users, Nov 14 15:45?16:15 UTC (16:45?17:15 CET), after coefficient-fit end 15:14:22 UTC. Historical counts before window, today's events strictly before each request, catalogue updates as of request. 1,200 valid slates; 401/600 changed; pending-cart placements 3.020 ? 3.370/slate, affinity >=0.15 cart placements 1.693 ? 1.997. Zero mismatches in 1,200 off-target new-user/home probes. All 12 logged purchases included by both arms: no demonstrated uplift.
+- **OBSERVED DATA / OFFLINE DIAGNOSTIC:** coverage checked first (79,116 requests, 09:00-16:19 UTC). Cache: 600 previously served requests / 592 users, Nov 14 15:45-16:15 UTC (16:45-17:15 CET), after coefficient-fit end 15:14:22 UTC. Historical counts before window, today's events strictly before each request, catalogue updates as of request. 1,200 valid slates; 401/600 changed; pending-cart placements 3.020 -> 3.370/slate, affinity >=0.15 cart placements 1.693 -> 1.997. Zero mismatches in 1,200 off-target new-user/home probes. All 12 logged purchases included by both arms: no demonstrated uplift.
 - **Repeatability:** prediction SHA256 `90827573b85b1bcc6e02367f929edeb486c66765bda3bdb2396c20940085bcef`; manifest `b6328ca50cfc027b12dc1f0cd79116e05ec9ae15eb304898a0d66dce9c25c835`; repeated runs match. Data stay in ignored `data/local_eval/k30`.
 - **LOCAL LATENCY:** first control p95/p99 2.622/12.906 ms, candidate 3.722/11.573 ms. CPU-contended repeat: 13.088/93.666 and 12.912/79.361 ms. Windows, one BLAS thread; excludes network, locks, polling, journal and concurrency. Isolated rerun and full handoff in `recsys/K30.md`; these are not end-to-end latency or on-time claims.
 - **Limitations:** selection/position-biased logged purchase coverage, only 12 purchases, no practice propensities/IPS, no counterfactual conversion. Initial catalogue field history unverified; asynchronous refresh lag and private carousel-purchase exclusions omitted. Current laptop overrides unverified; test must clone the chosen champion. Do not choose the winner from a self-scored slate value.
-- **Checks:** `python -m unittest discover -s tests -v`: 148 tests OK, eight existing POSIX/takeover skips on Windows. `python tools/k30_replay.py prepare --limit 600`; `python tools/k30_replay.py evaluate`. No dependencies added. K30 is off unless its coefficient-file arm is loaded. Owner-controlled A/B and rollback: `recsys/K30.md`; plan/compare helpers do not activate or promote anything.
+- **Checks:** `python -m unittest discover -s tests -v`: 159 tests OK, eight existing POSIX/takeover skips on Windows. `python tools/k30_replay.py prepare --limit 600`; `python tools/k30_replay.py evaluate`. No dependencies added. K30 is off unless its coefficient-file arm is loaded. Owner-controlled A/B and rollback: `recsys/K30.md`; plan/compare helpers do not activate or promote anything.
+
+### E-240 — lfm r3: reparto de categorías del usuario (T-024)
+- **Date / owner / branch:** 2026-11-14 16:45 UTC / Javi (agente) / `javi/known-gap`. Solo lectura en RawTree; ningún envío.
+- **Datos:** 52.298 peticiones con feedback (11:09–16:00 UTC), 622 compras, 1.950 clics.
+- **Validación 1, usuarios apartados (mitad de usuarios para ajustar, la otra para medir, y al revés):** verosimilitud de qué producto de los 10 enseñados se compró o se clicó, corrigiendo la posición. r3 mejora a r1 en las 8 celdas; r2 no movía ninguna.
+
+| Segmento | Etiqueta | Slates de | N | r1 | r2 | r3 |
+|---|---|---|---:|---:|---:|---:|
+| vuelve | compra | políticas anteriores | 154 | -185,2 | -185,5 | **-164,1** |
+| vuelve | compra | lfm | 149 | -283,9 | -284,1 | **-278,5** |
+| vuelve | clic | políticas anteriores | 533 | -778,8 | -781,3 | **-738,8** |
+| vuelve | clic | lfm | 458 | -915,0 | -921,0 | **-903,4** |
+| nuevo | compra | políticas anteriores | 181 | -290,6 | -289,8 | **-279,8** |
+| nuevo | compra | lfm | 93 | -180,5 | -177,9 | **-172,1** |
+| nuevo | clic | políticas anteriores | 447 | -847,3 | -845,0 | **-826,9** |
+| nuevo | clic | lfm | 231 | -473,0 | -468,8 | **-458,2** |
+
+- **Validación 2, corte temporal (ajuste antes de 14:33 UTC, medida después):** AUC de compra 0,868 -> 0,900 (vuelve, 170 compras) y 0,865 -> 0,910 (nuevo, 116). El acierto del producto comprado entre los 3 primeros es mixto en slates servidos por lfm (0,64 -> 0,60 en los que vuelven), donde el orden registrado favorece a r1.
+- **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
+- **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.

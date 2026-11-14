@@ -32,7 +32,7 @@ def events_before(lf,aff,events,position,t):
     while position<len(events) and stamp(events[position]['ts'])<t:
         e=events[position]; kind=e['e']
         if kind=='view':aff.add(e['u'],e['i'],1)
-        lf.add(e['u'],e['i'],a=int(kind=='add_to_cart'),p=int(kind=='purchase'))
+        lf.add(e['u'],e['i'],v=int(kind=='view'),a=int(kind=='add_to_cart'),p=int(kind=='purchase'))
         position+=1
     return position
 

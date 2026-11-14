@@ -9,25 +9,27 @@ sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
 from recsys import lfm,live
 
 ROOT=Path(__file__).resolve().parent.parent
+CLONES={'lfm_coef.json':'lfm_coef_k30r1.json','lfm_coef_r2.json':'lfm_coef_k30.json','lfm_coef_r3.json':'lfm_coef_k30r3.json'}
 
 
 def plan(policy,champion_tag=None):
     if policy.get('variant')!='lfm':raise ValueError('Requires the existing lfm variant')
-    arms=live.clean_lfm_arms(policy.get('lfm_arms'))
+    arms=live.clean_lfm_arms(policy.get('lfm_arms')) if policy.get('lfm_arms') else [{'tag':'r1'}]
     selected=[a for a in arms if champion_tag is None or a['tag']==champion_tag]
     if len(selected)!=1:raise ValueError('Select exactly one champion with --champion-tag')
     winner=selected[0]
-    if winner.get('file')!='lfm_coef_r2.json':
-        raise ValueError('This artifact clones r2 only; another champion needs a separately reviewed coefficient clone')
+    source=winner.get('file','lfm_coef.json')
+    if source not in CLONES:
+        raise ValueError('Unknown base artifact; make a separately reviewed exact coefficient clone first')
     root=Path(lfm.__file__).parent
-    candidate=json.loads((root/'lfm_coef_k30.json').read_text())
-    base=json.loads((root/'lfm_coef_r2.json').read_text())
+    candidate=json.loads((root/CLONES[source]).read_text())
+    base=json.loads((root/source).read_text())
     if any(candidate[k]!=base[k] for k in ('known','new','lq0')) or candidate.get('score_patch')!='k30':
         raise ValueError('Candidate is not an exact coefficient clone')
-    if hashlib.sha256((root/'lfm_coef_r2.json').read_bytes()).hexdigest()!=candidate['meta']['k30_base_sha256']:
+    if hashlib.sha256((root/source).read_bytes()).hexdigest()!=candidate['meta']['k30_base_sha256']:
         raise ValueError('Base artifact changed; review and regenerate the clone first')
-    control={**copy.deepcopy(winner),'tag':'q7a'}
-    treatment={**copy.deepcopy(winner),'tag':'q7b','file':'lfm_coef_k30.json'}
+    control={**copy.deepcopy(winner),'tag':'q7a','file':source}
+    treatment={**copy.deepcopy(winner),'tag':'q7b','file':CLONES[source]}
     result=copy.deepcopy(policy); result['lfm_arms']=[control,treatment]
     return result
 

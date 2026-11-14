@@ -143,7 +143,21 @@ class PlanAndTimeTests(unittest.TestCase):
         self.assertEqual(a['w'],b['w']); self.assertEqual(b['file'],'lfm_coef_k30.json')
         self.assertEqual(result['note'],'keep'); self.assertEqual(source['lfm_arms'][1]['tag'],'b')
         with self.assertRaises(ValueError):plan(source)
-        with self.assertRaises(ValueError):plan({'variant':'lfm','lfm_arms':[{'tag':'r1'}]})
+        with self.assertRaises(ValueError):plan({'variant':'lfm','lfm_arms':[{'tag':'x','file':'lfm_coef_unknown.json'}]})
+
+    def test_all_current_base_versions_clone_exactly_with_offtarget_parity(self):
+        for base in (None,'lfm_coef_r2.json','lfm_coef_r3.json'):
+            winner={'tag':'best','w':{'known':{'chn':2.4}}}
+            if base:winner['file']=base
+            arms=plan({'variant':'lfm','lfm_arms':[winner]})['lfm_arms']
+            lf,aff=build(); lf.set_arms(arms)
+            for seg in ('known','new'):
+                np.testing.assert_array_equal(lf.alt['q7a'][0][seg],lf.alt['q7b'][0][seg])
+                self.assertEqual(lf.alt['q7a'][1][seg],lf.alt['q7b'][1][seg])
+            for r in (request(new=True),request(page='home',rv=())):
+                st=lf.user_state('u1')
+                np.testing.assert_array_equal(lf.scores(r,st,aff,model='q7a')[1],lf.scores(r,st,aff,model='q7b')[1])
+            self.assertEqual(plan({'variant':'lfm'})['lfm_arms'][1]['file'],'lfm_coef_k30r1.json')
 
     def test_future_and_equal_time_cart_purchase_and_view_do_not_leak(self):
         lf,aff=build()
