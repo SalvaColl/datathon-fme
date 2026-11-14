@@ -1,0 +1,4 @@
+{"variant": "lfm", "lfm_arms": [
+ {"tag": "r3", "file": "lfm_coef_r3.json"},
+ {"tag": "h3c", "file": "lfm_coef_r3.json", "home": {"file": "lfm_coef_r3.json", "w": {"known": {"hcart": 20.0}}}}
+]}

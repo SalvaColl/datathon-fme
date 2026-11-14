@@ -402,3 +402,13 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Qué:** writer real con `--dry-run` (no escribe), 3,5 minutos. 0 errores, 100% de slates válidos, bucle p50 139 ms / p95 393 ms (445 peticiones tras el arranque, 4 caducadas).
 - **Etiquetas emitidas por lfm:** `r3-k` (204), `r3-kh` (54), `r3-nh` (23), `r3-n` (37) y `cn1-n` (34). No aparece ninguna etiqueta `cn1` fuera de la cohorte objetivo. Productos nuevos en las impresiones: `cn1-n` 1,76%, `r3-n` 0,27%.
+
+## T-038 — carritos pendientes primero en home (IDs E-38x; rama `javi/home-cart-first`)
+### E-380 — Dry-run en la nube de `policy.home_cart_r3.json` por el camino del writer
+- **Date / owner:** 2026-11-14 19:40 UTC · Javi (agente) · solo lectura, fuera del Mac · `cd recsys && python lfm_build.py --pull --no-write && python explore_home_cart_first.py`
+- **Data:** feedback propio hasta las 19:16 UTC (87.561 peticiones). Muestra desde las 16:30 UTC: 3.000 peticiones de home con usuario que vuelve y 1.500 de fuera del objetivo, con el estado del usuario a la hora de cada petición (carritos, compras propias y orgánicas, mezcla de categorías).
+- **Integrity:** 9.000 slates, **0 no válidas**. En el objetivo: 0 de 3.000 incumplen "carritos primero en el orden del campeón" y 0 de 3.000 tienen un relleno distinto del orden del campeón. Fuera del objetivo: **0 de 1.500** slates distintas del control.
+- **Composición:** carritos pendientes vivos por usuario: ninguno 4,0%, de 1 a 9 44,7%, 10 o más 51,4% (mediana 10). Carritos por slate: campeón 4,79, brazo 7,26. Cambia el 82,5% de las slates; 7,5 productos de 10 en común.
+- **Latency:** campeón p50 0,91 ms, p95 1,91, p99 3,00; brazo 0,89 / 1,96 / 2,99.
+- **Limitations:** valida salida y composición, no conversión. Sin retraso de refresco asíncrono.
+- **Decision:** listo para prueba controlada (D-380), detrás de cold_new y r6. Tests: 232 OK (9 nuevos en `tests/test_home_cart_first.py`).
