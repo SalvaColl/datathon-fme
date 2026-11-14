@@ -33,7 +33,7 @@ def pull():
     from rt import q
     team = __import__("os").environ.get("TEAM_ID", "team_26")
     fb = q(f"""SELECT request_id::String request_id, toJSONString(shown) shown, served_by::String served_by,
-        clicked::String clicked, purchased::String purchased FROM {team}.feedback WHERE request_id::String != '__init__'""")
+        clicked::String clicked, purchased::String purchased, ts::String fb_ts FROM {team}.feedback WHERE request_id::String != '__init__'""")
     t0 = q(f"SELECT min(ts::DateTime64(3))::String t FROM {team}.feedback WHERE request_id::String != '__init__'").t[0]
     rq = q(f"""SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user::Bool new_user,
         context.page::String page, context.device::String device, context.region::String region, toJSONString(recent_views) rv FROM shop.requests
@@ -51,6 +51,9 @@ def pull():
         FROM (SELECT product_id, category, subcategory, brand, price_eur, description, '' v FROM shop.catalog
               UNION ALL SELECT product_id, category, subcategory, brand, price_eur, description, toString(ts) FROM shop.catalog_updates)
         GROUP BY product_id""").to_parquet(DATA / "lfm_cat.parquet")
+    # every catalogue state with its time (base catalogue: empty ts), so replays can rebuild price / existence / stock as of a request
+    q("""SELECT product_id::String product_id, '' ts, price_eur::Float64 price, is_active::Bool active, 'base' change FROM shop.catalog
+         UNION ALL SELECT product_id::String, ts::String, price_eur::Float64, is_active::Bool, change::String FROM shop.catalog_updates""").to_parquet(DATA / "lfm_catlog.parquet")
     print("pulled", len(fb), "feedback rows,", len(ev), "cart/purchase rows", flush=True)
 
 
@@ -86,7 +89,70 @@ def load():
         v["t"] = pd.to_datetime(v.t) + pd.Timedelta(minutes=10)            # usable once its bucket has closed
         for u, i, t, n in zip(v.u.values, v.i.values, v.t.values, v.n.values): views.setdefault(u, []).append((t, aff.pid[i], n))
     aff.today = views
+    # Replay extras ride on `aff` (like aff.today) so load() keeps its 5-tuple for existing callers.
+    aff.fbuys = feedback_buys(d)
+    aff.catlog = CatLog(pd.read_parquet(DATA / "lfm_catlog.parquet"), LF.snap) if (DATA / "lfm_catlog.parquet").exists() else None
     return d, LF, aff, carts, buys
+
+
+FB_LAG = np.timedelta64(30, "s")      # the writer reads its feedback once per refresh cycle (~20 s): a carousel purchase is usable this long after its feedback row
+
+
+def feedback_buys(d):
+    """{user: {product: time the purchase became usable}} from our own carousel feedback. These purchases are NOT in
+    shop.events (676 of 695 on 14 Nov), and the scored model treats them as already bought (organizer note)."""
+    out = {}
+    if "fb_ts" not in d.columns: return out
+    b = d[d.purchased != ""]
+    for u, i, t in zip(b.user_id.values, b.purchased.values, pd.to_datetime(b.fb_ts).values):
+        t = t + FB_LAG; cur = out.setdefault(u, {}).get(i)
+        if cur is None or t < cur: out[u][i] = t
+    return out
+
+
+class CatLog:
+    """Catalogue as of a moment: which products existed, which were in stock, and their price.
+    Built from shop.catalog (state before the event) + every row of shop.catalog_updates (full product state + ts).
+    at(ts) -> (exists, unavailable, price) arrays aligned with the snapshot rows. Cheap when called with increasing ts.
+    NOT reconstructable (the replay uses the latest value): product quality `lq` (one snapshot), description phrases,
+    category / subcategory / brand of a product, and the writer's own refresh delay (catalogue ~1 cycle, stock ~seconds)."""
+
+    def __init__(self, log: pd.DataFrame, S):
+        self.n = S.n; r = S.row.get
+        base = log[log.change == "base"]; up = log[log.change != "base"].copy()
+        self.exists0 = np.zeros(S.n, dtype=bool); self.unav0 = np.zeros(S.n, dtype=bool); self.price0 = np.full(S.n, np.nan)
+        for p, pr, ac in zip(base.product_id.values, base.price.values, base.active.values):
+            k = r(p)
+            if k is not None: self.exists0[k] = True; self.unav0[k] = not ac; self.price0[k] = pr
+        up["t"] = pd.to_datetime(up.ts); up = up.sort_values("t", kind="stable")
+        self.ev = [(t, r(p), float(pr), bool(ac), ch) for t, p, pr, ac, ch in zip(up.t.values, up.product_id.values, up.price.values, up.active.values, up.change.values) if r(p) is not None]
+        self._reset()
+
+    def _reset(self):
+        self.k = 0; self.last = None
+        self.exists, self.unav, self.price = self.exists0.copy(), self.unav0.copy(), self.price0.copy()
+
+    def at(self, ts):
+        ts = np.datetime64(ts)
+        if self.last is not None and ts < self.last: self._reset()
+        while self.k < len(self.ev) and self.ev[self.k][0] <= ts:          # an update stamped exactly at ts is already in force
+            _, k, pr, ac, ch = self.ev[self.k]; self.k += 1
+            self.exists[k] = True; self.price[k] = pr
+            self.unav[k] = (not ac) or ch == "out_of_stock"
+        self.last = ts
+        return self.exists, self.unav, self.price
+
+    def price_features(self, X, rows, ts, seg):
+        """Overwrite the price-derived columns of X (rows = snapshot rows of X's rows) with the price as of ts."""
+        _, _, price = self.at(ts); pr = price[rows]; ok = ~np.isnan(pr)
+        X[ok, lfm.FEATS.index("p40")] = (pr[ok] > 40)
+        if seg: X[ok, lfm.FEATS.index("segcheap")] = (pr[ok] < 20)
+        return X
+
+    def ineligible(self, ts):
+        """Row mask: not yet launched or out of stock / inactive as of ts."""
+        exists, unav, _ = self.at(ts)
+        return ~exists | unav
 
 
 def aff_asof(aff, u, rv, ts):
@@ -97,10 +163,12 @@ def aff_asof(aff, u, rv, ts):
     return (aff.A @ vec + attr_affinity.SHRINK * attr_affinity.NEUTRAL) / (vec.sum() + attr_affinity.SHRINK)
 
 
-def state_asof(LF, carts, buys, u, ts):
-    """Same triple as LiveFit.user_state, using only events before the request."""
+def state_asof(LF, carts, buys, u, ts, fbuys=None):
+    """First four parts of LiveFit.user_state, using only events before the request. fbuys: feedback_buys(d); those
+    purchases count as bought (and as bought today, as the writer does) once their feedback was readable."""
     ts = np.datetime64(ts)
     bt = {i for i, t in buys.get(u, {}).items() if t < ts}
+    if fbuys: bt |= {i for i, t in fbuys.get(u, {}).items() if t < ts}
     b = bt | LF.hbought.get(u, set())
     lc = {i for i, t in carts.get(u, {}).items() if t < ts} - b
     hc = {i: a for i, a in (LF.hcart.get(u) or {}).items() if i not in b and i not in lc}
@@ -117,20 +185,31 @@ def mix_asof(LF, aff, u, ts):
     return LF.user_mix(u, asof=today)
 
 
+def replay_state(LF, aff, carts, buys, u, ts):
+    """EXACTLY what LiveFit.user_state returns when serving (5 parts, the category mix included), as of the request.
+    Use this for every replayed LF.slate()/LF.scores() call: with a 4-part state the model serves WITHOUT ucat/usub
+    while the same replay values the slate WITH them (the E-240/E-270 report bug)."""
+    return state_asof(LF, carts, buys, u, ts, getattr(aff, "fbuys", None)) + (mix_asof(LF, aff, u, ts),)
+
+
 def impressions(d, LF, aff, carts, buys):
-    """One row per (request, shown product): features, slot, labels, dead flag."""
-    S = LF.snap; rows = []; meta = []
+    """One row per (request, shown product): features, slot, labels, dead flag. `inel` = the catalogue log says the
+    product was not launched or not in stock at that moment (a diagnostic of the reconstruction, not a filter).
+    d must be sorted by ts (load() does it): the catalogue cursor only moves forward cheaply."""
+    S = LF.snap; rows = []; meta = []; catlog = getattr(aff, "catlog", None)
     for r in d.itertuples():
-        st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
-        idx = [S.row.get(p, -1) for p in r.shown]
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx], mix=mix_asof(LF, aff, r.user_id, r.ts),
-                         bought_today=bt, seg=lfm.in_segment(r.device, r.region))
+        b, lc, hc, bt, mix = replay_state(LF, aff, carts, buys, r.user_id, r.ts)
+        idx = [S.row.get(p, -1) for p in r.shown]; safe = [k if k >= 0 else 0 for k in idx]; seg = lfm.in_segment(r.device, r.region)
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=safe, mix=mix, bought_today=bt, seg=seg)
+        inel = None
+        if catlog is not None:                       # shown products get the price they had; eligibility is only a diagnostic here
+            catlog.price_features(X, np.array(safe), r.ts, seg); inel = catlog.ineligible(r.ts)
         stale = S.stale(r.user_id)
         for s, (p, k) in enumerate(zip(r.shown, idx)):
             dead = k < 0 or p in b or (stale is not None and stale[k] and p not in hc and p not in lc)
-            rows.append(X[s]); meta.append((r.Index, s + 1, int(p == r.clicked), int(p == r.purchased), int(dead)))
+            rows.append(X[s]); meta.append((r.Index, s + 1, int(p == r.clicked), int(p == r.purchased), int(dead), int(inel is not None and k >= 0 and inel[k])))
     I = pd.DataFrame(np.array(rows), columns=lfm.FEATS)
-    M = pd.DataFrame(meta, columns=["rid", "slot", "clk", "buy", "dead"])
+    M = pd.DataFrame(meta, columns=["rid", "slot", "clk", "buy", "dead", "inel"])
     I = pd.concat([M, I], axis=1); I["ls"] = np.log(I.slot)
     return I.merge(d[["new_user", "page", "ts"]], left_on="rid", right_index=True)
 
@@ -179,12 +258,30 @@ def fit_add(I, base, add):
             if np.abs(step).max() < 1e-8: break
         se = np.sqrt(np.diag(np.linalg.inv(H)))
         w = dict(base[seg]["w"]); w.update({f: round(float(v), 4) for f, v in zip(add, th[2:])})
+        # intercept, slot and the added weights moved, so the base file's click->purchase calibration no longer applies:
+        # refit it on the rows this function was given (training rows only when the caller passes the training split)
+        from sklearn.linear_model import LogisticRegression
+        c = LogisticRegression(C=100.0, max_iter=5000).fit((off + Z @ th).reshape(-1, 1), a.buy)
         out[seg] = dict(base[seg], w=w, b=round(float(th[0]), 4), slot=round(float(th[1]), 4), n=int(len(a)), clicks=int(a.clk.sum()),
+                        cal=[round(float(c.intercept_[0]), 4), round(float(c.coef_[0][0]), 4)],
                         buys=int(a.buy.sum()), added={f: dict(w=round(float(v), 4), se=round(float(s), 4)) for f, v, s in zip(add, th[2:], se[2:])})
     return out
 
 
 R1_FEATS = lfm.FEATS[:11]
+
+
+def fitted_until(coef):
+    """End of the data a coefficient file was fitted on (meta.fitted_on = "start .. end UTC"), or None if it does not say."""
+    try: return pd.Timestamp(str(coef["meta"]["fitted_on"]).split("..")[1].replace("UTC", "").strip())
+    except Exception: return None
+
+
+def leaks(coef, cut):
+    """True when a learned artifact saw data from the evaluation period (or does not say what it saw): it must not be
+    scored on a hold-out that starts at `cut`."""
+    t = fitted_until(coef)
+    return t is None or t >= pd.Timestamp(cut)
 
 
 def holdout(I, test_rids, coefs):
@@ -213,15 +310,20 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
     S = LF.snap; res = []
     rng = np.random.default_rng(0); rids = list(test_rids)
     if len(rids) > max_n: rids = list(rng.choice(rids, max_n, replace=False))
+    rids = sorted(rids, key=lambda i: d.ts[i]); catlog = getattr(aff, "catlog", None)
     class AsOf:                                    # affinity as the writer sees it at that moment
         def __init__(self, ts): self.ts = ts
         def affinity_all(self, u, rv): return aff_asof(aff, u, rv, self.ts)
     for r in d.loc[rids].itertuples():
-        st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
+        st = replay_state(LF, aff, carts, buys, r.user_id, r.ts); b, lc, hc, bt, mix = st      # 5 parts: the slate below is built with the category mix
         seg_flag = lfm.in_segment(r.device, r.region)
         req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
         seg = "new" if r.new_user else "known"
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix_asof(LF, aff, r.user_id, r.ts))
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix)
+        excl = ()
+        if catlog is not None:
+            catlog.price_features(X, np.arange(S.n), r.ts, seg_flag); inel = catlog.ineligible(r.ts)
+            excl = {S.ids[k] for k in np.nonzero(inel)[0]}          # candidate universe as of the request (S.ok is today's)
         stale = S.stale(r.user_id)
         def value(items):
             v = 0.0
@@ -230,7 +332,7 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
                 if k is None or p in b or (stale is not None and stale[k] and p not in hc and p not in lc): continue   # dead: ~0
                 v += float(p_buy(coef, seg, X[k:k + 1], np.array([s + 1]))[0])
             return v
-        new = LF.slate(req, st, AsOf(r.ts))
+        new = LF.slate(req, st, AsOf(r.ts), exclude=excl)
         res.append((seg, r.page == "home", (r.mv or "?") if r.served_by == "team" else "FALLBACK", int(r.purchased != ""),
                     value(r.shown), value(new) if new else np.nan, len(set(new or ()) & set(r.shown))))
     R = pd.DataFrame(res, columns=["seg", "home", "mv", "buy", "v_logged", "v_new", "overlap"])
@@ -252,7 +354,7 @@ def main():
     d, LF, aff, carts, buys = load()
     I = impressions(d, LF, aff, carts, buys)
     print(len(d), "requests,", len(I), "impressions,", int(I.buy.sum()), "buys,", int(I.clk.sum()), "clicks; dead impressions:",
-          int(I.dead.sum()), "with", int(I[I.dead == 1].buy.sum()), "buys")
+          int(I.dead.sum()), "with", int(I[I.dead == 1].buy.sum()), "buys; shown while not launched / out of stock per the catalogue log:", int(I.inel.sum()))
     cut = pd.Timestamp(sys.argv[sys.argv.index("--cut") + 1]) if "--cut" in sys.argv else d.ts.quantile(0.7)
     train = I[I.ts < cut]; test_rids = d.index[d.ts >= cut]
     print("time split at", cut, "| train requests", int((d.ts < cut).sum()), "test", len(test_rids))
@@ -265,13 +367,27 @@ def main():
                 print(f"{f} {seg}: impressions with {f}>0 {len(nz)} ({len(nz) / len(a):.1%}), clicks {int(nz.clk.sum())}, buys {int(nz.buy.sum())}"
                       f" -> {1e4 * nz.buy.mean():.1f} buys per 10k vs {1e4 * z.buy.mean():.1f} without")
     cands = {"r1 features, refit": fit(train, R1_FEATS), "all features, refit": fit(train, lfm.FEATS)}
-    if add: cands = {"base " + sys.argv[sys.argv.index("--base") + 1]: base, "base + " + ",".join(add): fit_add(train, base, add)} | cands
+    hbase = base                                  # the base used for the HOLD-OUT (the file itself is still what gets written)
+    if add:
+        bname = sys.argv[sys.argv.index("--base") + 1]
+        if leaks(base, cut):                       # E-270: r3 was fitted through 16:00 and scored on a hold-out starting 15:30
+            bfeats = [f for f in (base.get("meta", {}).get("feats") or lfm.FEATS) if f in lfm.FEATS and f not in add]
+            hbase = fit(train, bfeats); bname += " REBUILT on the training split"
+            print(f"cutoff: {sys.argv[sys.argv.index('--base') + 1]} was fitted through {fitted_until(base)} (hold-out starts {cut}); "
+                  f"for the hold-out its {len(bfeats)} features are refitted on the training rows only")
+        cands = {"base " + bname: hbase, "base + " + ",".join(add): fit_add(train, hbase, add)} | cands
     try:
         old = json.loads(lfm.ART.read_text())
-        if all("cal" in old[k] for k in ("known", "new")): cands = {"committed " + lfm.ART.name: old} | cands
+        if all("cal" in old[k] for k in ("known", "new")):
+            if leaks(old, cut): print(f"cutoff: committed {lfm.ART.name} fitted through {fitted_until(old)} overlaps the hold-out; left out of the table")
+            else: cands = {"committed " + lfm.ART.name: old} | cands
     except Exception: pass
+    print("provenance: hold-out starts", cut, "| every row of the table was fitted on requests before it | graph:",
+          "history events only" if lfm.GRAPH.exists() else "none", "| quality lq: one snapshot (qrank.joblib, history), not as-of",
+          "| catalogue as-of:", "yes" if getattr(aff, "catlog", None) is not None else "NO (lfm_catlog.parquet missing, run --pull)",
+          "| carousel purchases as bought:", "yes" if getattr(aff, "fbuys", None) else "NO (fb_ts missing, run --pull)")
     holdout(I, test_rids, cands)
-    report(d, I, LF, aff, carts, buys, fit_add(train, base, add) if add else fit(train, feats), test_rids)
+    report(d, I, LF, aff, carts, buys, fit_add(train, hbase, add) if add else fit(train, feats), test_rids)
     coef = fit_add(I, base, add) if add else fit(I, feats)
     coef["lq0"] = LF.lq0
     coef["meta"] = dict(fitted_on=f"{d.ts.min()} .. {d.ts.max()} UTC", requests=int(len(d)), buy_weight=BUY_W, C=C_REG, label="click, purchases x3", feats=feats)
