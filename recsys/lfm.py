@@ -24,7 +24,7 @@ best first. No candidate lists: 5,100 products x 11 features is one numpy matrix
 No RawTree calls, no writes. Weights live in lfm_coef.json (refit: `python lfm_build.py --pull`).
 """
 from __future__ import annotations
-import json, math
+import json, math, zlib
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -39,8 +39,8 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          "cv",
          # r6 (T-035): collaborative filtering, the shopper's 60-day history factorised against everybody else's
          "mf",
-         # T-036: product launched during the event (no 60-day history). Our own carousel sold these ~10 times more often
-         # than lfm expected for returning shoppers (16 buys vs 1.6 expected, E-360); weight 0 in every committed file
+         # T-039: product launched during the event (no 60-day history). Our own carousel sold these ~10 times more often
+         # than lfm expected for returning shoppers (16 buys vs 1.6 expected, E-390); weight 0 in every committed file
          "newp"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
@@ -62,12 +62,20 @@ AFF_CAP, NEUTRAL = 0.35, 0.10
 
 LQ_MODES = ("cold", "cold_new")    # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm);
                                    # "cold" = returning and new shoppers, "cold_new" = new shoppers only (T-034)
+X_HI = 60                          # exploration arm: the last slot is drawn from ranks 11..60
+X_MODES = ("new", "known")         # arm key "explore": true = every shopper, "new" / "known" = only that kind of shopper
 LQ_PAGES = ("product", "category")   # ...only on these pages and only with recent views; home is never touched
 
 
 def lq_target(mode, is_new_user, page, rv) -> bool:
     """Does a request get the corrected quality under arm mode `mode`? The single rule for scoring and for routing."""
     return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
+
+
+def x_target(mode, is_new_user, page, rv) -> bool:
+    """Does a request get the exploration slot under arm mode `mode` (True | "new" | "known")? Pages with views only."""
+    if not (mode is True or mode in X_MODES) or not rv or page not in LQ_PAGES: return False
+    return mode is True or (mode == "new") == bool(is_new_user)
 
 
 class Snap:
@@ -91,7 +99,7 @@ class Snap:
                 k = self.row.get(p)
                 if k is not None and isinstance(v, (int, float)) and np.isfinite(v): c[k] = float(v) - lq0
             if not np.array_equal(c, self.lq): c.flags.writeable = False; self.lqc = c
-        # T-036: 1.0 for products launched during the event; None (feature stays 0) when the caller does not know them
+        # T-039: 1.0 for products launched during the event; None (feature stays 0) when the caller does not know them
         self.newp = np.isin(np.array(ids, dtype=object), list(newp)).astype(np.float64) if newp else None
         price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c else np.full(n, 20.0)
         self.p40 = (price > 40).astype(float); self.cheap = (price < 20).astype(float)
@@ -172,6 +180,7 @@ class LiveFit:
     def __init__(self, coef: dict, history: pd.DataFrame | None = None):
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
+        self.alt_x = {}               # arm tag -> True | "new" | "known": exploration in the last slot (T-039)
         self.alt_lq = {}              # arm tag -> "cold" | "cold_new" (T-028), see set_arms()
         self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
         self.lq0 = float(coef.get("lq0", 0.0)); self.meta = coef.get("meta", {})
@@ -227,6 +236,7 @@ class LiveFit:
             if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
         self.alt = alt
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
+        self.alt_x = {a["tag"]: a["explore"] for a in arms if a.get("explore") is True or a.get("explore") in X_MODES}   # T-039, see slate()
 
     # ---- refresher thread ----
     def set_window(self, day_start=None, carts="persistent"):
@@ -385,4 +395,20 @@ class LiveFit:
             # More than 20 of the 30 best are in `exclude` (stock moved since the snapshot was built, e.g. a slow
             # catalogue refresh during a stock shock): look further down instead of handing the request to the old path.
             out = [S.ids[k] for k in np.argsort(-s) if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
+        xm = getattr(self, "alt_x", {}).get(model) if model else None
+        if len(out) == n and x_target(xm, req.get("is_new_user"), req.get("page", "product"), req.get("rv")):
+            out = self._explore(req, S, s, out, exclude)
         return out if len(out) == n and len(set(out)) == n else None
+
+    def _explore(self, req, S, s, out, exclude):
+        """T-039 exploration arm: the LAST slot (10% of the impressions, ~3% of a slate's expected purchases) shows one
+        product drawn uniformly from ranks 11..X_HI of this request's own ranking: valid, in stock, not bought, just not
+        prioritised. Product/category pages with recent views only. Deterministic per request; any problem keeps `out`."""
+        try:
+            order = np.argsort(-s)[:X_HI + len(exclude) + len(out)]
+            pool = [S.ids[k] for k in order if np.isfinite(s[k]) and S.ids[k] not in exclude and S.ids[k] not in out][:X_HI - len(out)]
+            if not pool: return out
+            key = str(req.get("request_id") or "") + "|" + str(req.get("user_id")) + "|" + "|".join(req.get("rv") or [])
+            return out[:-1] + [pool[zlib.crc32(key.encode()) % len(pool)]]
+        except Exception:
+            return out

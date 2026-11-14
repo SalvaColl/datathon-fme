@@ -86,8 +86,9 @@ def clean_lfm_arms(raw):
         tag, main = str(a.get('tag', '')), spec(a)
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
         lqm = a.get('lq')                                      # T-028/T-034: "cold" | "cold_new" = corrected quality for today's products
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {})})
+        xp = a.get('explore')                                  # T-039: true = exploration arm (last slot from ranks 11..60); "new" / "known" = only for that kind of shopper
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -362,7 +363,7 @@ def make_pools(cat, unavail, T):
 # U_ITEMS loaded by initialize(), never on import or inside the serving loop.
 
 def new_products(cat, max_share=0.25):
-    """T-036: products launched during the event = in the live catalogue without a 60-day quality (QR.q). None (the lfm
+    """T-039: products launched during the event = in the live catalogue without a 60-day quality (QR.q). None (the lfm
     feature `newp` stays 0, every arm serves as before) when qrank is not loaded or the set looks wrong (over 25%)."""
     try:
         if QR is None or not QR.q: return None

@@ -253,8 +253,8 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Regla:** gana quien tenga más conversión en las filas de conocidos (producto/categoría y home) de la misma ventana; los nuevos no cambian (peso 0). Si r6 gana, siguiente ronda con el peso al doble (`"w": {"known": {"mf": 0.125}}`), que se cambia sin reiniciar.
 - **Vuelta atrás:** quitar el brazo de `policy.json`. Sin `lfm_mf.npz` la feature vale 0 y todo se comporta como antes.
 
-### D-360 — Brazo `np1` (peso para productos lanzados durante el evento, usuarios conocidos en páginas). Lo activa y revierte Javi
-- **Fecha / propone:** 2026-11-14 20:30 UTC · Javi (agente, T-036). Evidencia I-360, E-360.
+### D-390 — Brazo `np1` (peso para productos lanzados durante el evento, usuarios conocidos en páginas). Lo activa y revierte Javi
+- **Fecha / propone:** 2026-11-14 20:30 UTC · Javi (agente, T-039). Evidencia I-390, E-390.
 - **Qué:** tras un reinicio con relevo que cargue `lfm.py` y `live.py` de esta rama, política `recsys/policy.newp_r3.json`: `r3` contra `np1` = r3 con `"w": {"known": {"newp": 1.0}}`. Solo cambia usuarios conocidos en producto/categoría con vistas.
 - **Lectura:** ventana fija de 30 minutos, fila de conocidos en páginas de cada brazo, mirando `conversion` y también `cold_conversion` con `cold_requests` (es el tramo "conocido con producto nuevo en las vistas"). Confirmar con un segundo bloque antes de promover (E-272). Si gana dos veces, siguiente brazo con 1,9.
 - **Se quita si:** 0,25 pt por debajo a los 30 minutos, o envíos inválidos. Rollback sin reinicio: quitar el brazo de `lfm_arms`.
