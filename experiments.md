@@ -82,3 +82,28 @@ The **primary metric is expected conversion per request** in the final round (50
 ```
 
 Sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-fme-2026/blob/main/starter/offline_eval.ipynb
+
+## T-013 — home y usuarios nuevos (IDs E-13x; rama `javi/home-new-users`)
+
+### E-130 — Score de home de 6 pesos: split temporal en histórico y transferencia a feedback en vivo
+- **Date / owner / branch:** 2026-11-14 12:50 UTC · agente de Javi · `javi/home-new-users` · `python recsys/home_eval.py fit`
+- **Comparison:** orden registrado / solo conversión orgánica del producto / score `home_cands` (logística: carrito, subcategoría comprada, cuota de categoría, usuario desconocido, log conv. orgánica, log popularidad, slot).
+- **Data:** `history_sessions` página home, 400.549 sesiones × 10; features de usuario y producto acumuladas hasta el día anterior a cada sesión (`home_feats.py`, `merge_asof` sin coincidencias exactas); filas de productos ya comprados excluidas (I-130). Train < 2026-11-04 (3,26M filas), test ≥ 2026-11-04: 681.943 filas, **47 compras, 380 clics**.
+- **Results (test, slot=0 al puntuar):** AUC por impresión compra 0,890 / clic 0,771. Dentro de la slate, compra hit@1 / MRR: aleatorio 0,04 / 0,28, orden registrado 0,34 / 0,53, conv. orgánica 0,43 / 0,63, score 0,43 / 0,61 (N=47). Clic: orden registrado 0,27 / 0,47, score 0,28 / 0,48 (N=380).
+- **Transferencia a vivo (feedback servido por el equipo, sin comprados ni `recent_views`, features solo de histórico):** AUC de clic home 0,720 (16.857 filas, 36 clics, 7 compras; AUC compra 0,845), home conocidos 0,723, home nuevos 0,606, otras páginas 0,733 (70.367 filas, 245 clics, 78 compras; AUC compra 0,818). Referencias: el slot mostrado 0,66–0,70, solo conv. orgánica 0,57–0,65.
+- **Limitations:** dentro de la slate histórica (una sola categoría) el score no mejora al ranking por conversión orgánica: su valor está en elegir candidatos entre categorías, que el histórico no permite medir por slate. N de compras pequeño (47 y 7). El AUC en vivo no usa el slot, pero las slates en vivo las eligió v1.
+- **Decision:** pesos fijados en `home_cands.W`; candidato a variante `home` (D-130).
+
+### E-131 — Feedback en vivo por relación previa usuario–producto
+- **Date / owner:** 2026-11-14 12:41 UTC · agente de Javi · `python recsys/home_eval.py live` (solo lectura)
+- **Data:** `team_26.feedback` con `served_by='team'` unido a `shop.requests`, 10.977 peticiones, 11:09–12:41 UTC; relación calculada con `history_events` completo.
+- **Results:** tabla en I-130. Comprado 1 compra / 21.113 impresiones; visto sin carrito 0 / 9.734; carrito sin compra 29 / 9.293; sin relación 71 / 69.630.
+- **Decision:** excluir comprados y vistos-sin-carrito del histórico (D-130).
+
+### E-132 — Repetición de las peticiones home en vivo a través de `HomeCands` (estado solo de histórico) y comprobación en seco
+- **Date / owner:** 2026-11-14 12:55 UTC · agente de Javi · `python recsys/home_eval.py slate` y `dry` (solo lectura, no escribe en `submissions`)
+- **Data:** 3.200 peticiones home con feedback (2.246 de usuarios conocidos, 954 nuevos); objetivo proxy: compras ORGÁNICAS del mismo usuario en `shop.events` posteriores a la petición.
+- **Results:** composición de lo mostrado en vivo a conocidos: 22,6% comprado, 13,8% visto sin carrito, 8,7% carrito pendiente; con `home_cands`: 0% / 0% / 54,1%. Peticiones cuyo usuario compra después orgánicamente (por primera vez) algo de la slate: conocidos **36 / 279 (12,9%)** frente a 6 / 279 (2,2%) de lo mostrado en vivo; nuevos 9 / 93 (9,7%) frente a 3 / 93 (3,2%).
+- **Integrity / latency:** en seco sobre las últimas 2.000 peticiones home y el catálogo actual (5.100 productos, 37 no disponibles): 2.000 / 2.000 slates con 10 ids distintos y en stock; 0,11–0,16 ms por petición; construir el índice 7,7 s; `refresh` 0,02 s.
+- **Limitations:** la compra orgánica no es la compra del carrusel (orgánicamente se recompra, en el carrusel no); N pequeño en nuevos (93). No hay medida del modelo oculto: falta el bloque de 10 min en el leaderboard.
+- **Decision:** pedir prueba en vivo vía `policy.json` (D-130). No promovido.

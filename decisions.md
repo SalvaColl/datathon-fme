@@ -37,3 +37,21 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 ```
 
 Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-fme-2026
+
+### D-130 — Filtrar productos "muertos" en todas las páginas y variante `home` con `recsys/home_cands.py`
+- **Date / owner / status:** 2026-11-14 · agente de Javi (T-013) · **PROPOSED** (requiere tocar `recsys/live.py`, que no es mío; decide el dueño del writer)
+- **Question and alternatives:** (a) seguir con v1 tal cual; (b) solo filtrar de los candidatos lo ya comprado y lo visto-sin-carrito del histórico; (c) además responder las peticiones sin `recent_views` con `HomeCands.slate()` en vez del GBM.
+- **Decision proposed:** (b) primero, en un bloque de 10 min alineado con `updated_at`; si el bloque mejora frente al baseline, añadir (c).
+- **Why, evidence:** I-130 / E-131 (28% de nuestras impresiones son de productos que en vivo dan 1 compra en 30.847), I-131 / E-130, E-132.
+- **Cambio mínimo en `live.py` (4 puntos, todo en memoria, sin consultas nuevas):**
+  ```python
+  import home_cands                                                   # arriba
+  HC = home_cands.HomeCands(pd.read_parquet("data/user_item_all.parquet"), fe.C)   # junto a BASE (7,7 s al arrancar)
+  # refresh_events(): al lado de LIVE.add(...)  ->  HC.add(r["u"], r["i"], r["v"], r["a"], r["p"])   (y HC.add(u, i, 0, 0, 1) con el feedback)
+  # refresher(): tras make_pools(...)           ->  HC.refresh(cat, unavail)
+  # candidates(): antes del return              ->  out = HC.drop_dead(req["user_id"], out)             # (b)
+  # predict(): si not r["rv"] y policy == "home" ->  items = HC.slate(r["user_id"])                      # (c), sin pasar por el GBM
+  ```
+- **Affected modules/owners:** `recsys/live.py` (Javi). `fe.py` no cambia. El fallback `best` de `predict` sigue rellenando si faltan candidatos.
+- **Rollout / rollback:** nueva variante en `policy.json` (p. ej. `v1_nodead`, `home`); volver a `v1` en caliente. Comprobar antes con `live.py --dry-run`.
+- **Revisit condition:** si el bloque de leaderboard no mejora, o si en la final (compradores nuevos) el histórico deja de aplicar: entonces solo queda la parte de usuario desconocido y el carrito del propio stream.

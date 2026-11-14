@@ -148,3 +148,26 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 ## Rejected/superseded *tested* ideas
 
 _None tested/rejected by team yet. Corrected assumptions are listed above rather than erased._
+
+## T-013 — home y usuarios nuevos (agente de Javi, 2026-11-14, rama `javi/home-new-users`; IDs I-13x para no chocar con otras ramas)
+
+### I-130 — En vivo, lo ya comprado y lo "visto y no añadido al carrito" en el histórico NO se vende en el carrusel
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK) · 2026-11-14 12:41 UTC · agente de Javi · E-131
+- **Claim:** el modelo oculto en vivo no vuelve a vender un producto que el usuario ya compró, ni uno que vio en los 60 días de histórico sin añadirlo al carrito. Lo añadido al carrito y no comprado es lo que más convierte sin vistas de sesión.
+- **Evidence:** feedback propio servido por el equipo, 10.977 peticiones (11:09–12:41 UTC), 109.770 impresiones, relación usuario–producto calculada solo con `history_events` (termina a las 07:00 UTC, antes de la primera petición). Compras por 10.000 impresiones, fuera de `recent_views`: **ya comprado 0,0** (0 compras / 20.702; 12 clics), **visto sin carrito 0,0** (0 / 9.536; 20 clics), sin relación 8,7 (60 / 68.583), **carrito sin compra 27,5** (25 / 9.105). Dentro de `recent_views`: comprado 1 / 411, visto-histórico 0 / 198, sin relación 11 / 1.047, carrito 4 / 188. Compra por clic: un tercio (sin relación 71 de 205, carrito 29 de 88) frente a 1 de 35 clics (comprado + visto).
+- **Consecuencia medida:** el 28% de todas nuestras impresiones (30.847 de 109.770) fueron de productos muertos, con 1 compra en total. En `home` con usuario conocido, el 36% (22,6% comprados + 13,8% vistos), y v1 pone un comprado en el slot 1 el 71% de las veces: CTR de v1 en home-conocidos 0,66% (5 / 760) frente al 2,0% del baseline (12 / 599).
+- **Contradicción con el histórico (no borrar I-013):** en `history_sessions` home, un producto ya comprado convierte 44 por 10.000 (279 / 63.667) y el efecto es estable las 9 semanas. Orgánicamente los usuarios sí recompran (22% de las compras orgánicas en vivo son de algo ya comprado). Es decir, el log histórico del carrusel y el modelo oculto en vivo difieren en esto; el GBM v1 aprendió `ui_p`/`ui_v` del histórico.
+- **Weakness:** 96 minutos de feedback realizado (ruidoso, pero 0 de ~26 compras esperadas es concluyente para "comprado" y 0 de ~8 para "visto"). No sabemos si una vista del stream de hoy cuenta como "rechazo": solo marcamos las del histórico.
+- **What changed / next:** `home_cands.HomeCands.drop_dead()` filtra ambos en cualquier página; propuesta D-130. Verificar con un bloque de 10 min en el leaderboard.
+
+### I-131 — Qué convierte en `home`: carrito pendiente, cuota de categoría del usuario y conversión orgánica del producto; el precio no
+- **Status / date / owner:** SUPPORTED (OFFLINE ESTIMATE + transferencia a LIVE FEEDBACK) · 2026-11-14 · agente de Javi · E-130
+- **Evidence (histórico home, 400.549 sesiones, features estrictamente anteriores al día de la sesión, filas ya compradas excluidas):** las 400.549 slates de home son de una sola categoría (la política antigua elegía categoría casi uniforme). Compras por 10.000 impresiones: carrito sin compra 20,4 (83 / 40.785); cuota de vistas orgánicas del usuario en la categoría del producto >40% → 5,0, 20–40% → 1,3, <5% → 0,08; usuario compró antes en la subcategoría 2,1 frente a 0,45; quintil alto de compras/vistas orgánicas del producto 1,64 frente a 0,12 (más fuerte que la popularidad: 1,17 frente a 0,34). Coeficiente logístico de log-precio −0,02 (nulo).
+- **Transferencia a vivo:** en otras páginas, productos sin relación previa: cuota de categoría >40% → 65 por 10.000 (12 / 1.841), <5% → 0 (0 / 15.176); subcategoría comprada 20 frente a 2,6.
+- **Weakness:** en home en vivo solo hay 7 compras; la cuota de categoría en otras páginas está confundida con la categoría de la sesión.
+- **Implication:** candidatos de home = carrito pendiente + mejores productos (por conversión orgánica) de las categorías/subcategorías afines del usuario; usuario desconocido = mejores productos por conversión orgánica.
+
+### I-132 — Región y dispositivo no cambian QUÉ se compra; los usuarios nuevos compran muy disperso
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA) → idea "top por región/dispositivo" **REJECTED** para región, débil para dispositivo · 2026-11-14 · agente de Javi
+- **Evidence:** `shop.events` 09:00–12:30 UTC, 11.855 compras orgánicas de usuarios que no están en el histórico: el reparto por categoría es igual en las 10 regiones (±2 puntos, p. ej. Books & Media 20–25%); por dispositivo solo cambia Books & Media (web 32%, ios 20%, android 17%). Las diferencias de conversión de home por región en el histórico (Andalucía 0,26%, C. Valenciana 0,065%) y dispositivo (android 0,22%, web/ios 0,11%) son propensión del usuario, no gusto por productos. Misma conversión orgánica por vista en nuevos y conocidos (5,3%) y mismo top (p_0210c5, p_adc3e6, p_69d40e, p_1036d3…). Top-10 de productos = 6% de las compras de nuevos; top-100 = 27%.
+- **Implication:** para usuario nuevo en home no hay palanca de contexto; una lista global tiene techo bajo. Además `live.pull()` no trae región/dispositivo, así que no pedimos ese cambio.
