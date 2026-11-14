@@ -11,10 +11,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130
+    from . import fe, qrank, aff_policy, d130, live_quality
     from .serving import Journal, WriterLock, age, repair, serve
 else:
-    import fe, qrank, aff_policy, d130
+    import fe, qrank, aff_policy, d130, live_quality
     from serving import Journal, WriterLock, age, repair, serve
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -80,6 +80,9 @@ def initialize():
     # D-130 hook (home_cands): inert unless data/d130.json says {"mode": "nodead"|"home"}; never blocks start-up.
     try: d130.install(globals(), history)
     except Exception as e: print('d130 not installed, serving unchanged:', type(e).__name__, e, flush=True)
+    # D-180 hook (live_quality): inert unless data/lq.json says {"mode": "on"|"ab"}; only touches plain qrank slates.
+    try: live_quality.install(globals())
+    except Exception as e: print('live_quality not installed, serving unchanged:', type(e).__name__, e, flush=True)
 
 state = {"live": None, "cat": None, "unavail": set(), "stock_out": set(), "stock_checked": 0,
          "pools": None, "best": None, "ev_ts": "2026-11-14 07:00:00"}

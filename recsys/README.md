@@ -39,6 +39,8 @@ To retrain: `python train.py` (needs `data/hs.parquet` + `data/user_item_A.parqu
 | `trends.py` | Detector de subcategorías calientes en `shop.events` (15 min vs 3 h), multiplicador y candidatos; solo lectura (`python trends.py` muestra qué está caliente ahora) |
 | `trends_replay.py` | Replay offline de las tendencias de hoy (E-080): `python trends_replay.py --pull` |
 | `night_lab.py` | Laboratorio nocturno (T-016): rota `data/policy.json` / `data/d130.json` por bloques y mide cada variante contra el leaderboard; guardia y tabla de ablación. No escribe en RawTree. Ver `runbook.md` |
+| `live_quality.py` | Calidad en vivo desde `shop.events` (T-018, D-180): tasa compra/vista con shrinkage al prior de atributos, multiplicador de subcategoría caliente con puerta estadística, descuentos; corrige la q de qrank para productos nuevos y ráfagas. Hook apagado por defecto (`data/lq.json`). `python live_quality.py` enseña qué dice el stream ahora, solo lectura |
+| `live_quality_replay.py` | Replay de hoy con features solo del pasado (E-180…E-183): `python live_quality_replay.py --pull` |
 | `qrank.py` | Ranker para product/category: calidad del producto × contexto, solo misma categoría, sin lo ya comprado (T-015, propuesta D-081) |
 | `qrank_build.py` | Construye y valida `data/qrank.joblib` con split temporal (`--pull` descarga los agregados) |
 | `qrank_eval.py` | Contrasta qrank con el feedback en vivo, solo lectura |
