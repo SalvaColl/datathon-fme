@@ -1,0 +1,1 @@
+{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "f5", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}}]}
