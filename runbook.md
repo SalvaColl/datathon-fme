@@ -210,3 +210,13 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 ## lfm r6: filtrado colaborativo — T-035 (2026-11-14)
 
 `recsys/lfm_mf.npz` (4 MB, versionado) se carga una vez al arrancar; si falta, `mf` vale 0. Brazo: `{"tag": "r6", "file": "lfm_coef_r6.json"}` (pesos de r3 más `mf` = 0,0627 en conocidos, 0 en nuevos). Otro peso sin reiniciar: `{"tag": "r6b", "file": "lfm_coef_r6.json", "w": {"known": {"mf": 0.125}}}`. Rehacer los factores (no hace falta salvo que cambie el histórico): `python download_user_items.py && python lfm_mf_build.py`. Evidencia y regla de decisión: E-350, D-350.
+
+## lfm r6 acotado: `mf` solo para conocidos en producto/categoría — T-039 (2026-11-14)
+
+Sustituye al brazo `r6` de T-035 para la prueba online. Política lista, **sin activar**: `recsys/policy.r6_target_r3.json` (campeón r3) o `recsys/policy.r6_target_cn1.json` (campeón con `cold_new` promovido). El retador `r6t` es su control más `"w": {"known": {"mf": 0.0627}}` y `"mf": "known_pages"`. Fuera de la cohorte (nuevos, home, sin vistas) la petición la responde y la etiqueta el control. Necesita el código de `javi/r6-target` y `recsys/lfm_mf.npz` cargados: un reinicio con relevo.
+
+- Activar: `cp recsys/policy.r6_target_r3.json recsys/data/policy.json`. Comprobar en el log `{"event": "policy", "lfm_arms": [...]}` con los dos brazos; si sale una lista vacía, el writer la ha rechazado (control no idéntico) y sigue con los pesos por defecto: volver atrás.
+- Volver atrás: `cp recsys/policy.champion.json recsys/data/policy.json` (o `policy.cold_new_promoted_r3.json`). Sin reinicio.
+- Medir: ventanas y criterios en D-390. Filas `v3-lfm-<campeón>-k` contra `v3-lfm-r6t-k` (códigos públicos en `recsys/data/label_table.txt`).
+- Validación offline reproducible: `python lfm_build.py --pull --no-write` y `python eval_r6_target.py --from "<inicio>" --to "<fin>"`; se niega a correr si algún componente de r3 o r6 vio la ventana.
+- `mf` no personaliza a compradores sin historial: para ellos el brazo es el control.

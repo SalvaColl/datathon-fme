@@ -439,7 +439,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Qué:** writer real con `--dry-run` (no escribe), 3,5 minutos. 0 errores, 100% de slates válidos, bucle p50 139 ms / p95 393 ms (445 peticiones tras el arranque, 4 caducadas).
 - **Etiquetas emitidas por lfm:** `r3-k` (204), `r3-kh` (54), `r3-nh` (23), `r3-n` (37) y `cn1-n` (34). No aparece ninguna etiqueta `cn1` fuera de la cohorte objetivo. Productos nuevos en las impresiones: `cn1-n` 1,76%, `r3-n` 0,27%.
 
-## E-350 — Filtrado colaborativo (`mf`) sobre el feedback en vivo (T-035, 2026-11-14 20:00 UTC)
+## E-350 — Filtrado colaborativo (`mf`) sobre el feedback en vivo (T-035, 2026-11-14 19:10 UTC)
 
 - **Tipo:** OFFLINE ESTIMATE sobre LIVE FEEDBACK (79.868 peticiones, 11:09–18:33 UTC; usuarios conocidos: 463.598 impresiones vivas, 2.162 clics, 612 compras). Código: `recsys/lfm_mf_build.py`, `recsys/lfm_build.py --base lfm_coef_r3.json --add mf`.
 - **Qué es `mf`:** SVD de rango 16 de la matriz usuario×producto del histórico orgánico (59.841 usuarios × 5.000 productos, log(1 + vistas + 3·carritos + 6·compras)); puntuación del producto para el usuario, estandarizada dentro del catálogo de cada usuario. Solo usa el histórico: nada de hoy, sin fuga.
@@ -469,3 +469,25 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
   - **Medida principal:** diferencia de MRR de compra (r6 − r3) por puntuación de servicio entre los 10 enseñados, con intervalo del 95% por bootstrap de usuarios (2.000 réplicas, semilla 0). Secundarias: lo mismo para clic, acierto en el primer puesto, y la ganancia corregida por posición de `eval_slices.slot_gain` con la pendiente de posición de r3.
   - **Replay:** estado as-of de 6 partes de `lfm_build.replay_state` (el mismo que sirve el writer). Además, sobre las mismas peticiones: productos comunes entre la lista de r3 y la de r6 y cuántas veces cambia el primer puesto; fuera de la cohorte se comprueba que la lista ordenada es idéntica.
   - **Cómo se leerá:** con ~100 compras por bloque el intervalo será ancho. "Apoya" = estimación puntual positiva en validación Y en confirmación; "no apoya" = negativa en alguna. En ningún caso decide la promoción: eso lo decide la prueba online de D-390.
+- **Nota sobre el inicio de la ventana:** `leaks` rechaza un corte igual al fin del ajuste, así que la ventana empieza en 18:33:39,356 (un milisegundo después del último dato visto por el peso de `mf`). No deja fuera ninguna petición.
+- **Resultado de validación (leído a las 19:55 UTC), 18:33:39,356–19:42:06,715 UTC.** Código: `python eval_r6_target.py --from "2026-11-14 18:33:39.356" --to "2026-11-14 19:42:06.715"`. Cohorte: 6.980 peticiones, 6.064 usuarios, 69.651 impresiones vivas, 473 clics, 128 compras.
+
+| Evento | Medida | n | r3 | r6 | r6 − r3 | IC 95% (usuarios) |
+|---|---|---:|---:|---:|---:|---|
+| Compra | MRR | 128 | 0,568 | 0,573 | +0,005 | [−0,029; +0,039] |
+| Compra | Primer puesto | 128 | 37,5% | 38,3% | +0,8 pt | [−4,7; +6,4] |
+| Compra | Ganancia corregida por posición (nats) | 128 | 0,192 | 0,229 | +0,038 | [−0,004; +0,079] |
+| Clic | MRR | 473 | 0,534 | 0,534 | 0,000 | [−0,019; +0,017] |
+| Clic | Ganancia corregida por posición (nats) | 473 | 0,143 | 0,169 | +0,026 | [+0,006; +0,046] |
+
+- **Lectura de la validación:** estimaciones puntuales de compra positivas, todas con intervalos que incluyen el cero. En datos frescos no se reproduce con claridad el +0,024 de E-350 (que venía de un periodo que el propio peso había visto en parte, y de CV). Con la corrección por posición la señal es más nítida, pero esa corrección es parcial. Es compatible con un efecto pequeño y con ningún efecto. Según el plan: "apoya" de momento, pendiente del bloque de confirmación.
+- **Listas (4.000 peticiones de la cohorte):** 8,70 de 10 productos en común con r3, el primer puesto cambia en el 24,0%; 100% válidas (10 distintos, ninguno comprado, ninguno sin stock). **Fuera de la cohorte (4.000 peticiones): lista ordenada idéntica en el 100%.**
+
+## E-391 — Ensayo de robustez y latencia del retador r6 acotado con el código real del writer (T-039, 2026-11-14 19:57 UTC)
+
+- **Tipo:** ensayo en seco en otra máquina (contenedor en la nube, no el Mac del writer). `tools/final_rehearsal.py`: carga `recsys/live.py --dry-run` real, cualquier escritura a RawTree lanza error. Tres pasadas: campeón (r3), retador (`policy.r6_target_r3.json` copiado a `data/policy.json` solo en esa máquina) y retador sin `lfm_mf.npz`.
+- **Respuestas inválidas:** 0 en las tres pasadas (10.700 respuestas con el retador, 3.500 sin el fichero), en los ocho escenarios: peticiones reales, comprador nuevo, nuevo sin vistas, producto recién lanzado, metadatos rotos, cambio de categoría, corte de un tercio del stock y RawTree sin responder. Comprobado en cada respuesta: 10 productos distintos, todos en catálogo y con stock, ninguno ya comprado.
+- **Respuestas de reserva:** 0. Todas las etiquetas son de lfm (ninguna `-guard`, v1 ni lista de relleno). Fuera de la cohorte solo aparecen etiquetas del control; `v3-lfm-r6t-k` solo en conocidos con vistas (422 de 829 en las peticiones reales).
+- **Latencia de `predict()` por petición (ms), peticiones reales:** campeón p50 1,6 / p95 2,6 / p99 3,5; retador p50 1,4 / p95 2,3 / p99 3,3. Corte de stock: campeón p95 7,1 / p99 8,9; retador p95 8,8 / p99 10,6. Sin el fichero: p95 2,2 / p99 4,3. El retador no añade coste medible.
+- **Límites:** mide el cálculo, no la red ni la escritura (el writer real tiene p95 ≈ 1,7–2,0 s de extremo a extremo, dominado por el sondeo y el envío). El `on_time` real solo se ve en vivo, y es uno de los criterios de D-390.
+- **Tests:** `python -m unittest discover -s tests` → 264 pasan (18 nuevos en `tests/test_lfm_mf_arm.py`, 5 en `tests/test_lfm_build.py`, 4 en `tests/test_eval_slices.py`).
