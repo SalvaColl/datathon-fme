@@ -335,7 +335,7 @@ class R5GraphTests(unittest.TestCase):
 
 
 class R6CollaborativeTests(unittest.TestCase):
-    """mf (T-031): the shopper's score for each product in a factorisation of the 60-day history."""
+    """mf (T-035): the shopper's score for each product in a factorisation of the 60-day history."""
     def factors(self, lf):
         items = [f'B{k:02d}' for k in range(40)] + ['GONE']                      # GONE: in the history, no longer in the catalogue
         Q = np.zeros((len(items), 2)); Q[:10, 0] = 1.0; Q[10:40, 1] = 1.0        # two "tastes": B00-B09 and B10-B39

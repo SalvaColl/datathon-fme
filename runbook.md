@@ -198,6 +198,6 @@ Con el writer reiniciado (con relevo) en un commit que incluya T-027:
 
 r5 son los pesos de r3 más `cv` (grafo `recsys/lfm_graph_B.json`, se carga solo al arrancar). Etiquetas `v3-lfm-r5-k|-n|-kh|-nh`. Para probar otro peso sin reiniciar: `{"tag": "r6", "file": "lfm_coef_r3.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}}`. Rehacer el grafo: `python lfm_graph_build.py`; reajustar: `python lfm_build.py --pull --base lfm_coef_r3.json --add cv --out lfm_coef_r5.json`.
 
-## lfm r6: filtrado colaborativo — T-031 (2026-11-14)
+## lfm r6: filtrado colaborativo — T-035 (2026-11-14)
 
-`recsys/lfm_mf.npz` (4 MB, versionado) se carga una vez al arrancar; si falta, `mf` vale 0. Brazo: `{"tag": "r6", "file": "lfm_coef_r6.json"}` (pesos de r3 más `mf` = 0,0627 en conocidos, 0 en nuevos). Otro peso sin reiniciar: `{"tag": "r6b", "file": "lfm_coef_r6.json", "w": {"known": {"mf": 0.125}}}`. Rehacer los factores (no hace falta salvo que cambie el histórico): `python download_user_items.py && python lfm_mf_build.py`. Evidencia y regla de decisión: E-310, D-310.
+`recsys/lfm_mf.npz` (4 MB, versionado) se carga una vez al arrancar; si falta, `mf` vale 0. Brazo: `{"tag": "r6", "file": "lfm_coef_r6.json"}` (pesos de r3 más `mf` = 0,0627 en conocidos, 0 en nuevos). Otro peso sin reiniciar: `{"tag": "r6b", "file": "lfm_coef_r6.json", "w": {"known": {"mf": 0.125}}}`. Rehacer los factores (no hace falta salvo que cambie el histórico): `python download_user_items.py && python lfm_mf_build.py`. Evidencia y regla de decisión: E-350, D-350.

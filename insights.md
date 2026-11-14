@@ -450,9 +450,55 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Límite:** el 98,7% de las aristas del grafo une productos de la misma categoría (el histórico está bloqueado por categoría), y nuestro feedback solo contiene lo que lfm enseñó. Ninguna validación offline puede decir cuánto vale; se lee como brazo en el leaderboard (D-270).
 - **Use:** D-270, E-270.
 
-### I-310 — La `reference` no está documentada; su perfil es el de un modelo personalizado entrenado solo con el histórico
-- **Status:** HYPOTHESIS (lo observable) + OBSERVED DATA (leaderboard), agente de Javi, 2026-11-14 20:00 UTC, T-031.
+## Resumen del 14 de noviembre: qué ha funcionado y qué no (T-033, 18:55 UTC)
+
+Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del leaderboard (`api/state?by=model`), conversión esperada por 100 peticiones. El resto son estimaciones con nuestro feedback (sesgado) o con datos orgánicos, y se dice en cada una. Los nombres de brazo son los neutros del repo (r1, r3, r5, f5c05).
+
+### Lo que ha funcionado
+
+#### I-330 — r3: las categorías favoritas del usuario son la mayor mejora del día — SUPPORTED (HIDDEN MODEL)
+- **Qué es:** dos señales nuevas en lfm, la parte de las vistas del usuario (60 días más hoy) que cae en la categoría y en la subcategoría del producto (`ucat`, `usub`). Detalle en I-240 y E-240.
+- **Evidencia:** ronda de 16:35–16:57 UTC, r3 2,11% frente a 1,80% (t1) y 1,76% (r1). Antes, en usuarios apartados, mejoró en las 8 celdas (E-240). La encontraron dos hilos por separado (I-240 e I-250).
+- **Use:** r3 es la base y el campeón demostrado (`recsys/policy.champion.json`).
+
+#### I-331 — `cv` (co-ocurrencia producto a producto) ayuda al usuario conocido en páginas y perjudica en home — SUPPORTED a medias (HIDDEN MODEL, una ronda)
+- **Evidencia (E-271, 17:50–18:20 UTC, 50/50, `cv` a 0,5):** páginas de producto/categoría, conocidos 1,57% -> 1,77% (1.489 y 1.521 peticiones); nuevos 2,61% igual; home de conocidos 0,79% -> 0,46%. Total del brazo 1,65% frente a 1,71%: dentro del ruido de una ronda.
+- **Use:** brazo fusionado `f5c05` (`cv` solo en páginas, pesos de r3 en home), en ronda contra r3 desde las 18:25 UTC (`recsys/policy.candidate.json`). No es campeón hasta que gane una ronda. Offline el peso ajustado es pequeño (0,064 y 0,162; E-270): este brazo se juzga solo por el leaderboard.
+
+#### I-332 — La nota del equipo es la media de todos los brazos vivos: como mucho campeón y un retador — SUPPORTED (HIDDEN MODEL)
+- **Evidencia:** con tres brazos de home en prueba el equipo perdía unos 0,04 pp mientras duraron (E-260, E-271); cada brazo flojo baja la media del equipo en proporción a su tráfico.
+- **Use:** rondas de 30 minutos con 2 brazos, y el perdedor se quita al leer. Una ronda separa unos 0,25 pt en conocidos y 0,6 pt en nuevos (T-023).
+
+### Lo que se ha probado y NO funciona (no repetir sin evidencia nueva)
+
+| ID | Idea | Estado | Evidencia |
+|---|---|---|---|
+| R-18 | Brazos de home: tendencia (`trend`), mejor de la categoría (`catbest`), conversión (`conv`) | REJECTED (HIDDEN MODEL) | E-271, 17:05–17:35 UTC, conocidos en home: control 0,49%; `conv` 0,38%; `catbest` 0,21%; `trend` 0,14%. Apagados a las 17:45 UTC. |
+| R-19 | Buscar el hueco en home | REJECTED | El mismo tipo de producto vende 3–6 veces menos en home que en una página (compras por 10.000 en los slots 1–3: carrito del historial 109 frente a 28 en el historial y 70 frente a 21 en vivo; carrito de hoy 291 frente a 47). Con la política antigua home convierte 0,15% y producto/categoría 1,71% (E-260). Home de conocidos toca techo en torno a 0,5–0,6%. Ver también R-17 / I-133. |
+| R-20 | I-207: pesos de "nuevo" para quien no tiene historial | REJECTED | E-250 del PR #20: quitar el historial cuesta 0,097 de MRR de clic (IC 95% 0,060–0,124; 637 peticiones), pero los pesos `new` frente a `known` para esos usuarios dan −0,008 (IC −0,024…+0,012). Se sigue eligiendo por `is_new_user`. |
+| R-21 | r4: cuota de categoría contada en carritos y compras (`ucab`) | MENOR, sin publicar | I-251 (PR #21): el corte temporal no lo distingue de r3; el reajuste con datos hasta las 17:10 deja los pesos iguales (cambios < 0,35; E-260). Brazo opcional, apagado. |
+| R-22 | Datos ocultos en RawTree | REJECTED | I-250 (PR #21): `system.tables` solo tiene las 6 tablas de `shop` y las 3 del equipo, y las claves JSON son las del README. Los campos sin usar (tiempos y orden de `recent_views`, dispositivo, región, hora, antigüedad del producto, recencia del carrito) mueven el acierto del comprado en primera posición de 0,556 a 0,560 todos juntos (6,6 M de impresiones del historial). |
+| R-23 | Trucos de slate contra el simulador (posición, diversidad, canibalización, precio) | REJECTED | Hilo de T-025, 1,6 M de impresiones del historial (aleatorizado): la conversión del slate es la suma de las probabilidades por producto con pesos de posición 1 / 0,53 / 0,40 / 0,28 / 0,22 / 0,19 / 0,16 / 0,14 / 0,12 / 0,11. Sin canibalización (coeficiente −0,007 ± 0,12), sin efecto de diversidad ni de número de carritos una vez controlada la suma. Precio plano en conocidos. Lo único que cuenta es poner arriba lo más probable. |
+| R-24 | Modelo no lineal (gradient boosting) o interacciones sobre las señales de lfm | REJECTED | E-260 (PR #24), usuarios apartados: GBM −645,3 frente a −627,5 de r3 en compra (conocidos) y −606,1 frente a −597,7 (nuevos). Interacciones carrito x calidad / afinidad / categoría: ±2. |
+| R-25 | Dar más peso a las compras al ajustar (x1, x10, x30, solo compras, dos etapas) | REJECTED | E-260: −631,6…−635,4 frente a −627,5. Clic con compras x3 sigue siendo lo mejor. |
+| R-26 | Orden de la sesión y modelos de secuencia (Markov, GRU, SASRec) | REJECTED | I-320 / E-320 (PR #32): la subcategoría es una cadena de orden 1 (se queda con probabilidad 0,73 con o sin racha), el siguiente producto sale por popularidad (transición producto a producto 3,7% de acierto frente a 5,1% de la popularidad) y la compra va siempre justo tras el carrito. 17 señales de orden sobre r5: ninguna mejora en los dos segmentos. |
+| R-27 | Synthetic Alpha H1 (frases y subcategoría de los carritos de hoy) | REJECTED frente a r5 | PR #23: +3,8 [−1,7, +10,2] frente a lfm v2 en la confirmación prerregistrada; repetido contra r5, −0,5 [−7,0, +6,6] con 250 compras de test. H2 (antigüedad del producto) y artefactos del ID, también rechazados. |
+| R-28 | "Alpha con 99% de winrate" | UNSUPPORTED | Revisión de las 18:10 UTC: no hay rastro en ninguna rama (`winrate` no aparece en el código ni en los docs). No hay nada que evaluar ni que desplegar. |
+| R-29 | Filtrado colaborativo, co-compra entre productos y gusto por marca | REJECTED | Diagnóstico de las 18:30 UTC con los 12 M de eventos: no añaden nada sobre r3 en nuestro feedback. Coincide con E-260 (marca −627,7 frente a −627,5; co-visitas −629,4 en conocidos). |
+| R-30 | "Nos falta una fuente de candidatos" (diagnóstico de compras perdidas) | REJECTED | 632 compras del carrusel: r3 tenía en su top 10 el 89% en conocidos (291 de 328) y el 86% en nuevos (262 de 304); lo que queda fuera está repartido. De 2.585 compras orgánicas tras una petición, el 52% son productos muertos en el carrusel (31% ya comprados, 21% vistos sin carrito). No hay causa dominante: el 15–20% que falta por segmento es de pesos. |
+| R-07 (se mantiene) | Bandit / exploración | REJECTED | Sin cambios: ver R-07. |
+
+### Abierto (sin resultado todavía)
+
+- **`cold_lq` como brazo de lfm (PR #26):** calidad para productos lanzados hoy, acotada a ±log(20), solo en páginas con vistas. Solo hay evidencia de exposición y validez (productos nuevos 0,18% -> 3,89% de las impresiones, E-281); la conversión se decide con una ronda de 30 minutos (D-281).
+- **K30 (PR #22, Salva):** empuje del carrito pendiente en proporción a la afinidad para conocidos en páginas. Sin evidencia de conversión; pendiente de ronda.
+- **Réplica de la referencia:** la referencia nos gana fuera de cold (2,32% frente a 1,77%, 17:00–17:24 UTC) y pierde en cold (1,76% frente a 2,43%). Qué hace no está documentado; hilo en curso.
+- **Fórmula del comprador simulado:** ajuste directo de la fórmula del simulador; hilo en curso.
+- **Afinador con campeón protegido (PR #28):** parado a petición de Javi; no se lanza sin su visto bueno.
+
+### I-350 — La `reference` no está documentada; su perfil es el de un modelo personalizado entrenado solo con el histórico
+- **Status:** HYPOTHESIS (lo observable) + OBSERVED DATA (leaderboard), agente de Javi, 2026-11-14 20:00 UTC, T-035.
 - **Lo que se puede ver:** el README oficial solo dice "a strong recommender built by the organisers". La API del leaderboard da de la referencia conversión total, cold y € por petición, sin versiones ni segmentos. En todas las ventanas convierte MENOS en cold que en no-cold (18:00 UTC: cold 1,66%, no-cold ≈1,89%), al revés que todos los equipos y que el `baseline` (cold 0,81%, no-cold ≈0,29%). Es decir: saca mucho del histórico del usuario y poco de lo que pasa hoy (los carritos de hoy, que son lo que dispara a los nuevos, no parece usarlos). Ticket medio por compra ≈46 €, igual que el nuestro (45 €): no hay truco de precio.
 - **Hipótesis descartada con nuestro feedback:** "enseña los productos del historial del usuario". Los vistos y nunca echados al carrito, o ya comprados, dieron 12 compras en 96.881 impresiones (1,2 por 10.000). Lo único del historial que vende son los carritos pendientes, que lfm ya usa (`chn`).
-- **Hipótesis que sí aguanta:** filtrado colaborativo sobre el histórico orgánico (usuario×producto). Es la única familia clásica que no habíamos probado: todas las features de lfm describen al usuario por atributos (categoría, frases) y ninguna por "usuarios parecidos". Medido en E-310: aporta señal nueva y significativa, de tamaño moderado.
+- **Hipótesis que sí aguanta:** filtrado colaborativo sobre el histórico orgánico (usuario×producto). Es la única familia clásica que no habíamos probado: todas las features de lfm describen al usuario por atributos (categoría, frases) y ninguna por "usuarios parecidos". Medido en E-350: aporta señal nueva y significativa, de tamaño moderado.
 - **El oráculo, deducido del leaderboard:** la serie `progress` es exactamente 100 × (conversión − baseline) / (oráculo − baseline) (ajuste sin residuo en 4 horas, 40 equipos). Oráculo = 3,53% / 3,49% / 3,33% / 3,32% en las horas 14–18 UTC. La referencia está en 50–53 puntos de conversión; nosotros 47–49; el líder 58–60. Nadie pasa de 60: el techo real está lejos para todos.

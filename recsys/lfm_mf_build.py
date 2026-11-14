@@ -1,4 +1,4 @@
-"""Collaborative-filtering factors for lfm's `mf` feature (T-031). Read-only on RawTree; writes lfm_mf.npz.
+"""Collaborative-filtering factors for lfm's `mf` feature (T-035). Read-only on RawTree; writes lfm_mf.npz.
 
     python download_user_items.py      # data/user_item_all.parquet: one row per (user, product) of the 60-day organic history
     python lfm_mf_build.py             # -> lfm_mf.npz (users, items, P, Q)
