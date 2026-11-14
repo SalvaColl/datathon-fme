@@ -484,10 +484,40 @@ def attr_slates(reqs, unavail, versions):
     except Exception as e:
         print('attr error', type(e).__name__, e, flush=True); return {}
 
+def user_bought(u):
+    """Everything the shopper already bought, from the three sources: 60-day history (LF.hbought), today's organic
+    stream and our own carousel feedback (BOUGHT, mirrored in LF.lbought). Lock-free and never raises: it runs on the
+    send path, where a stalled or failed call would cost the answer."""
+    for _ in range(2):
+        try:
+            b = set(BOUGHT.get(u, ()))
+            if LF is not None: b |= set(LF.hbought.get(u, ())) | set(LF.lbought.get(u, ()))
+            return b
+        except RuntimeError: continue      # a set changed size under us (refresher thread): try once more
+        except Exception: break
+    return set()
+
+def repair_for(u, items, best, active):
+    """serving.repair, but the filler products skip what the shopper already bought (the guard list used to show
+    them: 78 slots in 102 returning-user requests, 14 Nov). Falls back to the plain repair if that leaves < 10."""
+    if isinstance(items, list) and len(items) == 10 and len(set(items)) == 10 and all(isinstance(p, str) and p in active for p in items):
+        return items
+    bought = user_bought(u)
+    if bought:
+        try: return repair(items, [p for p in best if p not in bought], active)
+        except ValueError: pass
+    return repair(items, best, active)
+
 def fallback_answers(reqs, version=None):
     _, unavail, _, _, best = snapshot()
-    items = [p for p in best if p not in unavail][:10]
-    return [{"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"} for r in reqs]
+    avail = [p for p in best if p not in unavail]
+    out = []
+    for r in reqs:
+        bought = user_bought(r.get("user_id"))
+        items = [p for p in avail if p not in bought][:10] if bought else avail[:10]
+        if len(items) < 10: items = avail[:10]
+        out.append({"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"})
+    return out
 
 def pull(seen):
     rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, context.device::String device, context.region::String region, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60", timeout=(0.5, 2.0))
@@ -520,7 +550,7 @@ def send_answers(reqs, answers, journal, seen, dry=False):
             seen.add(rid)
             continue
         original = by_id.get(rid, {})
-        items = repair(original.get('items'), best, active)
+        items = repair_for(r.get('user_id'), original.get('items'), best, active)
         version = original.get('model_version', VERSION + '-guard')
         if items != original.get('items'):
             version = VERSION + '-guard'
