@@ -316,3 +316,9 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
   z = diferencia emparejada media dividida por su error típico entre ciclos. Con menos de 3 bloques no se decide nada. Bloques con menos del 99% a tiempo no cuentan. Además, para sustituir: conversión cold sin caída de más de 2 errores típicos.
 - **Lo que no cambia:** equipo menos referencia por bloque, r3 como base, y que lo observado esta noche no se atribuye a la final. Un retador descartado se sustituye por el siguiente candidato en su hueco de la rotación; un retador que gana pasa a ser la base y la cuenta de bloques empieza de nuevo contra él.
 - **Aviso honesto:** estos umbrales reducen los falsos positivos de mirar cada hora, no los eliminan. Con 3 retadores y 8 lecturas, alguna señal de z ≈ 2 aparecerá por azar.
+### D-440 — Brazo `t15` (peso para productos de una subcategoría en ráfaga). Lo activa y revierte Javi
+- **Fecha / propone:** 2026-11-14 23:45 UTC · Javi (agente, T-044). Evidencia I-440, E-440.
+- **Qué:** tras un reinicio con relevo que cargue `lfm.py` y `live.py` de esta rama (inerte: peso 0), durante una ráfaga: `{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "t15", "file": "lfm_coef_r3.json", "w": {"known": {"hot": 1.5}, "new": {"hot": 1.5}}}]}`. Fuera de ráfaga los dos brazos sirven listas idénticas.
+- **Lectura:** las ráfagas empiezan a y media de las horas impares UTC y duran 45 minutos. Ventana de 30 minutos desde 10 minutos después del inicio; comparar las filas de cada brazo por tramo. Efecto esperado grande (>0,2 pp) o nulo. Versión prudente si pierde fuera de contexto: peso 0,8.
+- **Se quita si:** por debajo de r3 en la ventana, o envíos inválidos. Rollback sin reinicio: quitar el brazo.
+- **Para la final:** si la cadencia sigue, hay una ráfaga a las 09:30 UTC (10:30 CET).
