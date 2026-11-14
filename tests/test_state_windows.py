@@ -30,10 +30,10 @@ class WindowTests(unittest.TestCase):
 
     def test_purchases_stay_excluded_and_only_todays_feed_bought_today(self):
         lf, aff = build(); saturday(lf); lf.set_window(DAY)
-        b, lc, hc, bt, mix = lf.user_state("u9")
+        b, lc, hc, bt, mix, _mf = lf.user_state("u9")
         self.assertEqual(b, {"A04", "B07"}); self.assertEqual(bt, set())                 # excluded for ever, not "bought today"
         lf.add("u9", "A11", 0, 0, 1, tp=SUN + "00:00:00.000")                              # first instant of Sunday
-        b, lc, hc, bt, mix = lf.user_state("u9")
+        b, lc, hc, bt, mix, _mf = lf.user_state("u9")
         self.assertEqual(b, {"A04", "B07", "A11"}); self.assertEqual(bt, {"A11"})
         s = lf.slate(REQ, lf.user_state("u9"), aff)
         self.assertEqual(len(set(s)), 10); self.assertFalse({"A04", "B07", "A11"} & set(s))
@@ -50,7 +50,7 @@ class WindowTests(unittest.TestCase):
         lf, aff = build(); saturday(lf); lf.set_window(DAY)
         self.assertEqual(lf.user_state("u9")[1], {"A03"})                                  # persistent: still a live cart on Sunday
         lf.set_window(DAY, carts="day")
-        b, lc, hc, bt, mix = lf.user_state("u9")
+        b, lc, hc, bt, mix, _mf = lf.user_state("u9")
         self.assertEqual(lc, set()); self.assertEqual(hc, {"A03": 1})                      # not erased: one earlier cart
         self.assertIn("A03", lf.slate(REQ, lf.user_state("u9"), aff))
         lf.add("u9", "A03", 0, 1, 0, ta=SUN + "08:00:00.000")                              # carted again on Sunday
@@ -95,11 +95,11 @@ class PhaseTransitionTests(unittest.TestCase):
         live.apply_events(self.ROWS[:3], pause=lambda _: None)                             # Saturday, no window configured
         self.assertEqual(self.lf.user_state("u9")[3], {"A04"})
         self.lf.set_window(**live.clean_state_window({"day_start": DAY}))                  # Sunday morning: the window is switched on
-        b, lc, hc, bt, mix = self.lf.user_state("u9")
+        b, lc, hc, bt, mix, _mf = self.lf.user_state("u9")
         self.assertEqual((b, lc, bt), ({"A04"}, {"A03"}, set())); self.assertEqual(mix[0].sum(), 23)
         self.assertIn("A04", live.BOUGHT["u9"])                                            # the writer-wide exclusion is not touched either
         live.apply_events(self.ROWS[3:], pause=lambda _: None)                             # first Sunday events
-        b, lc, hc, bt, mix = self.lf.user_state("u9")
+        b, lc, hc, bt, mix, _mf = self.lf.user_state("u9")
         self.assertEqual((b, lc, bt), ({"A04", "A11"}, {"A03"}, {"A11"}))
         s = self.lf.slate(REQ, self.lf.user_state("u9"), self.aff)
         self.assertEqual(len(set(s)), 10); self.assertFalse({"A04", "A11"} & set(s))
