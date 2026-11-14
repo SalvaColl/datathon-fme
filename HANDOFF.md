@@ -4,13 +4,23 @@ Leer antes `AGENTS.md`. Este documento dice qué corre en vivo, cómo cambiarlo 
 
 ## Qué hay en vivo
 
-Actualizado 14 nov, 18:30 UTC (las secciones de más abajo conservan la historia de las 14:50).
+Actualizado 14 nov, 19:25 UTC (las secciones de más abajo conservan la historia de las 14:50).
 
-- **Un único writer**: `recsys/live.py` en el Mac de Javi, desde `main` en el commit `4ee67ed`, arrancado con relevo a las 17:48 UTC. Nunca lanzar un segundo proceso que escriba en `team_26.submissions`; para probar, `python live.py --dry-run`.
-- **Campeón demostrado**: lfm con los pesos r3 (categorías favoritas del usuario), `recsys/policy.champion.json`. Copiarlo a `recsys/data/policy.json` para fijarlo.
-- **Candidato en ronda desde las 18:25 UTC**: `recsys/policy.candidate.json`, r3 contra el brazo fusionado `f5c05` (señal producto a producto `cv` a 0,5 en páginas de producto/categoría, pesos de r3 en home). Evidencia en E-271 de `experiments.md`. Si `f5c05` gana la ronda, dejarlo solo.
-- Apagados: brazos de home (perdieron, E-271), D-130, calidad en vivo y el afinador `lfm_tuner.py` (no relanzar sin pedirlo).
-- Reinicio siempre con relevo (desde `recsys/`, con el venv): `caffeinate -i nohup ../../.venv/bin/python live.py --takeover >> data/live_main.log 2>&1 &`. No pierde peticiones. `lfm` empieza a responder unos 80 s después del arranque.
+- **Un único writer**: `recsys/live.py` en el Mac de Javi, arrancado con relevo a las 19:05 UTC desde `main` en `3b1596e`. Nunca lanzar un segundo proceso que escriba en `team_26.submissions`; para probar, `python live.py --dry-run`. Javi decide cada cambio en vivo: un campeón estable y como mucho un retador temporal.
+- **Campeón por grupo** (política `recsys/policy.champion.json`: `{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}]}`):
+
+| Grupo | Campeón | Etiqueta interna |
+|---|---|---|
+| Conocidos, producto/categoría | lfm r3 | `v3-lfm-r3-k` |
+| Nuevos, producto/categoría | lfm r3 | `v3-lfm-r3-n` |
+| Conocidos, home | lfm r3 | `v3-lfm-r3-kh` |
+| Nuevos, home | lfm r3 | `v3-lfm-r3-nh` |
+
+- **Retador en curso** (desde las 19:07 UTC, 30 minutos): `recsys/policy.cold_new_r3.json`, brazo `cn1` = r3 con calidad `cold_new`, solo usuarios nuevos en páginas con vistas (`v3-lfm-cn1-n`). Siguiente previsto: `r6` (r3 + filtrado colaborativo `mf`, solo cambia a conocidos), tras cerrar `cold_new`.
+- **Apagados**: brazos de home (`data/home_arms.json`), D-130 (`data/d130.json`), `data/lq.json`, ventanas de estado (`state_window`, por defecto se conserva el estado acumulado y las compras nunca dejan de excluirse) y el afinador `lfm_tuner.py` (no lanzarlo sin que Javi lo pida ni a la vez que otra prueba).
+- **Descartado en vivo el 14 nov** (no repetir): brazos genéricos de home `trend`/`catbest`/`conv` (E-271) y la señal producto a producto `cv` a 0,5, sola y fusionada (E-271, E-272). En el leaderboard horario siguen apareciendo un rato versiones ya paradas: no son envíos activos.
+- **Medida**: el mismo par de brazos oscila ±0,4 puntos entre rondas de 30 minutos con ~1.500 peticiones por brazo. No promover con una sola ronda.
+- Reinicio siempre con relevo (desde `recsys/`, con el venv): `caffeinate -i nohup ../../.venv/bin/python live.py --takeover >> data/live_main.log 2>&1 &`. Pierde entre 0 y 8 peticiones; la carga tarda unos 2 min 45 s y `lfm` responde unos 80 s después.
 - Las etiquetas públicas son códigos opacos (ver más abajo); la tabla está solo en el Mac, `recsys/data/label_table.txt`.
 
 ## Cambiar de variante sin reiniciar
