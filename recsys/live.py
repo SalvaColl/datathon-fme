@@ -8,27 +8,64 @@ pull -> predict -> push like the starter. Falls back to in-stock best sellers on
 from __future__ import annotations
 import os, sys, time, json, threading, traceback, zlib
 from pathlib import Path
+os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
-import fe
-from fe import build_tables, featurize, FEATS
+if __package__:
+    from . import fe
+    from .serving import Journal, WriterLock, age, repair, serve
+else:
+    import fe
+    from serving import Journal, WriterLock, age, repair, serve
+build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
+DATA = Path(__file__).resolve().parent / 'data'
 
 ENV = next((p for p in (Path(".env"), Path("../.env")) if p.exists()), None)
 for line in ENV.read_text().splitlines() if ENV else []:
     k, _, v = line.partition("="); os.environ.setdefault(k.strip(), v.strip())
-API = "https://api.rawtree.com"; TEAM = os.environ["TEAM_ID"]
-http = requests.Session(); http.headers["Authorization"] = f"Bearer {os.environ['RAWTREE_API_KEY']}"
+API = os.environ.get('RAWTREE_API_URL', 'https://api.rawtree.com').rstrip('/'); TEAM = os.environ.get("TEAM_ID", '')
+transport = threading.local()
+def session():
+    # requests.Session is mutable: never share one across poll/refresh/stock threads.
+    if not hasattr(transport, 'http'):
+        transport.http = requests.Session()
+        transport.http.headers['Authorization'] = f"Bearer {os.environ['RAWTREE_API_KEY']}"
+    return transport.http
 DRY = "--dry-run" in sys.argv
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
-VERSION = "v1-gbm-cand"
+VERSION = "v1-gbm-cand-r1"
 
 def query(sql, timeout=20):
-    r = http.post(f"{API}/v1/query", json={"sql": sql}, timeout=timeout); r.raise_for_status(); return r.json()["data"]
+    r = session().post(f"{API}/v1/query", json={"sql": sql}, timeout=timeout); r.raise_for_status(); return r.json()["data"]
 
 # ---------- state ----------
-MODEL = joblib.load("data/model_buy.joblib")
-BASE = build_tables(pd.read_parquet("data/user_item_all.parquet"))
-state = {"live": None, "cat": None, "unavail": set(), "pools": None, "best": None, "ev_ts": "2026-11-14 07:00:00"}
+MODEL, BASE, U_ITEMS = None, None, {}
+def initialize():
+    global MODEL, BASE, U_ITEMS
+    MODEL = joblib.load(DATA / 'model_buy.joblib')
+    history = pd.read_parquet(DATA / 'user_item_all.parquet')
+    BASE = build_tables(history)
+    U_ITEMS = history.query('a>0 or v>=2').groupby('u').i.apply(list).to_dict()
+
+state = {"live": None, "cat": None, "unavail": set(), "stock_out": set(), "stock_checked": 0,
+         "pools": None, "best": None, "ev_ts": "2026-11-14 07:00:00"}
 lock = threading.Lock()
+feature_lock = threading.Lock()
+
+def snapshot():
+    with lock:
+        return state['pools'], state['unavail'] | state['stock_out'], state['cat'], state['live'], state['best']
+
+def stock_refresher():
+    while True:
+        try:
+            rows = query("""SELECT product_id::String product_id FROM shop.catalog_updates
+                WHERE change::String IN ('out_of_stock','back_in_stock') GROUP BY product_id
+                HAVING argMax(change::String, ts::DateTime64(3)) = 'out_of_stock'""", timeout=(0.5, 1.5))
+            with lock:
+                state.update(stock_out={r['product_id'] for r in rows}, stock_checked=time.monotonic())
+        except Exception as e:
+            print('stock refresh failed', type(e).__name__, flush=True)
+        time.sleep(1)
 
 def refresh_catalog():
     rows = query("""SELECT product_id::String product_id, argMax(category::String,v) category, argMax(subcategory::String,v) sub,
@@ -45,13 +82,15 @@ def refresh_events():
     rows = query(f"""SELECT user_id::String u, product_id::String i, toUInt32(countIf(event_type='view')) v,
       toUInt32(countIf(event_type='add_to_cart')) a, toUInt32(countIf(event_type='purchase')) p, max(ts::DateTime64(3))::String mx
       FROM shop.events WHERE ts::DateTime64(3) > toDateTime64('{state['ev_ts']}',3) GROUP BY u,i""", timeout=60)
-    for r in rows: LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+    with feature_lock:
+        for r in rows: LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
     if rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
         fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != '' AND f.ts::DateTime64(3) > now() - INTERVAL 2 MINUTE")
         for r in fb:
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
-                fb_seen[r["u"]].add(r["i"]); LIVE.add(r["u"], r["i"], 0, 0, 1)
+                fb_seen[r["u"]].add(r["i"])
+                with feature_lock: LIVE.add(r["u"], r["i"], 0, 0, 1)
     except Exception as e: print("fb refresh failed", e)
     return LIVE
 
@@ -102,13 +141,18 @@ def make_pools(cat, unavail, T):
     return dict(cat=by_cat, sub=by_sub, new=new, glob=glob), best
 
 # user's own past items (base history), for candidates
-U_ITEMS = pd.read_parquet("data/user_item_all.parquet").query("a>0 or v>=2").groupby("u").i.apply(list).to_dict()
+# U_ITEMS loaded by initialize(), never on import or inside the serving loop.
 
 def refresher():
     while True:
         try:
             cat, unavail = refresh_catalog()
             with lock: fe.set_catalog(cat)  # LIVE.add needs current catalog (new products)
+            if state['pools'] is None:
+                # Serve from cached historical features while the first stream backfill runs.
+                pools, best = make_pools(cat, unavail, None)
+                with lock:
+                    state.update(cat=cat, unavail=unavail, live=None, pools=pools, best=best)
             T = refresh_events()
             pools, best = make_pools(cat, unavail, T)
             with lock:
@@ -123,14 +167,15 @@ def candidates(req, pools, unavail, cat):
         if p in cat.index: c += pools["sub"].get(cat.at[p, "sub"], []) + pools["cat"].get(cat.at[p, "category"], [])
     c += [x for x in U_ITEMS.get(req["user_id"], [])[:60]]
     if not rv: c += pools["glob"]
-    c += [p for p in pools["new"] if not rv or (p in cat.index and cat.at[p, "category"] == cat.at[rv[-1], "category"])][:30]
+    last_category = cat.at[rv[-1], 'category'] if rv and rv[-1] in cat.index else None
+    c += [p for p in pools["new"] if not rv or (last_category is not None and p in cat.index and cat.at[p, "category"] == last_category)][:30]
     seen = set(); out = []
     for p in c:
         if p not in seen and p in cat.index and p not in unavail: seen.add(p); out.append(p)
     return out
 
 def predict(reqs):
-    with lock: pools, unavail, cat, live, best = state["pools"], state["unavail"], state["cat"], state["live"], state["best"]
+    pools, unavail, cat, live, best = snapshot()
     fallback = [p for p in best if p not in unavail][:10]
     rows = []
     for k, r in enumerate(reqs):
@@ -139,7 +184,8 @@ def predict(reqs):
     P = pd.DataFrame(rows, columns=["sid", "u", "i", "slot", "rv", "page", "new_user"])
     out = []
     try:
-        X = featurize(P, [BASE, live] if live is not None else BASE, pd.Timestamp.now("UTC").tz_localize(None))
+        with feature_lock:
+            X = featurize(P, [BASE, live] if live is not None else BASE, pd.Timestamp.now("UTC").tz_localize(None), catalog=cat)
         X["s"] = MODEL.predict_proba(X[FEATS])[:, 1]
         top = X.sort_values("s", ascending=False).groupby("sid").i.apply(list).to_dict()
     except Exception as e:
@@ -152,49 +198,123 @@ def predict(reqs):
     return out
 
 def fallback_answers(reqs, version=None):
-    with lock: best, unavail = state["best"], state["unavail"]
+    _, unavail, _, _, best = snapshot()
     items = [p for p in best if p not in unavail][:10]
     return [{"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"} for r in reqs]
 
 def pull(seen):
-    rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60")
+    rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60", timeout=(0.5, 2.0))
     fresh = []
     for r in rows:
         if r["request_id"] in seen: continue
-        seen.add(r["request_id"]); r["rv"] = [x["product_id"] for x in json.loads(r["rv"])]; fresh.append(r)
+        try:
+            views = json.loads(r['rv']) if isinstance(r['rv'], str) else r['rv']
+            r['rv'] = [x['product_id'] for x in (views or []) if isinstance(x, dict) and x.get('product_id')]
+        except (ValueError, TypeError):
+            r['rv'] = []
+        fresh.append(r)
     return fresh
 
-def main():
-    threading.Thread(target=refresher, daemon=True).start()
-    while state["pools"] is None: time.sleep(0.5)
-    print("ready", "DRY RUN" if DRY else "LIVE", "A/B 50/50" if AB else "", flush=True)
-    seen = set(); lat = []
-    first = True
-    while True:
-        try:
-            reqs = pull(seen)
-            if first: first = False; reqs = []  # skip stale backlog on start
-            if reqs:
-                t0 = time.time(); now = pd.Timestamp.now("UTC").tz_localize(None)
-                # deadline guard: requests already >1.8s old get the instant fallback slate instead of the model
-                old = [r for r in reqs if (now - pd.Timestamp(r["ts"])).total_seconds() > 1.8]
-                ctrl = [r for r in reqs if AB and r not in old and zlib.crc32(r["user_id"].encode()) % 2 == 0]
-                ok = [r for r in reqs if r not in old and r not in ctrl]
-                ans = (predict(ok) if ok else []) + fallback_answers(old) + fallback_answers(ctrl, "baseline-ctrl"); dt = time.time() - t0
-                if old: print(f"deadline guard: {len(old)} requests served with fallback", flush=True)
-                if not DRY:
-                    for attempt in range(2):  # one quick retry: a lost batch = 'missing' for every request in it
-                        try:
-                            http.post(f"{API}/v1/tables/submissions", params={"database": TEAM}, json=ans, timeout=2).raise_for_status(); break
-                        except Exception as e:
-                            print("push failed", attempt, e, flush=True)
-                now = pd.Timestamp.now("UTC").tz_localize(None)
-                lag = [(now - pd.Timestamp(r["ts"])).total_seconds() for r in reqs]; lat += lag
-                if len(lat) >= 60:
-                    print(f"{'dry' if DRY else 'sent'} n={len(lat)} age p50={np.median(lat):.2f}s p95={np.percentile(lat,95):.2f}s max={max(lat):.2f}s predict={dt*1000:.0f}ms ex={ans[-1]['items'][:3]}", flush=True); lat = []
-        except Exception as e:
-            print("loop error", e); time.sleep(1)
-        time.sleep(0.25)
+def send_answers(reqs, answers, journal, seen, dry=False):
+    """Recheck eligibility/deadline, durably claim once, then perform ONE POST."""
+    _, unavailable, cat, _, best = snapshot()
+    active = set(cat.index) - unavailable
+    by_id = {a['request_id']: a for a in answers}
+    batch = []
+    for r in reqs:
+        rid = r['request_id']
+        if age(r) > 2.5:
+            seen.add(rid)
+            continue
+        original = by_id.get(rid, {})
+        items = repair(original.get('items'), best, active)
+        version = original.get('model_version', VERSION + '-guard')
+        if items != original.get('items'):
+            version = VERSION + '-guard'
+        answer = dict(request_id=rid, items=items, model_version=version)
+        if dry or journal.claim(answer):
+            batch.append(answer)
+        seen.add(rid)
+    if not batch:
+        return
+    if dry:
+        return
+    # Journal commits/validation take time too. Recheck immediately before POST.
+    live_ids = {r['request_id'] for r in reqs if age(r) <= 2.5}
+    dropped = [a['request_id'] for a in batch if a['request_id'] not in live_ids]
+    if dropped:
+        journal.finish(dropped, 'expired_before_post')
+    batch = [a for a in batch if a['request_id'] in live_ids]
+    if not batch:
+        return
+    started = time.perf_counter()
+    remaining = min(3-age(r) for r in reqs if r['request_id'] in {a['request_id'] for a in batch})
+    try:
+        response = session().post(f'{API}/v1/tables/submissions', params={'database': TEAM},
+            json=batch, timeout=(min(0.3, remaining/2), max(0.05, remaining-0.3)))
+        response.raise_for_status()
+    except Exception as exc:
+        journal.finish([a['request_id'] for a in batch], 'uncertain')
+        print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
+                              post_ms=round(1000*(time.perf_counter()-started), 1))), flush=True)
+        # A timeout can mean accepted-but-acknowledgement-lost. Never blindly retry.
+        return
+    journal.finish([a['request_id'] for a in batch], 'acknowledged')
+    print(json.dumps(dict(event='push_ack', n=len(batch),
+        post_ms=round(1000*(time.perf_counter()-started), 1),
+        oldest_age_ms=round(1000*max(age(r) for r in reqs), 1))), flush=True)
 
-if __name__ == "__main__":
+
+def main():
+    import tempfile
+    directory = Path(tempfile.gettempdir()) / ('rawtree-' + TEAM)
+    writer_lock = None if DRY else WriterLock(directory / 'writer.lock')
+    journal = None if DRY else Journal(directory / 'attempts.sqlite3')
+    try:
+        initialize()
+        threading.Thread(target=refresher, daemon=True).start()
+        threading.Thread(target=stock_refresher, daemon=True).start()
+        while state['pools'] is None:
+            time.sleep(0.1)
+        print('ready', 'DRY RUN' if DRY else 'LIVE', 'A/B 50/50' if AB else '', flush=True)
+        seen = set()
+        if not DRY:
+            # First migration from the old writer has no local journal. Reconcile
+            # newest IDs with remote submissions before serving any of them.
+            seen.update(r['request_id'] for r in query(f"""SELECT DISTINCT s.request_id::String request_id
+                FROM {TEAM}.submissions s INNER JOIN
+                (SELECT request_id FROM shop.requests ORDER BY ts DESC LIMIT 60) r
+                ON s.request_id::String = r.request_id::String"""))
+        def deliver(reqs, answers):
+            send_answers(reqs, answers, journal, seen, dry=DRY)
+        def score(reqs):
+            ctrl = [r for r in reqs if AB and zlib.crc32(r['user_id'].encode()) % 2 == 0]
+            model = [r for r in reqs if r not in ctrl]
+            return (predict(model) if model else []) + fallback_answers(ctrl, 'baseline-ctrl')
+        while True:
+            started = time.perf_counter()
+            try:
+                reqs = pull(seen)
+                if journal:
+                    reqs = [r for r in reqs if not journal.contains(r['request_id'])]
+                expired_ids = {r['request_id'] for r in reqs if age(r) > 2.5}
+                seen.update(expired_ids)
+                expired = serve(reqs, score, fallback_answers, deliver)
+                if reqs:
+                    print(json.dumps(dict(event='loop', n=len(reqs), expired=expired,
+                        loop_ms=round(1000*(time.perf_counter()-started), 1),
+                        stock_age_s=round(time.monotonic()-state['stock_checked'], 2))), flush=True)
+            except Exception as exc:
+                print('loop error', type(exc).__name__, str(exc), flush=True)
+                time.sleep(0.1)
+            # Network round trips already consumed time; don't add a fixed .25s tax.
+            time.sleep(max(0, 0.1-(time.perf_counter()-started)))
+    finally:
+        if journal:
+            journal.close()
+        if writer_lock:
+            writer_lock.close()
+
+
+if __name__ == '__main__':
     main()

@@ -1,6 +1,7 @@
 """Feature engineering shared by offline training and live serving."""
 import numpy as np, pandas as pd
-CAT=pd.read_parquet("data/catalog.parquet")
+from pathlib import Path
+CAT=pd.read_parquet(Path(__file__).resolve().parent / "data/catalog.parquet")
 def build_tables(ui):
     """ui: user-item aggregates (u,i,v,a,p). Returns lookup tables."""
     ui=ui.merge(CAT[["product_id","category","sub"]],left_on="i",right_on="product_id")
@@ -18,8 +19,9 @@ def set_catalog(df):
 FEATS=["slot","in_rv","rv_cnt","is_last","rv_pos","same_sub","any_sub","same_brand","same_cat","n_rv",
  "lp_v","lp_a","lp_p","cr","cart","lprice","prel","age","page_home","page_cat",
  "ui_v","ui_a","ui_p","us_v","us_p","uc_v","uc_p","ut_v","ut_p","known","new_user"]
-def featurize(pairs, T, now):
+def featurize(pairs, T, now, catalog=None):
     """pairs: DataFrame with columns sid,u,i,slot,rv(list),page,new_user. Returns X with FEATS."""
+    C = globals()['C'] if catalog is None else catalog
     d=pairs.copy()
     d["sub"]=C["sub"].reindex(d.i).values; d["category"]=C.category.reindex(d.i).values
     d["brand"]=C.brand.reindex(d.i).values; d["price"]=C.price.reindex(d.i).values
@@ -31,7 +33,10 @@ def featurize(pairs, T, now):
     d["is_last"]=(d.i.values==last.values).astype(int)
     d["rv_pos"]=[ (len(r)-1-max(k for k,x in enumerate(r) if x==i)) if c else -1 for r,i,c in zip(d.rv,d.i,d.rv_cnt)]
     d["same_sub"]=(d["sub"].values==ls).astype(int); d["same_cat"]=(d.category.values==lc).astype(int); d["same_brand"]=(d.brand.values==lb).astype(int)
-    d["any_sub"]=[int(s in set(C["sub"].reindex(list(r)).values)) if len(r) else 0 for s,r in zip(d["sub"],d.rv)]
+    # Views repeat for every candidate: perform one catalogue lookup per session.
+    sub_lookup = C['sub'].to_dict()
+    viewed_subs = {rv: {sub_lookup.get(p, np.nan) for p in rv} for rv in {tuple(r) for r in d.rv}}
+    d["any_sub"]=[int(s in viewed_subs[tuple(r)]) if len(r) else 0 for s,r in zip(d["sub"],d.rv)]
     def look(name,idx):
         Ts=T if isinstance(T,list) else [T]
         out=None
