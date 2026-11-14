@@ -18,16 +18,16 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 ### D-090 — Variante `aff` (afinidad de frases) y tabla de productos nuevos en el writer
 - **Date / owner / status:** 2026-11-14 / agente de Javi (T-009, rama `javi/cold-items`) / **PROPOSED** (no aplicada; `live.py` y `fe.py` no se han tocado)
 - **Question and alternatives:** v1 ignora las frases de la descripción (I-090, I-092). Alternativas: (a) multiplicador de afinidad sobre el score actual + candidatos por afinidad; (b) reentrenar el GBM con esas features (peor offline: hit@1 0,495 frente a 0,519, y obliga a cambiar `fe.py`); (c) nada.
-- **Decision (propuesta):** (a), detrás de una variante `aff` en `policy.json`. Es un multiplicador, así que se compone con cualquier score (v1, `qrank` de D-081, `home_cands` de D-130) y con el filtro de productos muertos de D-130, que conviene aplicar antes. Cambio en `live.py`, 6 líneas:
-  1. Arriba: `import cold_items, attr_affinity; COLD = cold_items.ColdStart(); AFF = attr_affinity.AttrAffinity(COLD)` (carga `data/user_item_all.parquet`, unos 15 s).
-  2. En `refresh_events()`, dentro del bucle: `AFF.add(r["u"], r["i"], r["v"])`.
-  3. En `refresher()`, tras `refresh_events()`: `COLD.sync(query); cold = COLD.tables(cat, BASE["item"], T.item_frame())` y guardar `cold` en `state`. (Parte A, productos nuevos.)
-  4. En `predict()`: `featurize(P, [BASE, live, cold], ...)` en lugar de `[BASE, live]`. (Parte A.)
-  5. En `candidates()`: `c += AFF.candidates(req["user_id"], rv, cat, unavail, n=60, score=None)`; con `category=cat.at[rv[-1], "category"]` si se quiere mantener la categoría de la sesión en product/category.
-  6. En `predict()`, tras `predict_proba`: `X["s"] *= AFF.boost_frame(X)`; `model_version = "v1-aff"`.
+- **Decision (propuesta):** (a), como variantes del writer endurecido (rama `javi/qrank-serving`, PR #1). Es un multiplicador, así que se compone con v1 y con `qrank` (D-081). El cambio de `live.py` NO está aplicado: va como parche en `recsys/aff_live.patch` (75 líneas añadidas) para que lo aplique el dueño del writer con `git apply recsys/aff_live.patch`. Variantes nuevas en `data/policy.json` (o flags `--aff`, `--qrank-aff`, `--ab-aff`, `--ab-qrank-aff`):
+  - `aff`: GBM v1 + candidatos por afinidad + multiplicador, en todas las páginas (`model_version = v1-aff-r1`).
+  - `qrank_aff`: `qrank` × afinidad en product/category (`v2-qrank-aff-r1`, misma categoría y sin lo ya comprado, como `qrank`) y GBM × afinidad en home.
+  - `ab_aff`: 50/50 por hash de usuario, v1 frente a `aff`. `ab_qrank_aff`: 50/50, `qrank` frente a `qrank_aff`. El brazo es el mismo hash que `ab_qrank`, así que `compare_versions.py` compara por `model_version`.
+  - La tabla de productos nuevos (parte A, `cold_items`) solo entra en `aff` y `qrank_aff`, no en las variantes A/B, para que el control quede limpio.
+  - Todo lo nuevo vive en `recsys/aff_policy.py`. Si `aff_policy` no carga o falla en una petición, esa petición sigue por el camino v1/qrank de siempre; `qrank_slates()` mantiene su contrato y los tests existentes pasan sin cambios.
+  - El filtro de productos muertos de D-130 sigue siendo independiente y conviene aplicarlo antes.
 - **Why, evidence/experiment:** I-092, E-092, E-093, E-094. Offline hit@1 0,472 → 0,519; en vivo los productos con afinidad <0,15 (85% de lo que mostramos a usuarios conocidos) casi no se compran. Estimación con tasas del feedback: de ~0,9% a ~2,4% por petición; es una extrapolación, no una medida del modelo oculto.
-- **Affected modules/interfaces/owners:** `recsys/live.py` (dueño del writer). Nuevos: `recsys/cold_items.py`, `recsys/attr_affinity.py`, `recsys/cold_prior.json` (270 KB, se regenera con `python cold_items.py fit`). Sin dependencias nuevas en el camino de servicio (numpy/pandas).
-- **Rollout / rollback:** `python live.py --dry-run` con la variante (medido en copia parcheada: p95 1,2–1,4 s); después un bloque de 10 min alineado con `updated_at` del leaderboard, comparar contra `baseline` y contra el bloque anterior de v1. Rollback = quitar `aff` de `policy.json`. `AttrAffinity(beta=...)` regula la agresividad (40 por defecto; 20 es la opción prudente).
+- **Affected modules/interfaces/owners:** `recsys/live.py` (dueño del writer; parche sin aplicar). Nuevos: `recsys/aff_policy.py`, `recsys/cold_items.py`, `recsys/attr_affinity.py`, `recsys/cold_prior.json` (270 KB, se regenera con `python cold_items.py fit`), `tests/test_aff_policy.py`. Sin dependencias nuevas en el camino de servicio (numpy/pandas).
+- **Rollout / rollback:** `python live.py --dry-run --qrank-aff` (E-095, copia parcheada: 448 peticiones, 100% slates válidos, +5 ms por lote); después un bloque de 10 min alineado con `updated_at` del leaderboard, comparar contra `baseline` y contra el bloque anterior de v1. Rollback = volver a `qrank` o `v1` en `policy.json` (se relee cada ciclo). `AttrAffinity(beta=...)` regula la agresividad (40 por defecto; 20 es la opción prudente).
 - **Revisit condition:** si el bloque en vivo no mejora frente a v1, bajar β a 20 o limitar a la categoría de la sesión antes de descartar.
 
 ## Corrected previous assumptions

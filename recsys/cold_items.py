@@ -182,7 +182,7 @@ class ColdStart:
 
 # ------------------------------------------------------------------ offline: fit / eval
 def _load_training():
-    from rt import q
+    from rt import q   # run as a script from recsys/
     cat = q("SELECT product_id::String product_id, category::String category, subcategory::String sub, brand::String brand, "
             "price_eur::Float64 price, description::String description FROM shop.catalog")
     h = q("SELECT product_id::String product_id, countIf(event_type='view') v, countIf(event_type='add_to_cart') a, "
@@ -203,7 +203,7 @@ def fit():
 def evaluate(seeds=(0, 1, 2)):
     from scipy.stats import spearmanr
     from sklearn.model_selection import KFold
-    from rt import q
+    from rt import q   # run as a script from recsys/
     d = _load_training(); y = d.p / d.v; g = d.p.sum() / d.v.sum()
 
     def report(name, pr, dd=d, T="p"):

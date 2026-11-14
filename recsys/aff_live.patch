@@ -1,0 +1,163 @@
+--- a/recsys/live.py
++++ b/recsys/live.py
+@@ -11,10 +11,10 @@
+ os.environ.setdefault('OMP_NUM_THREADS', '1')
+ import numpy as np, pandas as pd, requests, joblib
+ if __package__:
+-    from . import fe, qrank
++    from . import fe, qrank, aff_policy
+     from .serving import Journal, WriterLock, age, repair, serve
+ else:
+-    import fe, qrank
++    import fe, qrank, aff_policy
+     from serving import Journal, WriterLock, age, repair, serve
+ build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
+ DATA = Path(__file__).resolve().parent / 'data'
+@@ -34,11 +34,23 @@
+ AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
+ VERSION = "v1-gbm-cand-r1"
+ VERSION_Q = "v2-qrank-r1"
++VERSION_A = "v1-aff-r1"            # GBM x description-phrase affinity (D-090)
++VERSION_QA = "v2-qrank-aff-r1"     # qrank x description-phrase affinity
+ # Ranking variant for requests WITH recent views (product/category pages). Hot-switchable: the refresher re-reads
+ # data/policy.json every cycle, e.g. {"variant": "qrank"}.  v1 = GBM (default, unchanged behaviour) | qrank = qrank.py
+ # | ab_qrank = 50/50 by user hash, v1 vs qrank, so compare_versions.py can compare the two model_versions.
+-VARIANTS = ("v1", "qrank", "ab_qrank")
+-POLICY = {"variant": "ab_qrank" if "--ab-qrank" in sys.argv else "qrank" if "--qrank" in sys.argv else "v1"}
++# D-090 adds the affinity family: aff = GBM x affinity on every page | qrank_aff = qrank x affinity on pages with
++# views, GBM x affinity on home | ab_aff = 50/50 by user hash, v1 vs aff | ab_qrank_aff = 50/50, qrank vs qrank_aff.
++VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff")
++POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1")}
++def treated(user_id): return zlib.crc32(user_id.encode()) % 2 == 1      # A/B arm, stable per user
++def use_aff(r):
++    """Does this request get the affinity policy under the active variant? Never if aff_policy failed to load."""
++    v = POLICY['variant']
++    return AP is not None and (v in ('aff', 'qrank_aff') or (v in ('ab_aff', 'ab_qrank_aff') and treated(r['user_id'])))
++def use_qrank(r):
++    v = POLICY['variant']
++    return bool(r.get('rv')) and (v in ('qrank', 'qrank_aff', 'ab_qrank_aff') or (v == 'ab_qrank' and treated(r['user_id'])))
+ def read_policy():
+     try:
+         v = json.loads((DATA / 'policy.json').read_text()).get('variant')
+@@ -54,8 +66,11 @@
+ MODEL, BASE, U_ITEMS = None, None, {}
+ QR = None                                  # qrank.Ranker, loaded by initialize() if data/qrank.joblib exists
+ BOUGHT = collections.defaultdict(set)      # user -> products bought today (organic stream + our carousel feedback)
++AP = None                                  # aff_policy.AffPolicy, loaded by initialize(); None -> aff variants act as v1/qrank
+ def initialize():
+-    global MODEL, BASE, U_ITEMS, QR
++    global MODEL, BASE, U_ITEMS, QR, AP
++    try: AP = aff_policy.AffPolicy.load(DATA)
++    except Exception as e: print('aff_policy not loaded, affinity variants disabled:', type(e).__name__, e, flush=True)
+     try: QR = qrank.Ranker.load(DATA / 'qrank.joblib')
+     except Exception as e: print('qrank not loaded, serving v1 only:', type(e).__name__, flush=True)
+     MODEL = joblib.load(DATA / 'model_buy.joblib')
+@@ -103,6 +118,7 @@
+         for r in rows:
+             LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+             if r["p"]: BOUGHT[r["u"]].add(r["i"])
++            if AP is not None: AP.add(r["u"], r["i"], r["v"])
+     if rows: state["ev_ts"] = max(r["mx"] for r in rows)
+     try:  # our own carousel purchases: shopper won't want them again
+         fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != '' AND f.ts::DateTime64(3) > now() - INTERVAL 2 MINUTE")
+@@ -175,15 +191,19 @@
+                 with lock:
+                     state.update(cat=cat, unavail=unavail, live=None, pools=pools, best=best)
+             T = refresh_events()
++            if AP is not None:
++                try: AP.refresh(query, cat, BASE["item"], T.item_frame())
++                except Exception as e: print('aff refresh failed', type(e).__name__, e, flush=True)
+             pools, best = make_pools(cat, unavail, T)
+             with lock:
+                 fe.set_catalog(cat); state.update(cat=cat, unavail=unavail, live=T, pools=pools, best=best)
+         except Exception as e: print("refresh error", e); traceback.print_exc()
+         time.sleep(20)
+ 
+-def candidates(req, pools, unavail, cat):
++def candidates(req, pools, unavail, cat, aff=False):
+     rv = req["rv"]; c = []
+     c += rv
++    if aff: c += AP.candidates(req, cat, unavail)
+     for p in rv[-3:]:
+         if p in cat.index: c += pools["sub"].get(cat.at[p, "sub"], []) + pools["cat"].get(cat.at[p, "category"], [])
+     c += [x for x in U_ITEMS.get(req["user_id"], [])[:60]]
+@@ -198,42 +218,67 @@
+ def predict(reqs):
+     pools, unavail, cat, live, best = snapshot()
+     fallback = [p for p in best if p not in unavail][:10]
+-    quick = qrank_slates(reqs, unavail)   # {index: slate} for requests answered by qrank; the rest go through the GBM
++    qver = {}
++    quick = qrank_slates(reqs, unavail, qver)   # {index: slate} for requests answered by qrank; the rest go through the GBM
++    aff = {k for k, r in enumerate(reqs) if k not in quick and use_aff(r)}   # GBM requests that get the affinity policy
++    cold = AP.cold_tables if (AP is not None and POLICY['variant'] in ('aff', 'qrank_aff')) else None   # new-product pseudo-counts
+     rows = []
+     for k, r in enumerate(reqs):
+         if k in quick: continue
+-        for p in candidates(r, pools, unavail, cat):
++        try: cand = candidates(r, pools, unavail, cat, aff=k in aff)
++        except Exception as e:
++            print('aff candidates error', type(e).__name__, e, flush=True); aff.discard(k); cand = candidates(r, pools, unavail, cat)
++        for p in cand:
+             rows.append((k, r["user_id"], p, 0, r["rv"], r["page"], bool(r.get("is_new_user"))))
+     P = pd.DataFrame(rows, columns=["sid", "u", "i", "slot", "rv", "page", "new_user"])
+     out = []
+     try:
+         if not len(P): raise LookupError('no GBM rows')
+         with feature_lock:
+-            X = featurize(P, [BASE, live] if live is not None else BASE, pd.Timestamp.now("UTC").tz_localize(None), catalog=cat)
++            tables = [BASE] + ([live] if live is not None else []) + ([cold] if cold is not None else [])
++            X = featurize(P, tables if len(tables) > 1 else BASE, pd.Timestamp.now("UTC").tz_localize(None), catalog=cat)
+         X["s"] = MODEL.predict_proba(X[FEATS])[:, 1]
++        if aff:
++            try:
++                m = X.sid.isin(aff).values
++                X.loc[m, "s"] = X.s.values[m] * AP.boost(X[m])
++            except Exception as e:
++                print('aff boost error', type(e).__name__, e, flush=True); aff = set()
+         top = X.sort_values("s", ascending=False).groupby("sid").i.apply(list).to_dict()
+     except LookupError: top = {}
+     except Exception as e:
+         print("predict error", e); traceback.print_exc(); top = {}
+     for k, r in enumerate(reqs):
+         if k in quick:
+-            out.append({"request_id": r["request_id"], "items": quick[k], "model_version": VERSION_Q}); continue
++            out.append({"request_id": r["request_id"], "items": quick[k], "model_version": qver.get(k, VERSION_Q)}); continue
+         items = top.get(k, [])[:10]
+         if len(items) < 10: items += [p for p in fallback if p not in items][: 10 - len(items)]
+         if len(set(items)) != 10: items = fallback
+-        out.append({"request_id": r["request_id"], "items": items, "model_version": VERSION})
++        out.append({"request_id": r["request_id"], "items": items, "model_version": VERSION_A if k in aff else VERSION})
+     return out
+ 
+-def qrank_slates(reqs, unavail):
+-    """Slates from qrank for the requests the active variant routes to it. Any failure -> {} (GBM path)."""
+-    variant = POLICY['variant']
+-    if QR is None or variant == 'v1' or not QR.ok: return {}
++def qrank_slates(reqs, unavail, versions=None):
++    """Slates from qrank for the requests the active variant routes to it. Any failure -> {} (GBM path).
++    `versions` (optional dict) receives index -> VERSION_QA for the slates re-ranked with affinity."""
++    if QR is None or not QR.ok: return {}
+     try:
+-        idx = [k for k, r in enumerate(reqs) if r.get('rv') and (variant == 'qrank' or zlib.crc32(r['user_id'].encode()) % 2 == 1)]
++        idx = [k for k, r in enumerate(reqs) if use_qrank(r)]
+         if not idx: return {}
+         with feature_lock: bought = [set(BOUGHT.get(reqs[k]['user_id'], ())) for k in idx]
+-        res = QR.slates([{"rv": reqs[k]['rv'], "page": reqs[k].get('page', 'product'), "bought": b | unavail} for k, b in zip(idx, bought)])
+-        return {k: s for k, s in zip(idx, res) if s is not None and len(set(s)) == 10}
++        qreqs = [{"user_id": reqs[k]['user_id'], "rv": reqs[k]['rv'], "page": reqs[k].get('page', 'product'), "bought": b | unavail} for k, b in zip(idx, bought)]
++        out = {}
++        want = [j for j, k in enumerate(idx) if use_aff(reqs[k])]
++        try:
++            for j, s in zip(want, AP.qrank_slates(QR, [qreqs[j] for j in want]) if want else []):
++                if s is not None and len(set(s)) == 10:
++                    out[idx[j]] = s
++                    if versions is not None: versions[idx[j]] = VERSION_QA
++        except Exception as e:
++            print('aff qrank error', type(e).__name__, e, flush=True)
++        todo = [j for j in range(len(idx)) if idx[j] not in out]      # plain qrank, and affinity requests that fell through
++        for j, s in zip(todo, QR.slates([qreqs[j] for j in todo]) if todo else []):
++            if s is not None and len(set(s)) == 10: out[idx[j]] = s
++        return out
+     except Exception as e:
+         print('qrank error', type(e).__name__, e, flush=True); return {}
+ 

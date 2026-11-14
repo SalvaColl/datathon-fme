@@ -12,12 +12,16 @@ candidate ("affinity", neutral value 0.10) predicts purchase far better than cat
 Serving API (pure numpy, no model, no RawTree writes):
     AFF = AttrAffinity(cold_items.ColdStart())           # loads data/user_item_all.parquet (history views)
     AFF.add(user, product, n_views)                      # live increments (call from live.refresh_events)
+    AFF.sync_products()                                  # after ColdStart.sync(): start scoring newly launched products
     AFF.boost_frame(P)                                   # multiplier per candidate row; P has columns sid,u,i,rv
     AFF.candidates(user, rv, cat, unavail, n=40, category=None, score=None)   # best-matching active products
 """
 from __future__ import annotations
 import numpy as np, pandas as pd
-import cold_items
+if __package__:
+    from . import cold_items
+else:
+    import cold_items
 
 NEUTRAL = 0.10     # expected affinity of a random product: each of its 2 phrases appears in ~10% of the catalogue
 SHRINK = 20.0      # pseudo attribute-mass (= 10 views) pulling users with little history to NEUTRAL
@@ -43,20 +47,24 @@ class AttrAffinity:
         row = np.zeros(20, dtype=np.float32); row[list(a)] = 1.0
         self.pid[p] = len(self._rows); self._rows.append(row)
 
-    def _sync_products(self):
-        """Pick up products added to cold.attr by ColdStart.sync() (new products launched during the event)."""
-        if len(self.cold.attr) != len(self.pid):
-            for p, a in self.cold.attr.items():
-                if p not in self.pid: self._add_product(p, a)
-            self.A = np.array(self._rows, dtype=np.float32)
+    def sync_products(self):
+        """Pick up products added to cold.attr by ColdStart.sync() (new products launched during the event).
+        Call it from the refresher thread only. Readers take (pid, A) through _view(), and A is swapped before pid
+        grows, so a serving thread never indexes past the matrix."""
+        if len(self.cold.attr) == len(self.pid): return 0
+        new = [(p, a) for p, a in list(self.cold.attr.items()) if p not in self.pid]
+        rows = list(self._rows)
+        for p, a in new:
+            row = np.zeros(20, dtype=np.float32); row[list(a)] = 1.0; rows.append(row)
+        self.A = np.array(rows, dtype=np.float32); self._rows = rows
+        for k, (p, a) in enumerate(new, start=len(rows) - len(new)): self.pid[p] = k
+        return len(new)
 
     # ---- live updates ----
     def add(self, u, i, v=1):
         """Add v organic views of product i by user u (live stream). Unknown products are ignored until synced."""
         k = self.pid.get(i)
-        if k is None or not v:
-            if k is None and i in self.cold.attr: self._sync_products(); k = self.pid.get(i)
-            if k is None or not v: return
+        if k is None or not v: return
         j = self.uix.get(u)
         if j is not None: self.UV[j] += self._rows[k] * v
         else:
@@ -78,13 +86,13 @@ class AttrAffinity:
 
     def affinity_all(self, u, rv=()):
         """Affinity of the user to EVERY product (array aligned with self.pid order), shrunk to NEUTRAL."""
-        self._sync_products()
         vec = self.user_vec(u, rv)
         return (self.A @ vec + SHRINK * NEUTRAL) / (vec.sum() + SHRINK)
 
     def affinity(self, u, items, rv=()):
-        aff = self.affinity_all(u, rv); g = self.pid.get
-        return np.array([aff[g(i)] if g(i) is not None else NEUTRAL for i in items], dtype=np.float32)
+        aff = self.affinity_all(u, rv); g = self.pid.get; n = len(aff)
+        idx = [g(i) for i in items]
+        return np.array([aff[k] if k is not None and k < n else NEUTRAL for k in idx], dtype=np.float32)
 
     def boost(self, u, items, rv=()):
         return np.exp(self.beta * np.minimum(self.affinity(u, items, rv), CAP))
@@ -97,7 +105,7 @@ class AttrAffinity:
         for end in list(np.flatnonzero(sid[1:] != sid[:-1]) + 1) + [len(P)]:
             aff = self.affinity_all(us[start], rvs[start])
             idx = [g(i) for i in items[start:end]]
-            a = np.array([aff[k] if k is not None else NEUTRAL for k in idx])
+            n = len(aff); a = np.array([aff[k] if k is not None and k < n else NEUTRAL for k in idx])
             out[start:end] = np.exp(self.beta * np.minimum(a, CAP)); start = end
         return out
 
@@ -107,6 +115,7 @@ class AttrAffinity:
         aff = self.affinity_all(u, rv)
         if float(aff.max()) < min_aff: return []
         order = np.argsort(-aff)[:600]; ids = list(self.pid); seen = set(rv); c = []
+        order = order[order < len(ids)]
         for k in order:
             if aff[k] < min_aff: break
             p = ids[k]
