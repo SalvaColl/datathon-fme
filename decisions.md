@@ -259,3 +259,10 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Lectura:** ventana fija de 30 minutos, fila de conocidos en páginas de cada brazo, mirando `conversion` y también `cold_conversion` con `cold_requests` (es el tramo "conocido con producto nuevo en las vistas"). Confirmar con un segundo bloque antes de promover (E-272). Si gana dos veces, siguiente brazo con 1,9.
 - **Se quita si:** 0,25 pt por debajo a los 30 minutos, o envíos inválidos. Rollback sin reinicio: quitar el brazo de `lfm_arms`.
 - **No a la vez que** la confirmación de `cold_new` (son cohortes distintas y podrían convivir, pero la regla es un retador cada vez).
+
+### D-440 — Brazo `t15` (peso para productos de una subcategoría en ráfaga). Lo activa y revierte Javi
+- **Fecha / propone:** 2026-11-14 23:45 UTC · Javi (agente, T-044). Evidencia I-440, E-440.
+- **Qué:** tras un reinicio con relevo que cargue `lfm.py` y `live.py` de esta rama (inerte: peso 0), durante una ráfaga: `{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "t15", "file": "lfm_coef_r3.json", "w": {"known": {"hot": 1.5}, "new": {"hot": 1.5}}}]}`. Fuera de ráfaga los dos brazos sirven listas idénticas.
+- **Lectura:** las ráfagas empiezan a y media de las horas impares UTC y duran 45 minutos. Ventana de 30 minutos desde 10 minutos después del inicio; comparar las filas de cada brazo por tramo. Efecto esperado grande (>0,2 pp) o nulo. Versión prudente si pierde fuera de contexto: peso 0,8.
+- **Se quita si:** por debajo de r3 en la ventana, o envíos inválidos. Rollback sin reinicio: quitar el brazo.
+- **Para la final:** si la cadencia sigue, hay una ráfaga a las 09:30 UTC (10:30 CET).

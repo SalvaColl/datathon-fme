@@ -12,10 +12,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends
     from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends
     from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -372,6 +372,23 @@ def new_products(cat, max_share=0.25):
     except Exception as e:
         print('new_products failed', type(e).__name__, e, flush=True); return None
 
+HOT_LOG = {}
+def hot_products(cat, max_share=0.10):
+    """T-044: products of the subcategories in a live burst (trends.py: share of views of the last 15 minutes at least twice
+    the usual one), for lfm arms that weight the feature `hot`. None (the feature stays 0, every arm serves as before) when
+    no arm asks, when nothing is hot, when the set looks wrong (over 10% of the catalogue) or on any error. Refresher thread
+    only; one aggregate query per cycle, and only while an arm asks."""
+    try:
+        if LF is None or not LF.wants_hot(): return None
+        snap = trends.snapshot(query, cat["sub"].to_dict())
+        if snap.hot != HOT_LOG.get('hot'):
+            HOT_LOG['hot'] = list(snap.hot); print(json.dumps(dict(event='hot', subcategories=snap.hot)), flush=True)
+        if not snap.hot: return None
+        hs = set(snap.hot); out = set(cat.index[cat["sub"].isin(hs)])
+        return out if 0 < len(out) <= max_share * len(cat) else None
+    except Exception as e:
+        print('hot_products failed', type(e).__name__, e, flush=True); return None
+
 COLD_LOG = {}
 def cold_lq_for_arms(cat, T):
     """T-028: {product: corrected lq} for lfm arms with "lq": "cold"; None when no arm asks, when the corrector is not
@@ -405,7 +422,7 @@ def refresher():
                 try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
-                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat))
+                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat))
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:

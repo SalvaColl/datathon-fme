@@ -41,7 +41,11 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          "mf",
          # T-039: product launched during the event (no 60-day history). Our own carousel sold these ~10 times more often
          # than lfm expected for returning shoppers (16 buys vs 1.6 expected, E-390); weight 0 in every committed file
-         "newp"]
+         "newp",
+         # T-044: product of a subcategory that is in a live burst right now (trends.py). In the two bursts our carousel
+         # could measure (14 Nov, Bike Helmets and Game Consoles) these products sold 6.6 times more per impression than
+         # outside the burst (15 buys vs 2.3 expected, E-440); weight 0 in every committed file
+         "hot"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -109,6 +113,7 @@ class Snap:
         self.g = None                         # product-to-product graph: row -> (neighbour rows, weights), see LiveFit._graph_catalog
         self.mf = None                        # (product factors, their rows, the matching rows of this snapshot), see LiveFit._mf_catalog
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
+        self.hot = None                       # T-044: 1.0 for products of a subcategory in a live burst (LiveFit.set_catalog)
 
     def stale(self, u):
         """Boolean mask: products this user viewed in the history and never carted (dead in the live carousel)."""
@@ -173,6 +178,7 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         sc = Q @ mfu; sd = float(sc.std())
         if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
     if getattr(S, "newp", None) is not None and rv and page in LQ_PAGES: X[:, 21] = S.newp      # never on home or without views
+    if getattr(S, "hot", None) is not None: X[:, 22] = S.hot                                    # every page: a burst reaches every shopper
     return X if idx is None else X[idx]
 
 
@@ -271,10 +277,12 @@ class LiveFit:
                 d = self.lcart_t.setdefault(u, {})
                 if ta > d.get(i, ""): d[i] = ta
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None):
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None):
+        """hot (T-044): products of the subcategories in a live burst, or None / empty (the feature stays 0)."""
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
         S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold, newp)
+        if hot: S.hot = np.isin(np.array(ids, dtype=object), list(hot)).astype(np.float64)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
@@ -342,6 +350,12 @@ class LiveFit:
             if c[0] >= 0: cv[c[0]] += n
             if c[1] >= 0: sv[c[1]] += n
         return cv, sv
+
+    def wants_hot(self) -> bool:
+        """Does any weight set in use (committed or arm) give the burst feature a weight? If not, nobody asks for trends."""
+        k = FEATS.index("hot")
+        sets = [self.w] + [w for w, _ in list(self.alt.values())]
+        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
 
     @property
     def ok(self): return self.snap is not None

@@ -511,3 +511,10 @@ Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del 
 - **Usuarios nuevos:** sin evidencia propia (1 compra frente a 0,42 esperadas en 342 impresiones). Para ellos está en prueba `cold_new` (E-273).
 - **Home de usuario nuevo:** sin vistas no hay señal de sesión; 0 compras de productos nuevos en 228 impresiones. No se propone nada aquí.
 - **Use:** feature `newp` y brazo `np1` (D-390, E-390).
+
+### I-440 — Las ráfagas de subcategoría sí venden en el carrusel; R-02 y R-18 se rechazaron con pruebas sin potencia
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK, pocas compras) — 2026-11-14 23:30 UTC — Javi (agente, T-044, rama `javi/trend-hot`). Informe: https://claude.ai/artifact/TkaioLFtiZmg5AH58Yfgjx
+- **Evidence:** E-440. Ráfagas del 14 nov (UTC): Aquariums 09:30, Kettles 11:30, Cutting Boards 13:30, Bike Helmets 15:30, ninguna a las 17:30, Game Consoles 19:30, Face Cream 21:30; 45 minutos cada una, compras orgánicas de la subcategoría ×10. En nuestras impresiones, los productos de la subcategoría caliente vendieron 301 por 10.000 impresiones ponderadas por puesto durante la ráfaga frente a 45,5 fuera (15 compras frente a 2,3 esperadas; clics 27 frente a 8,6). Con la última vista en esa subcategoría: 470–770, y solo enseñábamos 0,67 por lista.
+- **Weakness:** dos ráfagas con datos (Bike Helmets, Game Consoles). Para usuarios fuera de contexto solo 5 compras en 300 impresiones ponderadas (1,5 esperadas): que el efecto sea global es HYPOTHESIS.
+- **Corrige:** R-02 (258 impresiones, 0 compras: sin potencia) y R-18 (brazo `trend` de home probado 17:05–17:35 UTC, sin ráfaga activa).
+- **Use:** feature `hot` de lfm y brazo `t15` (D-440).

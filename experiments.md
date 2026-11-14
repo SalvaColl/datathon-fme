@@ -510,3 +510,11 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Tests:** 13 en `tests/test_lfm_newp.py` (250 en total): solo cambia el slot 10, sale de los puestos 11–60, nunca un excluido ni comprado, modos por tipo de usuario, validación del writer y aceptación de la política de la noche entera con sus rutas.
 - **Ensayo en seco (nube, `--dry-run`, 4 brazos con un brazo de exploración `true`, 5 min):** 852 peticiones, 0 errores, bucle p50 145 ms / p95 397 ms; 57 caducadas en el arranque en frío.
 - **No es conversión.** Sirve para medir en el leaderboard cuánto vende lo que lfm no prioriza.
+
+### E-440 — Feature `hot` de lfm (producto de una subcategoría en ráfaga) — 2026-11-14 23:45 UTC, Javi (agente, T-044)
+- **Medición (LIVE FEEDBACK, 115.240 peticiones servidas por el equipo, 14 nov):** ver I-440. Promociones de categoría (−20%, 2 h): en contexto ×1,77 (64 compras frente a 36 esperadas), fuera de contexto ×1,05; no se añade señal.
+- **Detector (`trends.py`, sin cambios) repetido sobre los eventos del día en pasos de 5 min:** detecta las 6 ráfagas, entre 5 y 15 minutos después del inicio, sigue marcando unos 10 minutos tras el final, 0 falsos positivos.
+- **Código:** `lfm.FEATS` gana `hot` (índice 22, peso 0 en todos los ficheros); `LiveFit.set_catalog(..., hot=)`; `live.hot_products()` consulta `trends.snapshot` en el hilo de refresco solo si algún brazo da peso a `hot` (`LiveFit.wants_hot`), y devuelve None si no hay ráfaga, si falla o si el conjunto supera el 10% del catálogo.
+- **Tests:** 6 nuevos en `tests/test_lfm_hot.py`, 256 en total.
+- **Ensayo en seco (nube, 1.200 peticiones reales, ráfaga simulada en Game Consoles, 46 productos):** 0 listas inválidas en r3 y t15; latencia por lista p50 0,9 ms / p95 1,5 ms en ambos. Productos calientes por lista r3 → t15: conocidos en páginas 0,05 → 1,34, nuevos en páginas 0,03 → 1,27, home 0,02–0,09 → 1,2–1,3, usuarios en contexto 0,5–0,7 → 3,9–5,3. Primer puesto cambia en el 14% de las listas fuera de contexto. Con el detector real y sin ráfaga: 1,05 s por ciclo de refresco, conjunto vacío, listas idénticas. Con r3 solo no hay consulta.
+- **No es conversión.** Solo se puede medir en el leaderboard durante una ráfaga.
