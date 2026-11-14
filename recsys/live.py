@@ -11,10 +11,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130
+    from . import fe, qrank, aff_policy, d130, attr_policy
     from .serving import Journal, WriterLock, age, repair, serve
 else:
-    import fe, qrank, aff_policy, d130
+    import fe, qrank, aff_policy, d130, attr_policy
     from serving import Journal, WriterLock, age, repair, serve
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -41,16 +41,28 @@ VERSION_QA = "v2-qrank-aff-r1"     # qrank x description-phrase affinity
 # | ab_qrank = 50/50 by user hash, v1 vs qrank, so compare_versions.py can compare the two model_versions.
 # D-090 adds the affinity family: aff = GBM x affinity on every page | qrank_aff = qrank x affinity on pages with
 # views, GBM x affinity on home | ab_aff = 50/50 by user hash, v1 vs aff | ab_qrank_aff = 50/50, qrank vs qrank_aff.
-VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff")
+# D-170 adds the attribute ranker (attr_model) for pages with views: attr = attr_model, rest unchanged (GBM on home) |
+# attr_aff = attr_model + stored-taste boost, and everything else as qrank_aff | ab_attr = 50/50, v1 vs attr |
+# ab_attr_aff = 50/50, qrank_aff vs attr_aff (only the ranker of pages with views differs between arms).
+VERSION_T = "v3-attr-r1"
+VERSION_TA = "v3-attr-aff-r1"
+VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff")
 POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1")}
 def treated(user_id): return zlib.crc32(user_id.encode()) % 2 == 1      # A/B arm, stable per user
 def use_aff(r):
     """Does this request get the affinity policy under the active variant? Never if aff_policy failed to load."""
     v = POLICY['variant']
-    return AP is not None and (v in ('aff', 'qrank_aff') or (v in ('ab_aff', 'ab_qrank_aff') and treated(r['user_id'])))
+    return AP is not None and (v in ('aff', 'qrank_aff', 'attr_aff', 'ab_attr_aff') or (v in ('ab_aff', 'ab_qrank_aff') and treated(r['user_id'])))
 def use_qrank(r):
     v = POLICY['variant']
-    return bool(r.get('rv')) and (v in ('qrank', 'qrank_aff', 'ab_qrank_aff') or (v == 'ab_qrank' and treated(r['user_id'])))
+    return bool(r.get('rv')) and (v in ('qrank', 'qrank_aff', 'ab_qrank_aff') or (v == 'ab_qrank' and treated(r['user_id']))
+                                  or (v == 'ab_attr_aff' and not treated(r['user_id'])))
+def use_attr(r):
+    """None, or the model_version this request gets from attr_model under the active variant. Never if it failed to load."""
+    v = POLICY['variant']
+    if ATP is None or not r.get('rv') or v not in ('attr', 'attr_aff', 'ab_attr', 'ab_attr_aff'): return None
+    if v.startswith('ab_') and not treated(r['user_id']): return None
+    return VERSION_TA if v.endswith('_aff') else VERSION_T
 def read_policy():
     try:
         v = json.loads((DATA / 'policy.json').read_text()).get('variant')
@@ -67,12 +79,15 @@ MODEL, BASE, U_ITEMS = None, None, {}
 QR = None                                  # qrank.Ranker, loaded by initialize() if data/qrank.joblib exists
 BOUGHT = collections.defaultdict(set)      # user -> products bought today (organic stream + our carousel feedback)
 AP = None                                  # aff_policy.AffPolicy, loaded by initialize(); None -> aff variants act as v1/qrank
+ATP = None                                 # attr_policy.AttrPolicy, loaded by initialize(); None -> attr variants act as v1/qrank_aff
 def initialize():
-    global MODEL, BASE, U_ITEMS, QR, AP
+    global MODEL, BASE, U_ITEMS, QR, AP, ATP
     try: AP = aff_policy.AffPolicy.load(DATA)
     except Exception as e: print('aff_policy not loaded, affinity variants disabled:', type(e).__name__, e, flush=True)
     try: QR = qrank.Ranker.load(DATA / 'qrank.joblib')
     except Exception as e: print('qrank not loaded, serving v1 only:', type(e).__name__, flush=True)
+    try: ATP = attr_policy.AttrPolicy.load(DATA, cold=AP.cold if AP is not None else None, aff=AP.aff if AP is not None else None)
+    except Exception as e: print('attr_policy not loaded, attr variants disabled:', type(e).__name__, e, flush=True)
     MODEL = joblib.load(DATA / 'model_buy.joblib')
     history = pd.read_parquet(DATA / 'user_item_all.parquet')
     BASE = build_tables(history)
@@ -197,6 +212,9 @@ def refresher():
             if AP is not None:
                 try: AP.refresh(query, cat, BASE["item"], T.item_frame())
                 except Exception as e: print('aff refresh failed', type(e).__name__, e, flush=True)
+            if ATP is not None:
+                try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
+                except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:
                 fe.set_catalog(cat); state.update(cat=cat, unavail=unavail, live=T, pools=pools, best=best)
@@ -223,8 +241,9 @@ def predict(reqs):
     fallback = [p for p in best if p not in unavail][:10]
     qver = {}
     quick = qrank_slates(reqs, unavail, qver)   # {index: slate} for requests answered by qrank; the rest go through the GBM
+    quick.update(attr_slates(reqs, unavail, qver))   # D-170: requests answered by attr_model (disjoint from qrank's by variant)
     aff = {k for k, r in enumerate(reqs) if k not in quick and use_aff(r)}   # GBM requests that get the affinity policy
-    cold = AP.cold_tables if (AP is not None and POLICY['variant'] in ('aff', 'qrank_aff')) else None   # new-product pseudo-counts
+    cold = AP.cold_tables if (AP is not None and POLICY['variant'] in ('aff', 'qrank_aff', 'attr_aff', 'ab_attr_aff')) else None   # new-product pseudo-counts
     rows = []
     for k, r in enumerate(reqs):
         if k in quick: continue
@@ -284,6 +303,22 @@ def qrank_slates(reqs, unavail, versions=None):
         return out
     except Exception as e:
         print('qrank error', type(e).__name__, e, flush=True); return {}
+
+def attr_slates(reqs, unavail, versions):
+    """Slates from attr_model for the requests the active variant routes to it. Any failure -> {} (qrank/GBM path)."""
+    if ATP is None or not ATP.ok: return {}
+    try:
+        ver = {k: v for k, v in ((k, use_attr(r)) for k, r in enumerate(reqs)) if v}
+        if not ver: return {}
+        idx = list(ver)
+        with feature_lock: bought = [set(BOUGHT.get(reqs[k]['user_id'], ())) for k in idx]
+        res = ATP.slates([{"user_id": reqs[k]['user_id'], "rv": reqs[k]['rv'], "page": reqs[k].get('page', 'product'), "bought": b | unavail}
+                          for k, b in zip(idx, bought)], history=[ver[k] == VERSION_TA for k in idx])
+        out = {k: s for k, s in zip(idx, res) if s is not None and len(set(s)) == 10}
+        versions.update({k: ver[k] for k in out})
+        return out
+    except Exception as e:
+        print('attr error', type(e).__name__, e, flush=True); return {}
 
 def fallback_answers(reqs, version=None):
     _, unavail, _, _, best = snapshot()

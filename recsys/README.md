@@ -39,6 +39,10 @@ To retrain: `python train.py` (needs `data/hs.parquet` + `data/user_item_A.parqu
 | `trends.py` | Detector de subcategorías calientes en `shop.events` (15 min vs 3 h), multiplicador y candidatos; solo lectura (`python trends.py` muestra qué está caliente ahora) |
 | `trends_replay.py` | Replay offline de las tendencias de hoy (E-080): `python trends_replay.py --pull` |
 | `night_lab.py` | Laboratorio nocturno (T-016): rota `data/policy.json` / `data/d130.json` por bloques y mide cada variante contra el leaderboard; guardia y tabla de ablación. No escribe en RawTree. Ver `runbook.md` |
+| `attr_model.py` | Ranker por atributos (T-017, D-170): calidad = prior de categoría/frases/marca/precio × conteos con shrinkage; comprador solo por `recent_views`; mismo contrato que `qrank.Ranker` |
+| `attr_policy.py` | Enlace con el writer: refresco (frases de productos nuevos, conteos en vivo) y slates; variantes `attr`, `attr_aff`, `ab_attr`, `ab_attr_aff` |
+| `attr_model_build.py` | Ajusta y valida `data/attr_model.joblib` (split temporal + 20% de productos simulados como nuevos); reutiliza `data/qr_*.parquet` de `qrank_build.py --pull` |
+| `attr_model_eval.py` | Contrasta `attr_model` con el feedback en vivo, solo lectura (`--pull` descarga) |
 | `qrank.py` | Ranker para product/category: calidad del producto × contexto, solo misma categoría, sin lo ya comprado (T-015, propuesta D-081) |
 | `qrank_build.py` | Construye y valida `data/qrank.joblib` con split temporal (`--pull` descarga los agregados) |
 | `qrank_eval.py` | Contrasta qrank con el feedback en vivo, solo lectura |
