@@ -206,3 +206,16 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Limitaciones:** lo mostrado no fue aleatorio (v1, qrank y fallback); son compras reales con ruido, no la probabilidad del modelo oculto. Las tasas "esperadas" vienen de un modelo ajustado con los mismos datos. Ninguna de estas pruebas sustituye a la fila por versión del leaderboard.
 - **Sin cambios en** `live.py`, el writer ni `submissions`.
+
+
+## E-CS01 — Cold start por segmento y calidad de productos nuevos para lfm (T-CS01, d4xn+Claude, `feat/team26-coldstart-challenger`)
+
+| ID | Fecha | Datos | N | Resultado | Decisión |
+|---|---|---|---|---|---|
+| E-CS01a | 2026-11-14 16:20 UTC | Liga, VALIDACIÓN (`tools/league_segments.py`, `league_metrics.evaluate` sin cambios) | 10.000 impresiones | 0 productos creados tras el fin de entrenamiento, 0 `catalog_updates`; 5 impresiones de usuarios no vistos; home 2.050 impresiones / 12 clics. Solo "conocido con vistas" tiene soporte (7.945 / 371 clics): baseline hit@10 0,383 [0,340–0,424], mixed_category 0,728 [0,679–0,772] | La liga **no mide cold start**: se evalúa en el stream de hoy con corte temporal |
+| E-CS01b | 2026-11-14 15:45 UTC (ventana 14:35–15:40) | `team_26.feedback` × `shop.requests`, OBSERVED (nuestros slates, no contrafactual) | 11.700 peticiones | Productos nuevos: 0,15% de nuestras impresiones frente a 2,4% de las vistas orgánicas (16×); 2 de 200 compras. Compra/petición: known home 0,36%, new home 0,74%, known product 1,46%, new product 2,72% | Hueco de exposición de productos nuevos → E-CS01c |
+| E-CS01c | 2026-11-14 16:30 UTC (datos hasta 15:40) | `shop.events` orgánico + catálogo, corte temporal estricto por tanda (10:00, 14:00); `recsys/cold_lq_eval.py` | 176 / 161 / 131 productos (h = 0 / 30 / 60 min) | MAE de cuantil en su subcategoría: mediana actual 0,256 / 0,265 / 0,257; **cold_lq 0,196 / 0,200 / 0,182** (IC95 de la diferencia excluye 0 en los tres); sin prior de frases 0,345 / 0,307 / 0,271 (peor). Recall del cuartil alto 0 → 0,69–0,78. Suelo de ruido (productos establecidos) 0,165 | Enviar `cold_lq` apagado, propuesta D-CS01 |
+| E-CS01d | 2026-11-14 16:55 UTC | 900 peticiones reales 14:5x–15:00, mismo estado (eventos de hoy por usuario), lfm offline con lq de qrank vs cold_lq (`recsys/cold_lq_slates.py`); sin stock ni bitmap de home_cands | 900 | Productos nuevos en las impresiones de lfm: **0,11% → 5,87%** (en vivo observado 0,15%: el replay reproduce la situación real); slot 1 0% → 4,6%; slates con ≥1 nuevo 1,1% → 47,2%; validez 100% en ambos; cambia el 47% de los slates y el slot 1 del 4,6%. Por segmento (nuevos en impresiones): known/home 0,08→6,99%, known/vistas 0,14→5,42%, new/home 0→5,90%, new/vistas 0,09→6,20%. Sesgo medio del cuantil predicho (E-CS01c): cold_lq +0,07/+0,06/+0,05 (algo optimista), mediana −0,07/−0,10/−0,11; falsos ascensos (top 25% predicho, realizado < mediana) 10% / 7,5% / 3,8% | Exposición ≈ 2,4× la cuota de vistas orgánicas: probar solo con bloques en vivo (D-CS01) |
+
+- **Limitaciones:** objetivo = tasa orgánica, no el modelo oculto; 2 tandas; E-CS01b es observacional. Nada de esto es score oficial.
+- **Sin cambios en** `live.py`, el writer ni `submissions`. Lecturas de RawTree solo SELECT.

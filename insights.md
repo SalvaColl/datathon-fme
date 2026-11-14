@@ -428,3 +428,17 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Evidencia:** peticiones fuera de home de usuarios nuevos según compras orgánicas hechas hoy antes de la petición: 0 compras **0,85%** (48/5.666); 1 compra 1,73% (36/2.081); 2 compras 3,82% (30/785); 3 o más **9,46%** (53/560). En usuarios que vuelven casi no cambia (0,56% → 1,10%). El aumento se reparte por todos los tipos de producto (×2,1–3,2 sobre lo esperado), así que es propensión del comprador, y además se concentra en productos parecidos a lo comprado (I-201).
 - **Implicación:** el 15% de las peticiones de usuarios nuevos (2 o más compras hoy) da el 50% de sus compras en el carrusel (83 de 167). Ahí es donde más vale el orden del slate, y es el caso típico de la final.
 - **Debilidad:** observacional; `is_new_user` significa "no está en el histórico", no "primera visita de hoy".
+
+
+## Cold start (T-CS01, d4xn+Claude)
+
+### I-CS01 — lfm esconde los productos nuevos porque les da la calidad mediana de su subcategoría todo el día
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA + OFFLINE ESTIMATE) · 2026-11-14 16:30 UTC · d4xn+Claude · E-CS01b, E-CS01c
+- **Evidencia:** 0,15% de nuestras impresiones frente a 2,4% de las vistas orgánicas; la regla de la mediana nunca sitúa un producto nuevo en el cuartil alto de su subcategoría aunque el 31% acaba ahí. El estimador de `live_quality` (Javi, I-183) baja el error de cuantil de 0,26 a 0,18–0,20 (suelo 0,165), pero hoy solo alimenta a qrank y está apagado.
+- **Hipótesis:** dárselo a lfm (`recsys/cold_lq.py`) sube la exposición de productos nuevos buenos sin tocar los establecidos. **Debilidad:** el objetivo medido es orgánico; el efecto en el modelo oculto requiere bloques en vivo.
+
+### I-CS02 — `live_quality` sin prior de frases sobrepromociona productos nuevos
+- **Status:** SUPPORTED (OFFLINE ESTIMATE) · E-CS01c · `LiveQuality(prior=None)` (su fallback si `cold_prior.json` no carga) da MAE 0,345 en el lanzamiento, peor que la mediana (IC +0,044…+0,133), y pone 150 de 176 productos nuevos en el cuartil alto. Con `lq.json` en `on`, comprobar en el log que el prior se cargó.
+
+### I-CS03 — La liga offline no tiene soporte para cold start
+- **Status:** OBSERVED DATA · E-CS01a · validación sin productos nuevos ni usuarios nuevos y con home casi sin clics. Cualquier afirmación sobre cold start necesita datos del stream con corte temporal o un bloque en vivo.
