@@ -27,6 +27,7 @@ NEUTRAL = 0.10     # expected affinity of a random product: each of its 2 phrase
 SHRINK = 20.0      # pseudo attribute-mass (= 10 views) pulling users with little history to NEUTRAL
 BETA = 40.0        # score multiplier exp(BETA * affinity). Offline optimum flat 20-30 (E-092); live feedback slope ~40 (E-093)
 CAP = 0.35
+PENDING_MAX = 2_000_000   # (user, product) pairs held for products not synced yet; beyond it new pairs are dropped, as before
 
 
 class AttrAffinity:
@@ -36,6 +37,7 @@ class AttrAffinity:
         for p, a in self.cold.attr.items(): self._add_product(p, a)
         self.A = np.array(self._rows, dtype=np.float32)
         self.uix = {}; self.UV = np.zeros((0, 20), dtype=np.float32); self.extra = {}
+        self.pending = {}; self.pending_n = 0      # views of products not synced yet: product -> {user: views} (T-044)
         if ui_path is not None:
             ui = pd.read_parquet(ui_path, columns=["u", "i", "v"]); ui = ui[ui.i.isin(self.pid) & (ui.v > 0)]
             codes, uniq = pd.factorize(ui.u)
@@ -58,13 +60,25 @@ class AttrAffinity:
             row = np.zeros(20, dtype=np.float32); row[list(a)] = 1.0; rows.append(row)
         self.A = np.array(rows, dtype=np.float32); self._rows = rows
         for k, (p, a) in enumerate(new, start=len(rows) - len(new)): self.pid[p] = k
+        for p, _ in new:                                    # T-044: the views that arrived before the product was known
+            held = self.pending.pop(p, None)
+            if held:
+                self.pending_n -= len(held)
+                for u, v in held.items(): self.add(u, p, v)
         return len(new)
 
     # ---- live updates ----
     def add(self, u, i, v=1):
-        """Add v organic views of product i by user u (live stream). Unknown products are ignored until synced."""
+        """Add v organic views of product i by user u (live stream). Views of a product that is not known yet (launched
+        during the event, description not synced) are held and applied by sync_products(): the stream is read BEFORE the
+        sync in every refresh cycle, and at start-up the whole backlog is read before the first one, so dropping them
+        lost every view of a launched product made before the writer started (4.3% of the views of 14 Nov, T-044)."""
+        if not v: return
         k = self.pid.get(i)
-        if k is None or not v: return
+        if k is None:
+            if self.pending_n < PENDING_MAX:
+                d = self.pending.setdefault(i, {}); self.pending_n += u not in d; d[u] = d.get(u, 0) + v
+            return
         j = self.uix.get(u)
         if j is not None: self.UV[j] += self._rows[k] * v
         else:

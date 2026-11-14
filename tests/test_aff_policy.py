@@ -59,6 +59,32 @@ class AffinityTests(unittest.TestCase):
         self.assertGreater(float(ap.aff.affinity('fan', ['NEW1'])[0]), 0.2)
         ap.aff.add('fan', 'NEW1', 2)   # live views of the new product are accepted after sync
 
+    def test_views_of_a_launched_product_before_its_sync_are_kept(self):
+        """T-044: the stream is read before the sync (and the whole backlog at start-up), so these views used to be lost."""
+        ap = policy(); ref = policy()
+        for _ in range(3): ap.aff.add('early', 'NEW1', 2)            # a shopper seen only today
+        ap.aff.add('fan', 'NEW1', 4); ap.aff.add('early', 'NEVER', 1); ap.aff.add('early', 'NEW1', 0)
+        self.assertEqual(ap.aff.pending_n, 3)                        # (early, NEW1), (fan, NEW1), (early, NEVER)
+        self.assertTrue(np.allclose(ap.aff.user_vec('fan'), ref.aff.user_vec('fan')))          # nothing applied yet
+        self.assertTrue(np.allclose(ap.aff.affinity_all('early'), attr_affinity.NEUTRAL))
+        ap.cold.attr['NEW1'] = (1, 6); ref.cold.attr['NEW1'] = (1, 6)
+        self.assertEqual(ap.aff.sync_products(), 1); ref.aff.sync_products()
+        ref.aff.add('early', 'NEW1', 6); ref.aff.add('fan', 'NEW1', 4)                          # the same views, after the sync
+        for u in ('early', 'fan'): self.assertTrue(np.allclose(ap.aff.user_vec(u), ref.aff.user_vec(u)))
+        self.assertEqual(float(ap.aff.user_vec('early').sum()), 12.0)
+        self.assertEqual(ap.aff.pending_n, 1); self.assertEqual(set(ap.aff.pending), {'NEVER'})  # still unknown: still held
+        self.assertEqual(ap.aff.sync_products(), 0)                                             # applied once, never twice
+        self.assertEqual(float(ap.aff.user_vec('early').sum()), 12.0)
+
+    def test_pending_views_are_bounded(self):
+        ap = policy(); old = attr_affinity.PENDING_MAX
+        try:
+            attr_affinity.PENDING_MAX = 2
+            for k in range(5): ap.aff.add(f'u{k}', 'NEW1', 1)
+            ap.aff.add('u0', 'NEW1', 1)                                                         # at the cap nothing more is held
+            self.assertEqual(ap.aff.pending_n, 2); self.assertEqual(set(ap.aff.pending['NEW1']), {'u0', 'u1'})
+        finally: attr_affinity.PENDING_MAX = old
+
 
 class QrankAffinityTests(unittest.TestCase):
     def setUp(self):
