@@ -254,3 +254,21 @@ class OwnPurchaseTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class FusedArmTests(unittest.TestCase):
+    """Fused arms: one weight set on product/category pages, another on home (T-025)."""
+    def test_clean_keeps_home_spec_and_rejects_bad_ones(self):
+        arms = live.clean_lfm_arms([{'tag': 'r1'}, {'tag': 'f1', 'w': {'known': {'hcart': 1.5}}, 'home': {}}])
+        self.assertEqual(arms, [{'tag': 'r1'}, {'tag': 'f1', 'w': {'known': {'hcart': 1.5}}, 'home': {}}])
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'r1'}, {'tag': 'f1', 'home': {'file': '../x.json'}}]), [])
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'r1'}, {'tag': 'f1', 'home': 'r1'}]), [])
+
+    def test_home_requests_use_home_weights(self):
+        L = lfm.LiveFit.__new__(lfm.LiveFit)
+        L.w = {k: np.zeros(len(lfm.FEATS)) for k in ('known', 'new')}; L.b = {'known': 0.0, 'new': 0.0}; L.alt = {}
+        L.set_arms([{'tag': 'f1', 'w': {'known': {'hcart': 1.5}}, 'home': {}}, {'tag': 't1', 'w': {'known': {'hcart': 1.5}}}])
+        j = lfm.FEATS.index('hcart')
+        self.assertEqual(L.alt['f1'][0]['known'][j], 1.5)
+        self.assertEqual(L.alt['f1@home'][0]['known'][j], 0.0)       # home part = committed weights
+        self.assertNotIn('t1@home', L.alt)

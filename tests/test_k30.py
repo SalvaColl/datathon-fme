@@ -172,5 +172,16 @@ class PlanAndTimeTests(unittest.TestCase):
         cursor=events_before(lf,aff,events,cursor,stamp('2026-11-14T16:00:02Z'))
         self.assertEqual(cursor,3); self.assertIn('B05',lf.user_state('u1')[0]); self.assertNotIn('B05',lf.user_state('u1')[1])
 
+    def test_fused_home_spec_is_preserved_and_has_exact_scores(self):
+        winner={'tag':'best','file':'lfm_coef_r3.json','w':{'known':{'chn':3.}},
+                'home':{'file':'lfm_coef.json','w':{'known':{'hcart':1.5}}}}
+        arms=plan({'variant':'lfm','lfm_arms':[winner]})['lfm_arms']
+        self.assertEqual(arms[0]['home'],winner['home']); self.assertEqual(arms[1]['home'],winner['home'])
+        lf,aff=build(); lf.set_arms([winner]+arms)
+        for new in (False,True):
+            r=request(new=new,page='home',rv=());st=lf.user_state('u1')
+            reference=lf.scores(r,st,aff,model='best')[1]
+            for arm in ('q7a','q7b'):np.testing.assert_array_equal(reference,lf.scores(r,st,aff,model=arm)[1])
+
 
 if __name__=='__main__':unittest.main()

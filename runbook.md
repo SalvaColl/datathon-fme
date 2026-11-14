@@ -182,3 +182,13 @@ caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home 
 ## K30 optional policy-arm trial (returning product/category)
 
 Owner-only instructions, exact matched-arm planner, private opaque labels, fixed-window reporter and rollback: [recsys/K30.md](recsys/K30.md). UNTESTED ONLINE; no automatic activation/promotion. Never run its replay/tests on the active serving laptop. Coordinate with the weight tuner before changing policy arms.
+
+## Brazos fusionados de lfm — T-025 (2026-11-14)
+
+Un brazo de `lfm_arms` puede llevar `"home": {...}` (misma forma que el brazo: `file` y/o `w`; `{}` = pesos publicados) para usar otros pesos en las peticiones de home (sin vistas recientes). Sirve para juntar lo mejor de dos brazos cuando uno gana en producto/categoría y otro en home:
+
+```json
+{"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "f1", "w": {"known": {"hcart": 1.5, "islast": 3.0}, "new": {"nbp": 0.6, "bsub": 0.6}}, "home": {}}, {"tag": "r3", "file": "lfm_coef_r3.json"}]}
+```
+
+Las etiquetas no cambian (`v3-lfm-<tag>-k|-n|-kh|-nh`). Sin `home` el brazo se comporta como antes. Necesita un reinicio (con relevo) para cargar el código.
