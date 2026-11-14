@@ -319,6 +319,12 @@ _None tested/rejected by team yet. Corrected assumptions are listed above rather
 - **Evidence:** `shop.events` 09:00–12:30 UTC, 11.855 compras orgánicas de usuarios que no están en el histórico: el reparto por categoría es igual en las 10 regiones (±2 puntos, p. ej. Books & Media 20–25%); por dispositivo solo cambia Books & Media (web 32%, ios 20%, android 17%). Las diferencias de conversión de home por región en el histórico (Andalucía 0,26%, C. Valenciana 0,065%) y dispositivo (android 0,22%, web/ios 0,11%) son propensión del usuario, no gusto por productos. Misma conversión orgánica por vista en nuevos y conocidos (5,3%) y mismo top (p_0210c5, p_adc3e6, p_69d40e, p_1036d3…). Top-10 de productos = 6% de las compras de nuevos; top-100 = 27%.
 - **Implication:** para usuario nuevo en home no hay palanca de contexto; una lista global tiene techo bajo. Además `live.pull()` no trae región/dispositivo, así que no pedimos ese cambio.
 
+### I-133 — Home de usuario conocido: solo vende el carrito pendiente BUENO, y lfm r2 ya lo ordena; el techo es bajo
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA, N pequeño) · 2026-11-14 16:00 UTC · agente de Javi · E-133, E-134
+- **Evidence:** 12 compras en 4.975 peticiones de home con usuario conocido; 10 de ellas en carritos del histórico (10,7 por 10.000 impresiones frente a ~0,4 del resto). Los genéricos no venden ni con afinidad alta. Pero no todos los carritos valen: los que lfm deja en los slots 7–10 tienen 0 clics en 660 impresiones, y los buenos se distinguen por veces carritado, calidad y afinidad, que es lo que lfm r2 ya pesa. Un modelo ajustado solo con home no mejora a r2 en hold-out (AUC 0,767 ambos, MRR 0,540 frente a 0,569). En el modelo oculto, dos políticas distintas (lfm y D-130, esta con 54% de carritos) dan lo mismo: 0,46–0,54%.
+- **Tamaño real:** home-conocido es ~14% del tráfico. Subirlo de 0,5% a 0,8% (no hay evidencia de que se pueda) serían +0,04 puntos de conversión global. Un +10% relativo en las páginas con sesión de usuarios conocidos (~40% del tráfico al 2,0–2,1%) son +0,08 puntos. El hueco con la referencia (1,77% frente a 2,14%) no está en home.
+- **Implication:** no dedicar más trabajo a home-conocido más allá de lfm r2. I-202 pasa a REJECTED (R-17). Brazo barato disponible si alguien quiere confirmarlo en el modelo oculto, sin código, con el mecanismo `lfm_arms` de PR #11: `{"tag":"hc3","file":"lfm_coef_r2.json","w":{"known":{"hcart":3.0}}}`; esperado neutro o negativo.
+
 ---
 
 # TABLERO DE IDEAS DEL EQUIPO (T-020, abierto el 2026-11-14 15:00 UTC)
@@ -349,6 +355,7 @@ _None tested/rejected by team yet. Corrected assumptions are listed above rather
 | R-14 | TF-IDF o embeddings de la descripción para productos nuevos | SUPERSEDED | I-090: Spearman 0,60 frente a 0,84 del GLM de frases × categoría. Queda de reserva si la final trae frases nuevas. |
 | R-15 | Elegir política con IPS del slot 1 en el histórico | SUPERSEDED | I-010 (Codex): no distingue políticas que cambian slots 2–10; unas 98 de tamaño efectivo. La medida válida es la fila por versión del leaderboard (I-182). |
 | R-16 | "Visto antes hoy pero fuera de `recent_views`" como señal o como producto muerto | REJECTED (sin efecto medible) | E-201: 3 compras en 2.330 impresiones, observado/esperado 1,6–1,7, peso 0 en hold-out. Ni está muerto (a diferencia de lo visto en el histórico sin carrito) ni merece un peso. |
+| R-17 | Home del usuario que vuelve: llenar los 10 slots con carritos del histórico (I-202), o slate propia de home (D-130 `home`) | REJECTED como palanca | E-133: D-130 (54% de carritos) 0,46–0,48% frente a lfm 0,51–0,54% en el modelo oculto. E-134: modelo solo-home no supera a lfm r2 en hold-out; los carritos de los slots 7–10 tienen 0 clics en 660 impresiones. Techo: +0,04 puntos globales (I-133). |
 
 ## Ideas nuevas (cógelas: cambia `owner: free`)
 
@@ -368,7 +375,7 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Test:** hold-out de `lfm_build.py` (AUC y hit@1 del segmento nuevo); en vivo, versión `v3-lfm-r2-n` frente a `v3-lfm-r1-n`.
 
 ### I-202 — Home para el usuario que vuelve: solo carritos del histórico
-- **Status / owner:** SUPPORTED offline (E-203) · **owner: free**
+- **Status / owner:** **REJECTED 2026-11-14 16:00 UTC (agente de Javi; E-133, E-134, I-133, R-17)**: lo genérico no vende, cierto, pero llenar con carritos tampoco sube la fila; lfm r2 ya pone primero los carritos que valen. Antes: SUPPORTED offline (E-203) · owner: free
 - **Hipótesis:** en home, a un usuario que vuelve lo genérico no le vende nada; solo vende lo que carritó y no compró.
 - **Evidencia (E-203, coincide con I-130 e I-131 de T-013):** home, usuario que vuelve: genéricos **1 compra en 23.363 impresiones** (0,4 por 10.000; 0 compras en los tres cuartiles bajos de calidad); carrito del histórico 6 en 5.441 (11,0 por 10.000); carrito de hoy 1 en 307. La fila `v3-lfm-r1-kh` va al 0,35% (143 peticiones) frente a 2,39% de `-k`.
 - **Ganancia esperada:** home de usuario que vuelve es el 14% del tráfico al 0,35%. Llenando los 10 slots con carritos del histórico (hoy lfm pone unos 3) y ordenándolos por afinidad, objetivo 0,7–1,0%: **+0,05–0,09 pp**. **Coste:** 1 h (regla en `lfm.slate` para `page == "home"`: primero todos los carritos, después afinidad). El 96% de estos usuarios tiene carrito sin comprar y el 45% más de 10 (I-180).
