@@ -324,10 +324,10 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 | solo vistas de productos recién lanzados (sin compras ni aristas) | 1.500 | 0 | 0,6 / 0,8 / 2 |
 | metadatos ausentes o desconocidos, vistas con ids inexistentes | 1.500 | 0 | 1,1 / 1,7 / 3 |
 | cambio brusco de categorías vistas | 500 | 0 | 1,0 / 1,3 / 2 |
-| un tercio del catálogo sin stock de golpe | 1.500 | 0 con 10 válidos; ver E-330 | 16,3 / 24,4 / 343 en main; 7,1 / 10,3 / 12 con T-033 |
+| un tercio del catálogo sin stock de golpe | 1.500 | 0 con 10 válidos; ver E-370 | 16,3 / 24,4 / 343 en main; 7,1 / 10,3 / 12 con T-037 |
 | RawTree sin responder (refresco parado) | 1.500 | 0 | 1,1 / 1,6 / 4 |
 
   Inválido = no son 10 distintos, alguno fuera de catálogo o sin stock según el writer, o alguno ya comprado por ese comprador.
-- **Hallazgo:** en el corte de stock, main entrega 10 válidos pero el 96% de las peticiones cae al camino antiguo v1 (133 slates con un producto ya comprado). Arreglo en PR #33 (T-033, E-330).
+- **Hallazgo:** en el corte de stock, main entrega 10 válidos pero el 96% de las peticiones cae al camino antiguo v1 (133 slates con un producto ya comprado). Arreglo en PR #33 (T-037, E-370).
 - **No cubierto:** el POST y el plazo de respuesta de extremo a extremo (los cubre `tools/handoff_rehearsal.py`), y un RawTree lento en vez de caído.
 
