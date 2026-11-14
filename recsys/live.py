@@ -42,6 +42,16 @@ def session():
     return transport.http
 # --dry-run or RAWTREE_DRY_RUN=1: compute everything, never write (enforced by ReadOnlySession, not only by flags).
 DRY = "--dry-run" in sys.argv or os.environ.get('RAWTREE_DRY_RUN') == '1'
+def urgent_age(raw=None, default=2.2):
+    """Age (s) from which a request gets the generic guard list instead of the model (T-043). It was 1.8 s, set when
+    inference took hundreds of ms; lfm takes ~5 ms, and since 14 Nov 20:30 UTC the POST is ~75 ms slower, so 3% of the
+    requests were crossing 1.8 s and getting the guard list (0.7% conversion against ~1.9%). 2.2 s still leaves room
+    for a slow inference (0.3 s) plus a p95 POST (0.47 s) inside the 3 s deadline. URGENT_AGE overrides; clamped to
+    1.5-2.4 so a typo can neither starve the model nor push answers past serving.py's max_age (2.5 s)."""
+    try: v = float(raw) if raw not in (None, '') else default
+    except (TypeError, ValueError): v = default
+    return min(2.4, max(1.5, v))
+URGENT_AGE = urgent_age(os.environ.get('URGENT_AGE'))
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand-r1"
 VERSION_Q = "v2-qrank-r1"
@@ -733,7 +743,7 @@ def main():
                     reqs = [r for r in reqs if not journal.contains(r['request_id'])]
                 expired_ids = {r['request_id'] for r in reqs if age(r) > 2.5}
                 seen.update(expired_ids)
-                expired = serve(reqs, score, fallback_answers, deliver)
+                expired = serve(reqs, score, fallback_answers, deliver, urgent_age=URGENT_AGE)
                 if reqs:
                     print(json.dumps(dict(event='loop', n=len(reqs), expired=expired,
                         loop_ms=round(1000*(time.perf_counter()-started), 1),
