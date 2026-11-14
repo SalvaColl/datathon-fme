@@ -234,6 +234,25 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Ensayo de relevo (flujo real, sin escribir; `tools/handoff_rehearsal.py`):** writer A sirviendo, proceso B con `--takeover`. 300 peticiones en la ventana: 300 respondidas una vez, 0 nunca, 0 dos veces; en ±10 s del relevo 60 de 60, peor edad al POST 1,25 s; A no respondió nada después del relevo; B esperó 365 ms por el candado tras un SIGINT. Edad al POST p50 0,95 / p95 1,52 / máx 2,18 s con un POST simulado de 300 ms.
 - **Límites:** medido en un contenedor de 4 núcleos, no en el Mac. Dos procesos a la vez ocupan ~2,8 GB cada uno (pico) durante el minuto de calentamiento. No se ha escrito nada en `submissions`. Comandos: `python -m unittest discover -s tests` (118 OK), `python live.py --dry-run`, y los tres pasos del ensayo.
 
+### E-240 — lfm r3: reparto de categorías del usuario (T-024)
+- **Date / owner / branch:** 2026-11-14 16:45 UTC / Javi (agente) / `javi/known-gap`. Solo lectura en RawTree; ningún envío.
+- **Datos:** 52.298 peticiones con feedback (11:09–16:00 UTC), 622 compras, 1.950 clics.
+- **Validación 1, usuarios apartados (mitad de usuarios para ajustar, la otra para medir, y al revés):** verosimilitud de qué producto de los 10 enseñados se compró o se clicó, corrigiendo la posición. r3 mejora a r1 en las 8 celdas; r2 no movía ninguna.
+
+| Segmento | Etiqueta | Slates de | N | r1 | r2 | r3 |
+|---|---|---|---:|---:|---:|---:|
+| vuelve | compra | políticas anteriores | 154 | -185,2 | -185,5 | **-164,1** |
+| vuelve | compra | lfm | 149 | -283,9 | -284,1 | **-278,5** |
+| vuelve | clic | políticas anteriores | 533 | -778,8 | -781,3 | **-738,8** |
+| vuelve | clic | lfm | 458 | -915,0 | -921,0 | **-903,4** |
+| nuevo | compra | políticas anteriores | 181 | -290,6 | -289,8 | **-279,8** |
+| nuevo | compra | lfm | 93 | -180,5 | -177,9 | **-172,1** |
+| nuevo | clic | políticas anteriores | 447 | -847,3 | -845,0 | **-826,9** |
+| nuevo | clic | lfm | 231 | -473,0 | -468,8 | **-458,2** |
+
+- **Validación 2, corte temporal (ajuste antes de 14:33 UTC, medida después):** AUC de compra 0,868 -> 0,900 (vuelve, 170 compras) y 0,865 -> 0,910 (nuevo, 116). El acierto del producto comprado entre los 3 primeros es mixto en slates servidos por lfm (0,64 -> 0,60 en los que vuelven), donde el orden registrado favorece a r1.
+- **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
+- **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.
 
 ## E-SA01 — Búsqueda de alpha sintético en cold start (T-SA01, d4xn+Claude, `feat/team26-synthetic-alpha`)
 

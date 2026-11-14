@@ -106,13 +106,23 @@ def state_asof(LF, carts, buys, u, ts):
     return b, lc, hc, bt
 
 
+def mix_asof(LF, aff, u, ts):
+    """LiveFit.user_mix as of the request: history + today's views whose 10-minute bucket had closed."""
+    ts = np.datetime64(ts); today = {}
+    names = getattr(aff, "_names", None)
+    if names is None or len(names) != len(aff.pid): names = aff._names = list(aff.pid)      # row of the attribute matrix -> product
+    for t, k, n in getattr(aff, "today", {}).get(u, ()):
+        if t < ts: p = names[k]; today[p] = today.get(p, 0) + n
+    return LF.user_mix(u, asof=today)
+
+
 def impressions(d, LF, aff, carts, buys):
     """One row per (request, shown product): features, slot, labels, dead flag."""
     S = LF.snap; rows = []; meta = []
     for r in d.itertuples():
         st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
         idx = [S.row.get(p, -1) for p in r.shown]
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx],
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx], mix=mix_asof(LF, aff, r.user_id, r.ts),
                          bought_today=bt, seg=lfm.in_segment(r.device, r.region))
         stale = S.stale(r.user_id)
         for s, (p, k) in enumerate(zip(r.shown, idx)):
@@ -186,7 +196,7 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
         seg_flag = lfm.in_segment(r.device, r.region)
         req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
         seg = "new" if r.new_user else "known"
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag)
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix_asof(LF, aff, r.user_id, r.ts))
         stale = S.stale(r.user_id)
         def value(items):
             v = 0.0

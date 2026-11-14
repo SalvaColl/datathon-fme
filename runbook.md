@@ -125,6 +125,7 @@ Rama `javi/qrank-serving` = writer robusto de Salva (`7176c03`) + ranker `recsys
 - Variante `lfm` (D-180): `{"variant": "ab_lfm"}` reparte 50/50 entre qrank y lfm; `{"variant": "lfm"}` lo pone al 100%. Sus respuestas salen como `v3-lfm-r1-k|-n|-kh|-nh` (vuelve, nuevo, y sus home), legibles por separado en `api/state?by=model`. Reajustar pesos: `python lfm_build.py --pull` y reiniciar el writer.
 - Brazos de lfm (D-210): añadir `"lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}]` a `policy.json` reparte a los usuarios entre brazos sin reiniciar; cada brazo sale como `v3-lfm-<tag>-k|-n|-kh|-nh` (con `labels.json`, el código público de cada uno queda en el log como `{"event": "label"}`). Quitar la clave vuelve a lfm normal.
 - Afinador de lfm (D-230): con el writer en `lfm`, desde `recsys/`: `python lfm_tuner.py check` y luego `caffeinate -i python lfm_tuner.py run --until 08:30 2>&1 | tee -a data/lfm_tuner.log`. Solo escribe `lfm_arms` en `data/policy.json` y `data/lfm_tuner/`; no llama a RawTree. `python lfm_tuner.py report` da la tabla de rondas. Ctrl-C deja un brazo `best` con los pesos ganadores (con el writer anterior a T-023, usar `--finish off`). No correrlo a la vez que `night_lab.py`: los dos escriben `policy.json`.
+- lfm r3 (D-240): con el writer reiniciado en un commit que incluya T-024, `"lfm_arms": [{"tag": "r1"}, {"tag": "r3", "file": "lfm_coef_r3.json"}]` compara los pesos con reparto de categorías del usuario contra los publicados. Reajuste: `python lfm_build.py --pull --out lfm_coef_r3.json`.
 - Reconstruir el artefacto: `cd recsys && python qrank_build.py --pull` (scikit-learn 1.9.1).
 
 ## Laboratorio nocturno contra el leaderboard — T-016 (2026-11-14)
@@ -176,3 +177,13 @@ caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home 
 - **`EVENTS_SINCE`:** el writer aplica `shop.events` desde `2026-11-14 07:00:00` (fijo en el código hasta ahora). Para la final, arrancar con `EVENTS_SINCE='2026-11-15 07:00:00'` (u otra hora) si no se quiere arrastrar el sábado como "hoy"; la carga va por ventanas de una hora, así que un rango largo ya no puede agotar el tiempo de la consulta.
 - **Parones:** cualquier recolección de basura de más de 200 ms queda como `{"event": "gc_pause", ...}`. Si tras este cambio sigue habiendo bucles de varios segundos sin `gc_pause` al lado, la causa es otra (red o reposo del Mac).
 - **Ensayo sin escribir** (en otra máquina, nunca junto al writer): ver la cabecera de `tools/handoff_rehearsal.py`.
+
+## Brazos fusionados de lfm — T-025 (2026-11-14)
+
+Un brazo de `lfm_arms` puede llevar `"home": {...}` (misma forma que el brazo: `file` y/o `w`; `{}` = pesos publicados) para usar otros pesos en las peticiones de home (sin vistas recientes). Sirve para juntar lo mejor de dos brazos cuando uno gana en producto/categoría y otro en home:
+
+```json
+{"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "f1", "w": {"known": {"hcart": 1.5, "islast": 3.0}, "new": {"nbp": 0.6, "bsub": 0.6}}, "home": {}}, {"tag": "r3", "file": "lfm_coef_r3.json"}]}
+```
+
+Las etiquetas no cambian (`v3-lfm-<tag>-k|-n|-kh|-nh`). Sin `home` el brazo se comporta como antes. Necesita un reinicio (con relevo) para cargar el código.
