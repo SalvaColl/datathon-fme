@@ -16,7 +16,9 @@ pip install -r requirements.txt          # pinned sklearn: the committed model n
 python download_sessions.py              # -> data/hs.parquet            (~4 min, 2M sessions)
 python download_user_items.py            # -> data/user_item_{A,all}.parquet (~2 min)
 python live.py --dry-run                 # computes answers + latency, writes NOTHING
-python live.py                           # LIVE writer: only if it REPLACES the current team writer (one writer!)
+python live.py --ab                      # LIVE, 50/50 by user hash: baseline-ctrl vs v1-gbm-cand (one writer!)
+python live.py                           # LIVE, 100% model — only if it REPLACES the current team writer
+python compare_versions.py 60            # realized conversion / latency per model_version, last 60 min
 ```
 
 `.env` is read from `recsys/` or the repo root. `data/catalog.parquet` and `data/model_buy.joblib` are committed;
@@ -48,6 +50,7 @@ user×category views/purchases, user totals, known user, new user. `slot` is a t
 - Always exactly 10 distinct ids; pads/falls back to in-stock best sellers on any error.
 - Deadline guard: a request already >1.8 s old when we get to it is answered instantly with the fallback slate
   (`model_version = v1-gbm-cand-guard`) instead of being late.
+- Each push is retried once (a lost batch = `missing` for every request in it).
 - Live events are aggregated incrementally (O(new events) per refresh) so latency does not grow during the night.
 - Dry-run measured (14 Nov ~13:00 CET, 5 × 60 requests): request age at answer p50 0.6–0.7 s, p95 0.9–1.5 s,
   max 1.9 s, model ~50–120 ms per batch. Push adds one HTTP call per batch.

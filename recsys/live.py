@@ -6,7 +6,7 @@
 pull -> predict -> push like the starter. Falls back to in-stock best sellers on any per-request error.
 """
 from __future__ import annotations
-import os, sys, time, json, threading, traceback
+import os, sys, time, json, threading, traceback, zlib
 from pathlib import Path
 import numpy as np, pandas as pd, requests, joblib
 import fe
@@ -18,6 +18,7 @@ for line in ENV.read_text().splitlines() if ENV else []:
 API = "https://api.rawtree.com"; TEAM = os.environ["TEAM_ID"]
 http = requests.Session(); http.headers["Authorization"] = f"Bearer {os.environ['RAWTREE_API_KEY']}"
 DRY = "--dry-run" in sys.argv
+AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand"
 
 def query(sql, timeout=20):
@@ -150,10 +151,10 @@ def predict(reqs):
         out.append({"request_id": r["request_id"], "items": items, "model_version": VERSION})
     return out
 
-def fallback_answers(reqs):
+def fallback_answers(reqs, version=None):
     with lock: best, unavail = state["best"], state["unavail"]
     items = [p for p in best if p not in unavail][:10]
-    return [{"request_id": r["request_id"], "items": items, "model_version": VERSION + "-guard"} for r in reqs]
+    return [{"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"} for r in reqs]
 
 def pull(seen):
     rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60")
@@ -166,7 +167,7 @@ def pull(seen):
 def main():
     threading.Thread(target=refresher, daemon=True).start()
     while state["pools"] is None: time.sleep(0.5)
-    print("ready", "DRY RUN" if DRY else "LIVE", flush=True)
+    print("ready", "DRY RUN" if DRY else "LIVE", "A/B 50/50" if AB else "", flush=True)
     seen = set(); lat = []
     first = True
     while True:
@@ -177,11 +178,16 @@ def main():
                 t0 = time.time(); now = pd.Timestamp.now("UTC").tz_localize(None)
                 # deadline guard: requests already >1.8s old get the instant fallback slate instead of the model
                 old = [r for r in reqs if (now - pd.Timestamp(r["ts"])).total_seconds() > 1.8]
-                ok = [r for r in reqs if r not in old]
-                ans = (predict(ok) if ok else []) + fallback_answers(old); dt = time.time() - t0
+                ctrl = [r for r in reqs if AB and r not in old and zlib.crc32(r["user_id"].encode()) % 2 == 0]
+                ok = [r for r in reqs if r not in old and r not in ctrl]
+                ans = (predict(ok) if ok else []) + fallback_answers(old) + fallback_answers(ctrl, "baseline-ctrl"); dt = time.time() - t0
                 if old: print(f"deadline guard: {len(old)} requests served with fallback", flush=True)
                 if not DRY:
-                    http.post(f"{API}/v1/tables/submissions", params={"database": TEAM}, json=ans, timeout=5).raise_for_status()
+                    for attempt in range(2):  # one quick retry: a lost batch = 'missing' for every request in it
+                        try:
+                            http.post(f"{API}/v1/tables/submissions", params={"database": TEAM}, json=ans, timeout=2).raise_for_status(); break
+                        except Exception as e:
+                            print("push failed", attempt, e, flush=True)
                 now = pd.Timestamp.now("UTC").tz_localize(None)
                 lag = [(now - pd.Timestamp(r["ts"])).total_seconds() for r in reqs]; lat += lag
                 if len(lat) >= 60:
