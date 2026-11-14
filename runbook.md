@@ -106,3 +106,9 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 ## Offline league v2
 
 See `tools/LEAGUE.md` for train/validation/test preparation, policy registration and freeze/final-test commands. Use the existing team virtualenv; no installations required. This offline workflow does not launch, stop or modify the live champion. The cached historical test must stay unscored until policy selection is frozen. Rollback requires no live action: retain the current champion and discard/revert offline-only changes if needed.
+
+## v1-gbm reliability handoff — T-014 (2026-11-14)
+
+Actual owner: **Javi on his laptop** (user report). Standalone tested code fix: `7176c03` on `salva/serving-reliability`, based on Javi's `5541d74`. It has not been deployed. Javi can fetch and cherry-pick that commit onto his existing branch without merging the imported snapshot or unrelated docs. Run tests with his existing environment and history artifact, then coordinate a single-writer handoff. See `recsys/README.md` for commands, lock/journal paths, telemetry, limitations and rollback.
+
+Read-only diagnosis: `python tools/reliability_audit.py --minutes 30`; source/reason counts and p95/p99 by five-minute UTC bucket. An hourly 76% score can include old disruptions: measured recent 30-minute acceptance was 99.30%. Do not start another process to chase the rolling score. Current stock/transport risks still warrant the staged patch, but no post-fix E2E improvement has yet been measured. Do not delete the persistent attempts journal or blindly resend uncertain POSTs. Local lock cannot protect against another laptop or unpatched baseline.
