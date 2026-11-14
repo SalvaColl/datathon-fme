@@ -618,3 +618,30 @@ Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer 
 - **Tests:** 6 nuevos en `tests/test_lfm_hot.py`, 256 en total.
 - **Ensayo en seco (nube, 1.200 peticiones reales, ráfaga simulada en Game Consoles, 46 productos):** 0 listas inválidas en r3 y t15; latencia por lista p50 0,9 ms / p95 1,5 ms en ambos. Productos calientes por lista r3 → t15: conocidos en páginas 0,05 → 1,34, nuevos en páginas 0,03 → 1,27, home 0,02–0,09 → 1,2–1,3, usuarios en contexto 0,5–0,7 → 3,9–5,3. Primer puesto cambia en el 14% de las listas fuera de contexto. Con el detector real y sin ráfaga: 1,05 s por ciclo de refresco, conjunto vacío, listas idénticas. Con r3 solo no hay consulta.
 - **No es conversión.** Solo se puede medir en el leaderboard durante una ráfaga.
+### E-460 — Re-carritos: un producto carrito del histórico pierde puntos al volver a carritarse hoy (T-046, 14 nov 23:55 UTC)
+
+- **La interacción:** `lfm.features` pone `chn` a 0 en los productos del carrito de hoy. Un carrito del histórico vale `w_chn × log1p(n)` y, al volver a carritarse hoy, pasa a valer `w_cl`. Con cx3 (chn 3,0, cl 0,63) un producto carritado una vez baja de 2,08 a 0,63 puntos (−1,45). Con r3 (chn 0,73) solo afecta a los carritados 2 veces o más (−0,17 con 2).
+- **Candidato:** opción de brazo `"recart": true` (apagada por defecto): suma `max(0, w_chn × log1p(n) − w_cl)` a esos productos, es decir, conserva el mayor de los dos aportes. Solo conocidos en producto/categoría con vistas. El contador sale de `LiveFit.hcart`. Ni `features()` ni `user_state()` cambian. Políticas: `policy.rot_cx3rc.json` (cx3 + opción) y `policy.rot_r3rc.json`.
+- **Replay con el código del writer** (`recsys/recart_replay.py`: `clean_lfm_arms` → `set_arms` → `LiveFit.slate`, catálogo, stock y estado a fecha de cada petición; 12.459 peticiones del 14 nov 12:00–23:32 UTC). El 17,2% de las peticiones de conocidos en páginas tiene algún re-carrito servible (1,53 de media).
+
+| pareja | cohorte | listas que cambian | slot 1 cambia | top 3 cambia | productos sustituidos | re-carritos en lista (control → candidato) | re-carrito en slot 1 | peticiones que muestran alguno |
+|---|---|---|---|---|---|---|---|---|
+| cx3 → cx3rc | conocidos en páginas | 12,9% | 3,5% | 7,7% | 0,11 | 0,055 → 0,162 | 0,24% → 3,78% | 5,1% → 13,2% |
+| cx3 → cx3rc | ídem, con re-carritos (1.201) | 75,3% | 20,6% | 44,6% | 0,62 | 0,32 → 0,94 | 1,4% → 22,0% | 29,8% → 76,9% |
+| r3 → r3rc | conocidos en páginas | 2,1% | 0,4% | 0,9% | 0,004 | 0,119 → 0,124 | 3,1% → 3,5% | 10,1% → 10,4% |
+| r3 → r3rc | ídem, con re-carritos | 12,3% | 2,3% | 5,4% | 0,025 | 0,69 → 0,72 | 18,2% → 20,4% | 58,7% → 60,2% |
+
+  Home de conocidos (1.790), nuevos en páginas (2.983) y nuevos en home (702): 0 listas cambiadas en las dos parejas. Validez 100% en los cuatro brazos (10 productos distintos, en stock, no comprados). Latencia de `slate`: cx3 p50 1,03 / p99 3,29 ms, cx3rc 1,02 / 3,27 ms.
+- **Dato lateral:** cx3 enseña MENOS re-carritos que r3 (en el 30% de las peticiones que los tienen, frente al 59% de r3), porque sube los carritos solo históricos por encima.
+- **Lo que vendió nuestro carrusel** (69.933 peticiones de conocidos en páginas, 14 nov 12:00–23:32 UTC, listas elegidas por los brazos en vivo: observado y seleccionado, no causal). Compras por 10.000 impresiones:
+
+| tipo de producto mostrado | slot 1 | slots 2–3 | slots 4–10 | impresiones | compras |
+|---|---|---|---|---|---|
+| re-carrito (histórico y hoy) | 199,5 | 73,3 | 34,0 | 6.696 | 56 |
+| carrito solo histórico | 99,1 | 41,4 | 17,0 | 151.451 | 567 |
+| carrito solo de hoy | 54,2 | 38,4 | 10,9 | 17.510 | 44 |
+| sin carrito | 27,6 | 11,4 | 5,3 | 480.345 | 377 |
+
+  A igual slot el re-carrito vende el doble que el carrito solo histórico. Son 56 compras y el usuario que re-carrita es distinto del que no, así que no demuestra el efecto del cambio de orden.
+- **No es conversión.** Es una hipótesis de política. Se decide en el leaderboard: cx3rc contra cx3 (su control) y la referencia en ventanas idénticas, sin sustituir a cx3 a mitad de su serie.
+- **Tests:** 10 en `tests/test_lfm_recart.py` (260 en total): contadores 1/2/5, nunca baja una puntuación, comprados por historia / eventos de hoy / feedback del carrusel, stock, cohortes fuera del objetivo idénticas, opción apagada idéntica al control, estado y features sin cambios, ventana de día, y la opción sobrevive a la instalación de `alt` que hace la recarga validada del PR #42.

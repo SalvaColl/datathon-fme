@@ -322,3 +322,9 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
 - **Lectura:** las ráfagas empiezan a y media de las horas impares UTC y duran 45 minutos. Ventana de 30 minutos desde 10 minutos después del inicio; comparar las filas de cada brazo por tramo. Efecto esperado grande (>0,2 pp) o nulo. Versión prudente si pierde fuera de contexto: peso 0,8.
 - **Se quita si:** por debajo de r3 en la ventana, o envíos inválidos. Rollback sin reinicio: quitar el brazo.
 - **Para la final:** si la cadencia sigue, hay una ráfaga a las 09:30 UTC (10:30 CET).
+### D-460 — Brazo de re-carritos `cx3rc`: preparado, sin desplegar (T-046, 14 nov 23:55 UTC)
+
+- **Qué:** opción `"recart": true` en un brazo de `lfm_arms` (E-460). Necesita un reinicio con relevo para cargar `lfm.py` y `live.py`; entra en el relevo planificado, no se pide uno para esto. Con el código viejo, `clean_lfm_arms` ignora la clave y el brazo serviría como su control, sin error: no lanzar `policy.rot_cx3rc.json` antes del relevo.
+- **Cómo se prueba:** como un nombre más de la rotación, en época nueva: `cx3rc` contra `cx3` con r3 entre medias (por ejemplo `r3,cx3,r3,cx3rc`), cada bloque menos la referencia en la misma ventana. Sin `lq`.
+- **Se quita si:** envíos inválidos o `on_time` bajo el umbral del rotador. Rollback sin reinicio: quitar el nombre del plan, o la clave `recart` del brazo.
+- **No se hace:** subir `cl` a todos los carritos de hoy (los carritos solo de hoy venden menos que los solo históricos, E-460).
