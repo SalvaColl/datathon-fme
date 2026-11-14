@@ -60,7 +60,7 @@ class HomeCands:
         for lo, hi in zip(np.r_[0, cuts], np.r_[cuts, len(us)]):
             bm = np.zeros(nb * 8, dtype=np.uint8); bm[ks[lo:hi]] = 1
             self.stale[us[lo]] = np.packbits(bm, bitorder="little").tobytes()
-        self.pools = None; self.unavail = set()
+        self.pools = None; self.snap = None; self.unavail = set()
         self.refresh(catalog, set())
 
     # ---- incremental live updates -------------------------------------------------------------------------------
@@ -86,8 +86,9 @@ class HomeCands:
             if len(by_cat[c]) < N_CAT: by_cat[c].append(i)
             if len(by_sub[s]) < N_SUB: by_sub[s].append(i)
         glob = sorted(q, key=q.get, reverse=True)
-        self.q, self.unavail = q, set(unavail)
-        self.pools = dict(cat=dict(by_cat), sub=dict(by_sub), glob=glob[:N_GLOB], all=glob)
+        pools = dict(cat=dict(by_cat), sub=dict(by_sub), glob=glob[:N_GLOB], all=glob)
+        self.unavail = set(unavail); self.snap = (pools, q)      # one atomic swap: readers never see a mixed state
+        self.pools, self.q = pools, q
 
     # ---- serving ---------------------------------------------------------------------------------------------------
     def known(self, u): return u in self.cat_v
@@ -98,28 +99,29 @@ class HomeCands:
 
     def is_dead(self, u, i):
         """True if live evidence says showing i to u cannot convert: already bought, or viewed-never-carted in history."""
-        return i in self.bought.get(u, ()) or (i not in self.carted.get(u, ()) and self.is_stale(u, i))
+        return i in (self.bought.get(u) or ()) or (i not in (self.carted.get(u) or ()) and self.is_stale(u, i))
 
     def drop_dead(self, u, items):
         return [i for i in items if not self.is_dead(u, i)]
 
     def scored(self, u):
         """All home candidates for user u with their score, best first (already-bought / unavailable removed)."""
-        P, q = self.pools, self.q
-        cv = self.cat_v.get(u)
+        P, q = self.snap
+        # copies are single C-level calls, so a concurrent add() from the refresher thread cannot break the iteration
+        cv = dict(self.cat_v.get(u) or ())
+        bought = set(self.bought.get(u) or ()); carted = dict(self.carted.get(u) or ()); subs = set(self.sub_b.get(u) or ())
         if not cv:                                            # unknown / new user: best items overall
-            b = self.bought.get(u, ()); return [(i, q[i]) for i in P["glob"] if i not in b]
+            return [(i, q[i]) for i in P["glob"] if i not in bought]
         tot = max(sum(cv.values()), 1.0); share = {k: v / tot for k, v in cv.items()}
-        bought = self.bought.get(u, ()); carted = self.carted.get(u, {}); subs = self.sub_b.get(u, ())
         cands = set(carted) | set(P["glob"])
         for k in sorted(share, key=share.get, reverse=True)[:TOP_CATS]: cands.update(P["cat"].get(k, ()))
         for s in subs: cands.update(P["sub"].get(s, ()))
         out = []
         for i in cands:
             if i in bought or i not in q or (i not in carted and self.is_stale(u, i)): continue
-            sc = q[i] + W["ucs"] * share.get(self.cat_of[i], 0.0)
+            sc = q[i] + W["ucs"] * share.get(self.cat_of.get(i), 0.0)
             if i in carted: sc += W["carted"]
-            if self.sub_of[i] in subs: sc += W["sub_b"]
+            if self.sub_of.get(i) in subs: sc += W["sub_b"]
             out.append((i, sc))
         out.sort(key=lambda t: -t[1])
         return out
@@ -129,5 +131,5 @@ class HomeCands:
         items = [i for i, _ in self.scored(u)[:k]]
         if len(items) < k:
             seen = set(items)
-            items += [i for i in self.pools["all"] if i not in seen and not self.is_dead(u, i)][: k - len(items)]
+            items += [i for i in self.snap[0]["all"] if i not in seen and not self.is_dead(u, i)][: k - len(items)]
         return items[:k]
