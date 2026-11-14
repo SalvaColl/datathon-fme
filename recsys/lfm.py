@@ -72,6 +72,15 @@ def lq_target(mode, is_new_user, page, rv) -> bool:
     return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
 
 
+RC = "@recart"                     # arm key "recart": true (T-044). Marker entry of LiveFit.alt, see set_arms()
+
+
+def recart_target(is_new_user, page, rv) -> bool:
+    """Does a request get the re-cart bonus of an arm with "recart": true? Returning shoppers on product/category pages
+    with recent views. New shoppers and home keep their behaviour."""
+    return not is_new_user and bool(rv) and page in LQ_PAGES
+
+
 def x_target(mode, is_new_user, page, rv) -> bool:
     """Does a request get the exploration slot under arm mode `mode` (True | "new" | "known")? Pages with views only."""
     if not (mode is True or mode in X_MODES) or not rv or page not in LQ_PAGES: return False
@@ -219,7 +228,14 @@ class LiveFit:
         without w is the committed weights (control). Replaces the previous arms in one step; raises on bad input.
         Fused arms: an optional "home": {"file": ..., "w": ...} (same shape; {} = committed weights) gives the weights
         used on home requests (no recent views), so one arm can serve one weight set on product/category pages and
-        another on home."""
+        another on home.
+        Re-cart arms (T-044): "recart": true keeps, for a product carted in the 60-day history AND again today (never
+        bought), the larger of its two cart contributions: the score gets max(0, w_chn * log1p(history carts) - w_cl) on
+        top. Without it a history cart worth w_chn * log1p(n) is REPLACED by w_cl the moment the shopper carts the
+        product again (features() zeroes chn for today's carts), so under cx3 a once-carted product loses 1.45 points by
+        being carted again. Returning shoppers on product/category pages with views only (recart_target); off by default.
+        The flag travels as one more entry of `alt` ("<tag>@recart", the arm's own weights) rather than in a new
+        attribute, so whatever installs `alt` installs the flag with it, atomically."""
         def build(a):
             if a.get("file"):
                 c = json.loads((HERE / a["file"]).read_text())
@@ -234,6 +250,7 @@ class LiveFit:
         for a in arms:
             alt[a["tag"]] = build(a)
             if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
+            if a.get("recart") is True: alt[a["tag"] + RC] = alt[a["tag"]]
         self.alt = alt
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
         self.alt_x = {a["tag"]: a["explore"] for a in arms if a.get("explore") is True or a.get("explore") in X_MODES}   # T-039, see slate()
@@ -376,6 +393,16 @@ class LiveFit:
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
         s = X @ w[seg] + b0[seg]
+        if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
+            # T-044: the history count comes from self.hcart because the served state drops re-carted products from hc
+            h = self.hcart.get(req["user_id"])
+            if h:
+                wk = w[seg]; chn, cl = wk[FEATS.index("chn")], wk[FEATS.index("cl")]
+                for p in lc:
+                    n = h.get(p); k = S.row.get(p) if n else None
+                    if k is not None:
+                        gain = chn * math.log1p(n) - cl
+                        if gain > 0: s[k] += gain
         dead = ~S.ok
         st = S.stale(req["user_id"])
         if st is not None:
