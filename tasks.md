@@ -16,6 +16,7 @@
 | T-010 | P1 | Slate ordering/diversity/price ablation | TBD / TBD | READY | T-005/T-006 or T-007 |
 | T-011 | P2 | Optional bounded bandit after proven ranker | TBD / TBD | HOLD | Reliable feedback attribution and offline/live evidence |
 | T-012 | P0 | Final deployment, backup, monitoring/rollback + jury demo | TBD / TBD | READY | Live loop, champion, experiment metrics |
+| T-014 | P0 | Reglas de slate: último producto visto en el slot 1, resto de `recent_views` detrás, fuera lo ya comprado y lo de otra categoría; módulo nuevo `recsys/slate_rules.py` importable por `live.py` | Javi (agente) / javi/rv-first-slate | **IN PROGRESS (reclamada 2026-11-14 14:05 CET)** | Feedback en vivo de v1; no toca `live.py` |
 
 ## Proposed responsibility split (adapt to actual team size)
 
