@@ -37,7 +37,7 @@ class AttrAffinity:
         for p, a in self.cold.attr.items(): self._add_product(p, a)
         self.A = np.array(self._rows, dtype=np.float32)
         self.uix = {}; self.UV = np.zeros((0, 20), dtype=np.float32); self.extra = {}
-        self.pending = {}; self.pending_n = 0      # views of products not synced yet: product -> {user: views} (T-044)
+        self.pending = {}; self.pending_n = 0      # views of products not synced yet: product -> {user: views} (T-046)
         if ui_path is not None:
             ui = pd.read_parquet(ui_path, columns=["u", "i", "v"]); ui = ui[ui.i.isin(self.pid) & (ui.v > 0)]
             codes, uniq = pd.factorize(ui.u)
@@ -60,7 +60,7 @@ class AttrAffinity:
             row = np.zeros(20, dtype=np.float32); row[list(a)] = 1.0; rows.append(row)
         self.A = np.array(rows, dtype=np.float32); self._rows = rows
         for k, (p, a) in enumerate(new, start=len(rows) - len(new)): self.pid[p] = k
-        for p, _ in new:                                    # T-044: the views that arrived before the product was known
+        for p, _ in new:                                    # T-046: the views that arrived before the product was known
             held = self.pending.pop(p, None)
             if held:
                 self.pending_n -= len(held)
@@ -72,7 +72,7 @@ class AttrAffinity:
         """Add v organic views of product i by user u (live stream). Views of a product that is not known yet (launched
         during the event, description not synced) are held and applied by sync_products(): the stream is read BEFORE the
         sync in every refresh cycle, and at start-up the whole backlog is read before the first one, so dropping them
-        lost every view of a launched product made before the writer started (4.3% of the views of 14 Nov, T-044)."""
+        lost every view of a launched product made before the writer started (4.3% of the views of 14 Nov, T-046)."""
         if not v: return
         k = self.pid.get(i)
         if k is None:

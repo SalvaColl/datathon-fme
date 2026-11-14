@@ -60,7 +60,7 @@ class AffinityTests(unittest.TestCase):
         ap.aff.add('fan', 'NEW1', 2)   # live views of the new product are accepted after sync
 
     def test_views_of_a_launched_product_before_its_sync_are_kept(self):
-        """T-044: the stream is read before the sync (and the whole backlog at start-up), so these views used to be lost."""
+        """T-046: the stream is read before the sync (and the whole backlog at start-up), so these views used to be lost."""
         ap = policy(); ref = policy()
         for _ in range(3): ap.aff.add('early', 'NEW1', 2)            # a shopper seen only today
         ap.aff.add('fan', 'NEW1', 4); ap.aff.add('early', 'NEVER', 1); ap.aff.add('early', 'NEW1', 0)
