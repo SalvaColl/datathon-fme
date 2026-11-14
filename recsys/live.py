@@ -85,6 +85,9 @@ def clean_lfm_arms(raw):
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
     # T-034: a "cold_new" arm must have a control in the same list with exactly its weights (file, w, home): the trial's
     # only difference is the quality of new products, and the arm's untouched traffic is served and labelled as that control
+    # Promotion form (D-340): when EVERY arm is "cold_new" (one promoted arm alone, or tuner rounds built on it) there is no
+    # trial of the quality itself, so no control is needed and each arm keeps its own tag for every cohort.
+    if arms and all(a.get('lq') == 'cold_new' for a in arms): return arms
     return arms if all(a.get('lq') != 'cold_new' or lfm_control(a, arms) for a in arms) else []
 def lfm_control(arm, arms):
     """The arm of `arms` without "lq" whose weight spec equals `arm`'s (None if there is none)."""

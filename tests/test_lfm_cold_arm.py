@@ -164,12 +164,31 @@ class ColdNewTests(unittest.TestCase):
         ok = [{"tag": "f5", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}},
               {"tag": "cn1", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}, "lq": "cold_new"}]
         self.assertEqual(live.clean_lfm_arms(ok), ok)
-        self.assertEqual(live.clean_lfm_arms([{"tag": "cn1", "lq": "cold_new"}]), [])                                    # no control
+        self.assertEqual(live.clean_lfm_arms([{"tag": "r3"}, {"tag": "x1", "w": {"new": {"cl": 3}}}, {"tag": "cn1", "w": {"new": {"cl": 2}}, "lq": "cold_new"}]), [])   # control present but none matches
         self.assertEqual(live.clean_lfm_arms([{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "cn1", "lq": "cold_new"}]), [])   # other base
         self.assertEqual(live.clean_lfm_arms([ok[0], dict(ok[1], w={"known": {"cv": 0.6}})]), [])                         # other override
         self.assertEqual(live.clean_lfm_arms([ok[0], {k: v for k, v in ok[1].items() if k != "home"}]), [])               # other home
         self.assertEqual(live.clean_lfm_arms([{"tag": "c1", "lq": "cold"}, {"tag": "cn1", "lq": "cold_new"}]), [])       # a treated arm is not a control
         self.assertEqual(len(live.clean_lfm_arms([{"tag": "r3"}, {"tag": "c1", "lq": "cold"}])), 2)                      # "cold" keeps its behaviour
+
+    def test_promotion_form_serves_cold_new_alone_with_its_own_label_everywhere(self):
+        import json
+        from pathlib import Path
+        raw = json.loads((Path(lfm.__file__).parent / "policy.cold_new_promoted_r3.json").read_text())["lfm_arms"]
+        self.assertEqual(live.clean_lfm_arms(raw), raw); self.assertEqual(len(raw), 1); self.assertEqual(raw[0]["lq"], "cold_new")
+        one = [{"tag": "cn1", "w": W, "lq": "cold_new"}]
+        arms = live.clean_lfm_arms(one); self.assertEqual(arms, one)
+        self.lf.set_arms(arms); live.POLICY["lfm_arms"] = arms
+        for kw, suffix in ((dict(), "n"), (dict(is_new_user=False), "k"), (dict(rv=[], page="home"), "nh"), (dict(is_new_user=False, rv=[], page="home"), "kh")):
+            ver = {}; out = live.lfm_slates(self.reqs(20, **kw), set(), ver)
+            self.assertEqual(len(out), 20); self.assertEqual(set(ver.values()), {"v3-lfm-cn1-" + suffix})
+        for r in CASES:                                              # same weights as r3: only new shoppers on pages with views differ
+            a, b = scores(self.champ, self.aff0, r, "r3"), scores(self.lf, self.aff, r, "cn1")
+            self.assertEqual(np.array_equal(a, b), not (r["is_new_user"] and r in VIEWS), r)
+        # tuner rounds on a promoted champion: lfm_tuner copies "lq" to every arm, each with its own weights and tag
+        rnd = [{"tag": "best", "w": W, "lq": "cold_new"}, {"tag": "t1", "w": {"known": {"ucat": 1.5}}, "lq": "cold_new"}]
+        self.assertEqual(live.clean_lfm_arms(rnd), rnd)
+        self.assertEqual(live.clean_lfm_arms([rnd[0], {"tag": "t1", "w": {"known": {"ucat": 1.5}}}]), [])               # mixed list without a matching control
 
     def test_target_rule(self):
         t = lfm.lq_target
