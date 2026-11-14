@@ -1,0 +1,1 @@
+{"variant": "lfm", "lfm_arms": [{"tag": "r3p", "file": "lfm_coef_r3.json"}, {"tag": "np1p", "file": "lfm_coef_r3.json", "w": {"known": {"newp": 1.0}}}]}

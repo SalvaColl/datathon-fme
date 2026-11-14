@@ -210,3 +210,16 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 ## lfm r6: filtrado colaborativo — T-035 (2026-11-14)
 
 `recsys/lfm_mf.npz` (4 MB, versionado) se carga una vez al arrancar; si falta, `mf` vale 0. Brazo: `{"tag": "r6", "file": "lfm_coef_r6.json"}` (pesos de r3 más `mf` = 0,0627 en conocidos, 0 en nuevos). Otro peso sin reiniciar: `{"tag": "r6b", "file": "lfm_coef_r6.json", "w": {"known": {"mf": 0.125}}}`. Rehacer los factores (no hace falta salvo que cambie el histórico): `python download_user_items.py && python lfm_mf_build.py`. Evidencia y regla de decisión: E-350, D-350.
+
+## Arreglo de precios del snapshot de lfm y confirmación de retadores — T-042 (2026-11-14)
+
+- Síntoma del fallo (código hasta `6150ffc`): con un brazo `"lq"` en `lfm_arms` y productos lanzados hoy, `LF.snap.p40.sum()` y `LF.snap.cheap.sum()` valen 0. Con el arreglo son del orden de 2.000 y 1.700 (de 5.400 productos).
+- Comprobar sin escribir nada, en otra máquina: `cd recsys && python cold_lq_replay.py --pull && python snap_price_replay.py --n 6000` (E-421). Prueba en seco del writer: `python live.py --dry-run` con la política a probar copiada en `data/policy.json`.
+- Despliegue: un reinicio con relevo (sección T-022) desde la rama con el arreglo. Lo decide Javi. No cambia pesos, política, catálogo, stock ni estado.
+- Comparaciones tras el reinicio (D-420), una cada vez, anotando cada cambio en `data/policy_changes.log`:
+  1. `cp policy.fix_a_cold_new.json data/policy.json` → `cold_new` contra r3 en usuarios nuevos de producto/categoría.
+  2. `cp policy.fix_b_np1.json data/policy.json` → `np1` contra r3 en usuarios conocidos de producto/categoría.
+  3. Campeón corregido solo: `cp policy.fix_champion.json data/policy.json`.
+- Lectura de una ventana: `python recsys/confirm_read.py --from "2026-11-15 00:10" --to "2026-11-15 01:40" --control <código> --challenger <código> --sd 6.0` (usar `--sd 5.5` para conocidos). Los códigos públicos de `r3p`, `cn1p` y `np1p` salen en el log del writer como eventos `label` al servir la primera petición de cada uno.
+- Vuelta atrás: política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json`.
+
