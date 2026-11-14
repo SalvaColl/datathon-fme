@@ -1,9 +1,8 @@
 """D-130 hook for the single live writer — ONE line in live.py, hot-switchable, inert by default.
 
-Add this line to live.py just above the final `if __name__ == "__main__":` and restart the writer once
-(works with the original live.py and with the hardened one of salva/serving-reliability / javi/qrank-serving):
-
-    import d130; d130.install(globals())
+live.py calls `d130.install(globals(), history)` once from initialize() (guarded: if it fails the writer serves
+exactly as before). With the original, pre-hardening live.py the same thing is one line above
+`if __name__ == "__main__":`  ->  `import d130; d130.install(globals())`.
 
 It wraps (does not edit) four things of live.py, so it works on top of any policy variant of the writer:
   LIVE.add      -> also feeds home_cands.HomeCands (bought / carted / category views per user, item counts)
@@ -21,7 +20,10 @@ requests WITHOUT views, which qrank does not serve. `d130.HC.is_dead(user, item)
 import json, os, time, traceback
 from pathlib import Path
 import pandas as pd
-import home_cands
+if __package__:
+    from . import home_cands
+else:
+    import home_cands
 
 DATA = Path(__file__).resolve().parent / "data"
 POLICY = str(DATA / "d130.json")
@@ -50,11 +52,12 @@ def _err(where):
     _state["errors"] += 1
     if _state["errors"] <= 20: print("d130 error in", where, flush=True); traceback.print_exc()
 
-def install(g):
-    """g = live.py's globals()."""
+def install(g, history=None):
+    """g = live.py's globals(); history = organic user-item aggregates (u, i, v, a, p), read from data/ if omitted."""
     global HC
     t = time.time()
-    HC = home_cands.HomeCands(pd.read_parquet(DATA / "user_item_all.parquet"), g["fe"].C)
+    if history is None: history = pd.read_parquet(DATA / "user_item_all.parquet")
+    HC = home_cands.HomeCands(history, g["fe"].C)
     print(f"d130 installed: HomeCands built in {time.time() - t:.1f}s, mode={mode()}", flush=True)
     LIVE = g["LIVE"]; o_add = LIVE.add; o_pools = g["make_pools"]; o_cands = g["candidates"]; o_predict = g["predict"]; state = g["state"]
 
@@ -91,7 +94,7 @@ def install(g):
                 r = by_id.get(ans["request_id"])
                 if r is None: continue
                 if m == "home" and not r["rv"]:
-                    items = HC.slate(r["user_id"])
+                    items = HC.slate(r["user_id"], exclude=unavail)
                     if len(items) == 10 and len(set(items)) == 10 and not (set(items) & unavail):
                         ans["items"] = items; ans["model_version"] = ans["model_version"] + "+home"; _state["home"] += 1; continue
                 if ans["request_id"] in _touched:            # only answers whose candidates went through the filter

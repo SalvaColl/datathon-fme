@@ -126,10 +126,11 @@ class HomeCands:
         out.sort(key=lambda t: -t[1])
         return out
 
-    def slate(self, u, k=10):
-        """k ordered, distinct, in-stock product ids for a request without session views."""
-        items = [i for i, _ in self.scored(u)[:k]]
+    def slate(self, u, k=10, exclude=()):
+        """k ordered, distinct, in-stock product ids for a request without session views.
+        exclude: extra ids not to show (e.g. a fresher out-of-stock list than the one given to refresh())."""
+        items = [i for i, _ in self.scored(u) if i not in exclude][:k]
         if len(items) < k:
             seen = set(items)
-            items += [i for i in self.snap[0]["all"] if i not in seen and not self.is_dead(u, i)][: k - len(items)]
+            items += [i for i in self.snap[0]["all"] if i not in seen and i not in exclude and not self.is_dead(u, i)][: k - len(items)]
         return items[:k]
