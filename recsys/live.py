@@ -238,6 +238,12 @@ def apply_events(rows, chunk=EVENT_CHUNK, pause=time.sleep):
                 if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"])
         if k + chunk < len(rows): pause(0.002)      # threading.Lock is not fair: yield so a waiting predict() gets in
 
+def fb_window():
+    """Our own carousel purchases never reach shop.events, so after a (re)start the first read takes ALL of them (a
+    shopper who bought through us is much less likely to buy the product again: organizer note, 14 Nov). Later reads
+    take the last 10 minutes, which also covers a slow refresh cycle."""
+    return " AND f.ts::DateTime64(3) > now() - INTERVAL 10 MINUTE" if state.get("fb_full") else ""
+
 def refresh_events():
     now = pd.Timestamp.now("UTC").tz_localize(None)
     for lo, hi in event_windows(state["ev_ts"], now):
@@ -247,7 +253,8 @@ def refresh_events():
         if hi: state["ev_ts"] = hi
         elif rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
-        fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != '' AND f.ts::DateTime64(3) > now() - INTERVAL 2 MINUTE")
+        fb = query(f"SELECT r.user_id::String u, f.purchased::String i FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window())
+        state["fb_full"] = True
         for r in fb:
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
                 fb_seen[r["u"]].add(r["i"])

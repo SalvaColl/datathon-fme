@@ -170,6 +170,21 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Riesgo:** durante las rondas 2/3 de los usuarios llevan un peso movido; un paso malo cuesta como mucho una ronda en un tercio del tráfico de un segmento. Se para solo fuera de práctica o a menos de 1 h + una ronda de la final.
 - **Rollback:** Ctrl-C (deja `best`) o borrar `lfm_arms` de `policy.json`.
 
+### D-240 — lfm r3 (reparto de categorías del usuario) como brazo — PROPUESTA (T-024, 2026-11-14)
+- **Date / owner / status:** 2026-11-14 16:50 UTC / Javi (agente, T-024) / PROPOSED. Sin el brazo en `policy.json` el writer sirve exactamente lo mismo que hoy (los pesos publicados no tienen `ucat` / `usub`).
+- **Qué:** `lfm.py` calcula para cada usuario cuántas vistas tiene en cada categoría y subcategoría (historial de 60 días + vistas de hoy) y dos features nuevas por producto: la parte de las vistas del usuario en la categoría (`ucat`) y en la subcategoría (`usub`) del producto. `lfm_coef_r3.json` son los pesos reajustados con ellas.
+- **Por qué:** I-240, E-240. Es la primera variante de lfm que mejora en datos apartados de forma consistente.
+- **Experimento propuesto tras reiniciar el writer con este código:** `{"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "r3", "file": "lfm_coef_r3.json"}]}`, leer a los 30 min por segmento. Si se está corriendo `lfm_tuner.py`, pararlo antes (los dos escriben `lfm_arms`).
+- **Cambios en código compartido:** `LiveFit.user_state` devuelve un quinto elemento (el reparto); `LiveFit.add` cuenta las vistas de hoy; la primera `set_catalog` construye dos matrices usuario x categoría desde el historial (hilo de refresco, no el de servir). Si esa construcción falla, las dos features valen 0 y lfm sigue igual.
+- **Riesgo:** un usuario con pocas vistas no tiene preferencia fiable; por eso el reparto se encoge hacia "sin preferencia" con 5 vistas ficticias.
+- **Rollback:** quitar el brazo de `policy.json`.
+
+### D-241 — Tras un reinicio, recuperar todas las compras hechas por nuestro carrusel (T-024, 2026-11-14)
+- **Date / owner / status:** 2026-11-14 16:35 UTC / Javi (agente) / IMPLEMENTED, activo por defecto al cargar el código.
+- **Por qué:** aclaración de la organización (14-nov): quien ya compró un producto, también a través de nuestras recomendaciones, casi no lo vuelve a comprar. Medido: 676 de 695 compras de nuestro carrusel NO aparecen en `shop.events`; el writer solo las leía de `feedback` de los últimos 2 minutos, así que cada reinicio las olvidaba y esos productos (casi siempre de carrito, los que lfm pone arriba) volvían al slate.
+- **Qué:** la primera lectura de `feedback` tras arrancar trae todas las compras (0,5 s, 695 filas); las siguientes, los últimos 10 minutos.
+- **Comprobado que ya estaba bien:** lfm excluye lo comprado en el historial de 60 días, en `shop.events` de hoy (cada ciclo de refresco) y en `feedback`; ninguna feature premia "comprado antes" (`nbp` y `bsub` valen 0 para el propio producto comprado).
+
 ### D-220 — Reinicios del writer con relevo (`--takeover`) — PROPUESTA (T-022, 2026-11-14)
 - Arrancar siempre el writer nuevo con `python live.py --takeover` mientras el viejo sigue sirviendo. El nuevo carga, aplica el día, puntúa peticiones reales sin enviar, y solo entonces pide al viejo que pare; empieza a escribir cuando el sistema operativo le entrega `writer.lock`. Nunca hay dos writers: sin el candado no se escribe, y el diario compartido evita responder dos veces.
 - Evidencia: E-220. Estado: implementado y ensayado sin escribir; la primera aplicación real la hace el dueño del writer (el proceso actual es anterior y necesita `--replace-pid`).
