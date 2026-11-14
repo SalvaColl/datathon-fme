@@ -237,6 +237,37 @@ class R3CategoryMixTests(unittest.TestCase):
         self.assertTrue(set(c['known']['w']) <= set(lfm.FEATS)); self.assertGreater(c['known']['w']['ucat'], 0)
 
 
+class R4CartBuyMixTests(unittest.TestCase):
+    def test_cab_counts_history_events_and_todays_products_once(self):
+        lf, aff = build(); A, B = lf.ccode['A'], lf.ccode['B']
+        cb = lf.user_cab('u1'); self.assertEqual((cb[A], cb[B]), (0, 4))             # HIST: B05 a2, B06 a1 p1, A07 nothing
+        lf.add('u1', 'A10', 0, 1, 0); lf.add('u1', 'A10', 0, 1, 0); lf.add('u1', 'A11', 0, 0, 1); lf.add('u1', 'ZZ9', 0, 1, 0)
+        self.assertEqual(lf.user_cab('u1')[A], 2)                                     # same product carted twice counts once
+        self.assertEqual(lf.user_cab('nobody').sum(), 0)
+        self.assertEqual(lf.user_cab('u1', carts=['B01'], buys=[])[A], 0)             # as-of sets replace the live ones
+
+    def test_feature_is_zero_without_carts_and_r3_files_ignore_it(self):
+        lf, aff = build(); S = lf.snap; k = lfm.FEATS.index('ucab')
+        X0 = lfm.features(S, aff.affinity_all('u9'), [], 'product', {}, set(), mix=lf.user_mix('u9'), cab=lf.user_cab('u9'))
+        self.assertTrue(np.allclose(X0[:, k], 0))
+        base = slate(lf, aff, rv=())
+        for p in ('B02', 'B03', 'B04'): lf.add('u9', p, 0, 1, 0)
+        X = lfm.features(S, aff.affinity_all('u9'), [], 'product', {}, set(), cab=lf.user_cab('u9'))
+        self.assertGreater(X[S.row['B10'], k], 0.2); self.assertLess(X[S.row['A10'], k], 0)
+        coef = {s: dict(w=dict(COEF[s]['w'], ucab=6.0), b=COEF[s]['b']) for s in COEF}
+        lf.add_model('r4', coef)
+        req = dict(user_id='u9', rv=[], page='home', is_new_user=True)
+        s4 = lf.slate(req, lf.user_state('u9'), aff, model='r4')
+        self.assertTrue(all(p.startswith('B') for p in s4))                           # home slate follows the carted category
+        lf2, aff2 = build()
+        self.assertEqual(slate(lf2, aff2, rv=()), base)                               # weights without ucab: unchanged
+
+    def test_old_state_tuples_still_score(self):
+        lf, aff = build()
+        req = dict(user_id='u1', rv=['A30'], page='product', is_new_user=False)
+        self.assertEqual(len(lf.slate(req, lf.user_state('u1')[:4], aff)), 10)
+
+
 class OwnPurchaseTests(unittest.TestCase):
     def test_first_feedback_read_after_start_takes_every_carousel_purchase(self):
         saved = live.state.get('fb_full')

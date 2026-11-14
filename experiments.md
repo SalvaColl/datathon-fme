@@ -253,3 +253,12 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Validación 2, corte temporal (ajuste antes de 14:33 UTC, medida después):** AUC de compra 0,868 -> 0,900 (vuelve, 170 compras) y 0,865 -> 0,910 (nuevo, 116). El acierto del producto comprado entre los 3 primeros es mixto en slates servidos por lfm (0,64 -> 0,60 en los que vuelven), donde el orden registrado favorece a r1.
 - **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
 - **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.
+
+### E-250 — Inventario de señales no usadas y lfm r4 (T-025, 2026-11-14, Javi/agente, `javi/ucat-r4`)
+- **Datos:** histórico de carrusel de los últimos 20 días (666.029 peticiones, 9.388 compras) con el estado del usuario reconstruido antes de cada petición; feedback propio 11:09–16:13 UTC (43.661 peticiones respondidas, 595 compras). Solo lectura.
+- **OFFLINE ESTIMATE, histórico (entrena días 40–53, mide 54–59, 2.803 compras):** features tipo lfm: AUC 0,939, comprado en primera posición 0,556. Con todos los campos: AUC 0,966, primera posición 0,560. La mejora de AUC viene de variables de usuario (actividad, cuota de categoría) que en esos slates, todos de una categoría, no cambian el orden.
+- **LIVE FEEDBACK, validación cruzada por usuario (pérdida ponderada, clic con compras x3):** fuera de home, usuario que vuelve 7.243 → 6.820 con la cuota de vistas por categoría y 6.795 si carritos y compras cuentan triple; usuario nuevo 5.367 → 5.142 y 5.096. Precio, afinidad de frases de lo carritado o comprado hoy, visto hoy fuera de `recent_views`: menos del 0,5%.
+- **Corte temporal de `lfm_build.py` (ajuste antes de 14:59 UTC, 348 compras después):** log-verosimilitud de compra r2 / r3 / r4: vuelve −1.268,3 / −1.198,8 / **−1.194,0**; nuevo −789,4 / **−775,0** / −779,2. r4 no se distingue de r3 con esta muestra.
+- **Ensayo en seco (writer real, sin escribir, brazos r3 y r4, 7 min):** 1.035 ciclos, 0 peticiones caducadas, sin errores de carga de brazos.
+- **Conclusión:** la señal grande ya está en r3. r4 es un brazo barato para una ronda posterior, no una prioridad.
+
