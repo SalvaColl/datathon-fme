@@ -511,3 +511,17 @@ Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del 
 - **Usuarios nuevos:** sin evidencia propia (1 compra frente a 0,42 esperadas en 342 impresiones). Para ellos está en prueba `cold_new` (E-273).
 - **Home de usuario nuevo:** sin vistas no hay señal de sesión; 0 compras de productos nuevos en 228 impresiones. No se propone nada aquí.
 - **Use:** feature `newp` y brazo `np1` (D-390, E-390).
+
+### I-420 — Desde las 19:07 UTC del 14 nov todos los brazos de lfm sirven sin features de precio (fallo de código, T-042)
+- **Etiqueta:** OBSERVED DATA (código + replay E-421). No es una medida de conversión.
+- **Qué pasa:** en `Snap.__init__` (`recsys/lfm.py`) la variable `c` guardaba el catálogo y, dentro de `if lq_cold:`, se reutilizaba para el buffer de correcciones de calidad. La línea de precios leía después de ese array, no encontraba la columna y daba 20 EUR a todos los productos: `p40` (precio > 40) y `cheap` (precio < 20) quedaban a cero. El snapshot es compartido, así que afecta a **todos los brazos, cohortes y páginas**, control incluido, no solo al brazo con `"lq"`.
+- **Cuándo se activa:** solo si la política tiene algún brazo con `"lq"` (`cold` o `cold_new`) y hay al menos una corrección. Con productos lanzados hoy siempre las hay (400 a las 22:45 UTC). Una política sin brazo `lq` (por ejemplo `policy.champion.json`, r3 solo) **no** está afectada y sirve los precios bien, con el código antiguo también.
+- **Cronología:** el código llegó con el reinicio de las 19:05 UTC (PR #26). `cn1` está en la política desde las 19:07 UTC y sigue en todas las de la noche (`night_1114_x`, `x2`, `og1b`). El replay encuentra los indicadores a cero en los 44 snapshots reconstruidos entre las 19:07 y las 22:44 UTC.
+- **Qué pesos se quedaban sin efecto:** r3 conocidos `p40` −0,162 y `segcheap` −0,118; r3 nuevos `p40` −0,173 y `segcheap` +0,633; og1 conocidos `p40` +0,016 y `segcheap` +0,160. (`seglq` no se ve afectado.)
+- **Consecuencias para lo ya medido:**
+  1. El r3 que ganó por la tarde (≈16:45 UTC) usaba precios. El "r3" de las lecturas E-273, E-274 y de toda la noche es r3 sin precios: una política que nadie eligió. Con el arreglo cambia el 84% de sus listas (E-421).
+  2. Las comparaciones entre brazos de esas lecturas siguen siendo comparaciones limpias entre sí (todos compartían el mismo snapshot), pero sobre una base distinta de la que se desplegará. No se pueden sumar a lecturas posteriores al arreglo.
+  3. Promover `cn1` en su forma de promoción (todos los brazos con `lq`) sin el arreglo dejaría la final entera sin precios.
+- **No sabemos** si r3 convierte más con precios que sin ellos: nunca se han medido lado a lado. La tarde (con precios) y la noche (sin ellos) no son comparables por hora ni por código. El arreglo restaura la política que se eligió; la conversión se decide en el leaderboard.
+- **Pista del leaderboard (LIVE FEEDBACK, equipo entero, ventanas de 30 minutos, no es un A/B):** nuestra conversión menos la de `reference` en la misma ventana fue −0,09 / −0,10 / −0,10 en 17:30–19:00 UTC (con precios) y −0,11 / −0,11 en 19:00–20:00 UTC (sin precios, 99–99,7% a tiempo). No se ve un salto al perder los precios. Lo esperable del arreglo es un efecto pequeño, del orden del ruido entre ventanas (±0,1 pt), en cualquiera de los dos sentidos.
+- **Use:** arreglo y tests de T-042; plan de confirmación D-420.

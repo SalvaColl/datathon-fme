@@ -94,14 +94,16 @@ class Snap:
         self.lq.flags.writeable = False
         self.lqc = None
         if lq_cold:
-            c = self.lq.copy()
+            # T-042: its own name. This buffer used to be called `c` and replaced the catalogue frame, so the price lines
+            # below fell back to 20 EUR for every product and p40 / cheap were all zero for EVERY arm of the snapshot.
+            corrected_lq = self.lq.copy()
             for p, v in lq_cold.items():
                 k = self.row.get(p)
-                if k is not None and isinstance(v, (int, float)) and np.isfinite(v): c[k] = float(v) - lq0
-            if not np.array_equal(c, self.lq): c.flags.writeable = False; self.lqc = c
+                if k is not None and isinstance(v, (int, float)) and np.isfinite(v): corrected_lq[k] = float(v) - lq0
+            if not np.array_equal(corrected_lq, self.lq): corrected_lq.flags.writeable = False; self.lqc = corrected_lq
         # T-039: 1.0 for products launched during the event; None (feature stays 0) when the caller does not know them
         self.newp = np.isin(np.array(ids, dtype=object), list(newp)).astype(np.float64) if newp else None
-        price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c else np.full(n, 20.0)
+        price = pd.to_numeric(c["price"], errors="coerce").fillna(20.0).values if "price" in c.columns else np.full(n, 20.0)   # catalogue only
         self.p40 = (price > 40).astype(float); self.cheap = (price < 20).astype(float)
         # home_cands keeps "viewed in the 60-day history, never carted" as one bitmap per user; map its bit order to ours
         self.ucode = self.scode = None        # stable category / subcategory codes of each product (LiveFit.set_catalog)
