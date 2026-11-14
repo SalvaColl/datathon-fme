@@ -236,3 +236,25 @@ _None tested/rejected by team yet. Corrected assumptions are listed above rather
 ### I-REL-002 — Published branch work and evidence boundaries
 - Published `javi/v1-gbm-recommender` has the implemented policy and a prior duplicate-writer finding. At fetched tips, cold-items, home-new-users and live-trends add task claims only; local/unpushed teammate implementations were not accessible. Main's league and Javi's home work both use T-013; reconcile task IDs before integrating future modules.
 - A rolling leaderboard with expected rewards removes some purchase noise but does not create randomized causal comparisons. Earlier branch claims about exact recovery of every ten-minute block from rolling averages need starting blocks, request counts and allocation assumptions. Keep experiment windows/version ledgers and report fallback/overlap contamination.
+
+### I-180 — La calidad de los productos antiguos NO se mueve durante el evento; el stream solo aporta en tres sitios (T-018) — OBSERVED DATA
+- Replay de `shop.events` del 14 nov 09:00–13:50 UTC (1,00 M vistas, 52,7 k compras orgánicas), prediciendo cada 15 min las compras de los 15 min siguientes con datos solo del pasado (E-180). Para productos con historia, fuera de ráfagas y descuentos (22.731 compras en la mitad de test), la tasa en vivo no mejora a la histórica de 60 días: ganancia +0,6 nats por 1.000 compras, es decir, nada. Histórico y vivo coinciden (Spearman 0,86 producto a producto con solo 158 vistas vivas de mediana; ratio global 1,00).
+- Consecuencia: una "tasa rolling por producto" genérica no es una gran mejora. Lo que el stream sí aporta: productos nuevos (I-183), ráfagas de subcategoría (I-181) y descuentos (I-182). `recsys/live_quality.py` hace exactamente esas tres cosas y deja el resto intacto.
+
+### I-181 — Ráfagas de subcategoría: la calidad estática se queda en el 42% de lo real; multiplicador con puerta estadística — OBSERVED DATA
+- En las subcategorías que el detector marca calientes (393 compras en test), la calidad estática predice el 42% de las compras reales; con el multiplicador de 30 min (compras observadas / esperadas, shrinkage de 20 compras) la calibración pasa a 0,97 y la ganancia es +312 nats por 1.000 compras (E-180). Confirma I-080 con otro método.
+- Sin puerta (aplicarlo a todas las subcategorías) el multiplicador EMPEORA los productos en calma (−3,6 nats por 1.000 compras): es ruido. Con puerta (z ≥ 3 y ≥ ×1,3) el coste en calma es 0. Ventanas de 15, 30 y 60 min rinden igual.
+- Limitación: en nuestro carrusel los productos de subcategorías calientes solo tuvieron 258 impresiones y 0 compras (E-183); el efecto en el modelo oculto es HYPOTHESIS.
+
+### I-182 — Los descuentos son promociones de ~−20% por categoría durante 2 h y suben la compra orgánica un 14,5% — OBSERVED DATA
+- `catalog_updates.price_change` no es ruido: a las 10:30 UTC ~610 productos (Pets) bajan un 11–20%, a las 12:30 vuelven a su precio, y a las 13:30 empieza otra tanda de 639 (Home & Garden). En descuento: 1.764 compras frente a 1.541 esperadas con las mismas vistas (×1,145, z = 5,7); los mismos productos a precio normal: ×1,016 (E-181).
+- Como la promoción cubre casi toda una categoría y qrank solo ordena dentro de la categoría, apenas cambia el orden: ganancia pequeña. Queda como opción (`promo_q`) apagada; útil para `home`, donde compiten categorías.
+
+### I-183 — La calidad en el carrusel es la tasa orgánica AL CUADRADO; con eso un producto nuevo recibe su calidad real en 1 hora — OBSERVED DATA + OFFLINE ESTIMATE
+- En los 5.000 productos históricos, log q (calidad de qrank, medida en el carrusel aleatorizado) = a_subcategoría + 2,02 · log(tasa orgánica compra/vista), r = 0,94 dentro de la subcategoría (E-182).
+- qrank da hoy a un producto nuevo la mediana de su subcategoría. Tratando cada producto antiguo como si fuera nuevo (prior de atributos ajustado sin él + solo sus eventos en vivo), el top-10 por categoría elegido con la mediana captura el 10% de la calidad del top-10 real; con el prior de atributos solo, 60%; con prior + 1 h de stream, 77%; con 4 h, 84%. Spearman dentro de categoría 0,23 → 0,79 → 0,81 → 0,85.
+- Los 100 productos nuevos de hoy: 4 tienen tasas orgánicas del 16–26% (p. ej. `p_548697`: 208 compras en 796 vistas), al nivel de los mejores del catálogo. Hoy ninguno entra en el top-10 de su categoría y solo 1 está en el pool de candidatos de qrank; con calidad en vivo entran 3 y 29. El writer les dio 611 impresiones de 288 k (0,2%).
+- Límite: la relación cuadrática es entre productos, medida en historia. Que se cumpla para productos nuevos en el modelo oculto es HYPOTHESIS hasta el A/B en vivo.
+
+### I-184 — Nuestro feedback no puede validar nada de esto; hace falta el A/B del writer — LIVE FEEDBACK
+- En 28,8 k respuestas (252 compras), productos nuevos: 611 impresiones, 2 compras (32,7 por 10 k frente a 8,6 del resto, no significativo); subcategorías calientes: 258 impresiones, 0 compras (E-183). No hay potencia. La única validación posible es encender `live_quality` en modo `ab` o en un bloque del laboratorio nocturno (D-180).
