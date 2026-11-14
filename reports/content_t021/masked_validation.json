@@ -1,0 +1,429 @@
+{
+  "N": 10000,
+  "hour_blocks": 216,
+  "bootstrap_replicates": 500,
+  "results": {
+    "masked_baseline": {
+      "hit@10": 0.381201044386423,
+      "IPS_slot1_click": 0.0059560148304769285,
+      "IPS_slot1_buy": 0.004467011122857696,
+      "SNIPS_slot1_click": 0.03940886699507389,
+      "SNIPS_slot1_buy": 0.029556650246305417,
+      "slot1_matches": 406.0,
+      "ESS": 406.00000000000006,
+      "CI95_hour_block_percentile": {
+        "hit@10": [
+          0.33789243794352786,
+          0.42494857188068674
+        ],
+        "IPS_slot1_click": [
+          0.0031932453922366272,
+          0.009074818538502508
+        ],
+        "IPS_slot1_buy": [
+          0.0019802871803969563,
+          0.007230668588380136
+        ],
+        "SNIPS_slot1_click": [
+          0.021618857698010942,
+          0.05869766825649178
+        ],
+        "SNIPS_slot1_buy": [
+          0.013156254544699063,
+          0.04811467687042128
+        ]
+      },
+      "valid_top10_rate": 1.0,
+      "invalid_outputs": 0,
+      "exceptions": 0,
+      "exception_examples": [],
+      "latency_ms": {
+        "p50": 0.0485,
+        "p95": 0.1147,
+        "p99": 0.15790100000000004,
+        "max": 13.5528
+      },
+      "eligible_for_comparison": true,
+      "prediction_sha256": "4eeec0693e92d9ebcb712e5f46de1f653f17c2742c680e2d7f12dc885d5e787e"
+    },
+    "masked_content_only": {
+      "hit@10": 0.13054830287206268,
+      "IPS_slot1_click": 0.02482980506331631,
+      "IPS_slot1_buy": 0.004213095260052164,
+      "SNIPS_slot1_click": 0.08991689391077004,
+      "SNIPS_slot1_buy": 0.015257004175750124,
+      "slot1_matches": 69.0,
+      "ESS": 6.39887040879686,
+      "CI95_hour_block_percentile": {
+        "hit@10": [
+          0.1011062661498708,
+          0.16112037216514827
+        ],
+        "IPS_slot1_click": [
+          0.0014103206325033193,
+          0.06467632526446146
+        ],
+        "IPS_slot1_buy": [
+          0.0002614478523991227,
+          0.011220736948867858
+        ],
+        "SNIPS_slot1_click": [
+          0.005229243964751665,
+          0.28494513842630836
+        ],
+        "SNIPS_slot1_buy": [
+          0.0009742983046347301,
+          0.06042425770434623
+        ]
+      },
+      "valid_top10_rate": 1.0,
+      "invalid_outputs": 0,
+      "exceptions": 0,
+      "exception_examples": [],
+      "latency_ms": {
+        "p50": 45.31935,
+        "p95": 67.290905,
+        "p99": 82.661936,
+        "max": 1516.7003
+      },
+      "eligible_for_comparison": true,
+      "prediction_sha256": "bd584538d2db9bbad384cf284f908f643fa26679268034aa65bc8f47ba65098a"
+    },
+    "masked_content_linear": {
+      "hit@10": 0.2689295039164491,
+      "IPS_slot1_click": 0.004161986548664224,
+      "IPS_slot1_buy": 0.0035683311201630892,
+      "SNIPS_slot1_click": 0.01771827557117003,
+      "SNIPS_slot1_buy": 0.015190984732164308,
+      "slot1_matches": 125.0,
+      "ESS": 11.371602778701135,
+      "CI95_hour_block_percentile": {
+        "hit@10": [
+          0.22712020460358057,
+          0.31900825086851237
+        ],
+        "IPS_slot1_click": [
+          0.00193137539688959,
+          0.006447321687389859
+        ],
+        "IPS_slot1_buy": [
+          0.0014176609049242844,
+          0.005821872009103093
+        ],
+        "SNIPS_slot1_click": [
+          0.006771898791549073,
+          0.04441120777532864
+        ],
+        "SNIPS_slot1_buy": [
+          0.005495470996222086,
+          0.0376939113815823
+        ]
+      },
+      "valid_top10_rate": 1.0,
+      "invalid_outputs": 0,
+      "exceptions": 0,
+      "exception_examples": [],
+      "latency_ms": {
+        "p50": 64.66364999999999,
+        "p95": 94.278595,
+        "p99": 114.90096800000008,
+        "max": 2223.8807
+      },
+      "eligible_for_comparison": true,
+      "prediction_sha256": "2ce158d93c2b9a4817645b4256ad4ac8d27a565b26a074557923e8b01421cd03"
+    }
+  },
+  "paired_delta_CI95": {
+    "masked_content_only minus masked_baseline": {
+      "hit@10": [
+        -0.2971951394365187,
+        -0.19167252871836207
+      ],
+      "IPS_slot1_click": [
+        -0.005610676605386785,
+        0.059058361061040725
+      ],
+      "IPS_slot1_buy": [
+        -0.005667441995836715,
+        0.007341100937218674
+      ],
+      "SNIPS_slot1_click": [
+        -0.04054774129190886,
+        0.2574314183802879
+      ],
+      "SNIPS_slot1_buy": [
+        -0.039418590189482475,
+        0.03810282273872358
+      ]
+    },
+    "masked_content_linear minus masked_baseline": {
+      "hit@10": [
+        -0.1595198389879241,
+        -0.06925730759233441
+      ],
+      "IPS_slot1_click": [
+        -0.004638532083906088,
+        0.0006187822540797707
+      ],
+      "IPS_slot1_buy": [
+        -0.0032080627040173425,
+        0.0013225449198936586
+      ],
+      "SNIPS_slot1_click": [
+        -0.04025823525661614,
+        0.005392537345208686
+      ],
+      "SNIPS_slot1_buy": [
+        -0.03067495255315529,
+        0.008398245119196414
+      ]
+    }
+  },
+  "first_slot_agreement_counts": {
+    "masked_content_only / masked_content_linear": 2554,
+    "masked_baseline / masked_content_linear": 836,
+    "masked_baseline / masked_content_only": 230
+  },
+  "invalid_propensity_rows": 0,
+  "max_unclipped_weight": 956.9377990430622,
+  "limitations": [
+    "OFFLINE ESTIMATE: no full-slate conversion identification; conditional logging support assumed only for slot 1.",
+    "No weight clipping. Missing/invalid propensity contributes zero weight with full N IPS denominator; inspect missingness.",
+    "Hourly block bootstrap is approximate, does not remove selection bias, user dependence across hours, or repeated-tuning bias.",
+    "Latency includes request copy and inference, excludes catalog replay/wrapping, polling, RawTree, network and writes; not serving E2E.",
+    "Validity refers to reconstructed eligible catalog; base historical stock is unverified. Invalid output disqualifies policy; proxy values then include zero-action failures."
+  ],
+  "masked_view_subset": {
+    "N": 3063,
+    "hour_blocks": 212,
+    "bootstrap_replicates": 500,
+    "results": {
+      "masked_baseline": {
+        "hit@10": 0.3475177304964539,
+        "IPS_slot1_click": 0.009722518495718133,
+        "IPS_slot1_buy": 0.0072918888717886,
+        "SNIPS_slot1_click": 0.0625,
+        "SNIPS_slot1_buy": 0.046875,
+        "slot1_matches": 128.0,
+        "ESS": 128.0,
+        "CI95_hour_block_percentile": {
+          "hit@10": [
+            0.2815805946791862,
+            0.42124999999999996
+          ],
+          "IPS_slot1_click": [
+            0.003631130941615897,
+            0.01690654126935513
+          ],
+          "IPS_slot1_buy": [
+            0.0023787434043448068,
+            0.013631060068339786
+          ],
+          "SNIPS_slot1_click": [
+            0.023614211309523812,
+            0.10163931714418048
+          ],
+          "SNIPS_slot1_buy": [
+            0.016,
+            0.08495974955277279
+          ]
+        },
+        "valid_top10_rate": 1.0,
+        "invalid_outputs": 0,
+        "exceptions": 0,
+        "exception_examples": [],
+        "latency_ms": {
+          "p50": 0.0423,
+          "p95": 0.0807,
+          "p99": 0.11972800000000006,
+          "max": 14.4204
+        },
+        "eligible_for_comparison": true,
+        "prediction_sha256": "e0b87a418bd58f0e92170b860f8ceaa8e05799d758bdfde355d49dc4081fa019"
+      },
+      "masked_content_only": {
+        "hit@10": 0.10638297872340426,
+        "IPS_slot1_click": 0.0,
+        "IPS_slot1_buy": 0.0,
+        "SNIPS_slot1_click": 0.0,
+        "SNIPS_slot1_buy": 0.0,
+        "slot1_matches": 15.0,
+        "ESS": 5.651535941907438,
+        "CI95_hour_block_percentile": {
+          "hit@10": [
+            0.05837804878048781,
+            0.16225120109814684
+          ],
+          "IPS_slot1_click": [
+            0.0,
+            0.0
+          ],
+          "IPS_slot1_buy": [
+            0.0,
+            0.0
+          ],
+          "SNIPS_slot1_click": [
+            0.0,
+            0.0
+          ],
+          "SNIPS_slot1_buy": [
+            0.0,
+            0.0
+          ]
+        },
+        "valid_top10_rate": 1.0,
+        "invalid_outputs": 0,
+        "exceptions": 0,
+        "exception_examples": [],
+        "latency_ms": {
+          "p50": 33.2427,
+          "p95": 43.364180000000005,
+          "p99": 50.697984,
+          "max": 365.2029
+        },
+        "eligible_for_comparison": true,
+        "prediction_sha256": "f679ebc6e530aa692282b0a02d65a509b4605d78513a5fc42d1a0b84ef6a2a31"
+      },
+      "masked_content_linear": {
+        "hit@10": 0.18439716312056736,
+        "IPS_slot1_click": 0.005415814490902145,
+        "IPS_slot1_buy": 0.0042004996789373784,
+        "SNIPS_slot1_click": 0.04411826113769297,
+        "SNIPS_slot1_buy": 0.03421807413371817,
+        "slot1_matches": 42.0,
+        "ESS": 6.410209957047586,
+        "CI95_hour_block_percentile": {
+          "hit@10": [
+            0.12408179631114676,
+            0.24803175293605914
+          ],
+          "IPS_slot1_click": [
+            0.001206792701550571,
+            0.010219318061020782
+          ],
+          "IPS_slot1_buy": [
+            0.0008643147072101135,
+            0.008834264294872206
+          ],
+          "SNIPS_slot1_click": [
+            0.008994648047542759,
+            0.1295331178392186
+          ],
+          "SNIPS_slot1_buy": [
+            0.004635720572085123,
+            0.11091529586712451
+          ]
+        },
+        "valid_top10_rate": 1.0,
+        "invalid_outputs": 0,
+        "exceptions": 0,
+        "exception_examples": [],
+        "latency_ms": {
+          "p50": 46.8969,
+          "p95": 60.529120000000006,
+          "p99": 70.24088,
+          "max": 469.9148
+        },
+        "eligible_for_comparison": true,
+        "prediction_sha256": "ad7c66cff0f6d2069c7f7de655a11567e86218553318c978985c706d8c783094"
+      }
+    },
+    "paired_delta_CI95": {
+      "masked_content_only minus masked_baseline": {
+        "hit@10": [
+          -0.336878078817734,
+          -0.14194184553292985
+        ],
+        "IPS_slot1_click": [
+          -0.016906541269355136,
+          -0.0036311309416158983
+        ],
+        "IPS_slot1_buy": [
+          -0.013631060068339789,
+          -0.0023787434043448068
+        ],
+        "SNIPS_slot1_click": [
+          -0.10163931714418051,
+          -0.02361421130952382
+        ],
+        "SNIPS_slot1_buy": [
+          -0.0849597495527728,
+          -0.016
+        ]
+      },
+      "masked_content_linear minus masked_baseline": {
+        "hit@10": [
+          -0.23818724546464273,
+          -0.0859341085271318
+        ],
+        "IPS_slot1_click": [
+          -0.010214080709908289,
+          0.0011303212483795297
+        ],
+        "IPS_slot1_buy": [
+          -0.008520288500822135,
+          0.0016719493018256782
+        ],
+        "SNIPS_slot1_click": [
+          -0.05938879103784916,
+          0.06337228738989124
+        ],
+        "SNIPS_slot1_buy": [
+          -0.048167507184783014,
+          0.055005441485237776
+        ]
+      }
+    },
+    "first_slot_agreement_counts": {
+      "masked_content_only / masked_content_linear": 567,
+      "masked_baseline / masked_content_linear": 319,
+      "masked_baseline / masked_content_only": 4
+    },
+    "invalid_propensity_rows": 0,
+    "max_unclipped_weight": 130.61650992685477,
+    "limitations": [
+      "OFFLINE ESTIMATE: no full-slate conversion identification; conditional logging support assumed only for slot 1.",
+      "No weight clipping. Missing/invalid propensity contributes zero weight with full N IPS denominator; inspect missingness.",
+      "Hourly block bootstrap is approximate, does not remove selection bias, user dependence across hours, or repeated-tuning bias.",
+      "Latency includes request copy and inference, excludes catalog replay/wrapping, polling, RawTree, network and writes; not serving E2E.",
+      "Validity refers to reconstructed eligible catalog; base historical stock is unverified. Invalid output disqualifies policy; proxy values then include zero-action failures."
+    ]
+  },
+  "mask_count": 992,
+  "mask_sha256": "9d8429068e073de82cdaa2918992e64c31ff5efd0e9f5215f12d98bdbb75300f",
+  "manifest_sha256": "c47898e5e337331e9229c28268b9a930bc430c04e66b473ce736cfb03d2f7282",
+  "training_diagnostics": {
+    "masked_content_only": {
+      "exposed_rows": 171002,
+      "purchase_positives": 244,
+      "skipped_exposures": 28998,
+      "organic_events_used": 162885,
+      "unexposed_purchase_labels": 0,
+      "training_weight": "uniform per exposed item; no IPS/class balancing",
+      "historical_metadata": "UNRECONSTRUCTABLE HISTORY: organizer base catalogue has no field-level versions. Description/category/subcategory/brand/price/stock are assumed initial base state, but their historical correctness cannot be certified. Only creation timestamps and available timestamped full-state updates can be replayed. No current merged catalogue used."
+    },
+    "masked_content_linear": {
+      "exposed_rows": 171002,
+      "purchase_positives": 244,
+      "skipped_exposures": 28998,
+      "organic_events_used": 162885,
+      "unexposed_purchase_labels": 0,
+      "training_weight": "uniform per exposed item; no IPS/class balancing",
+      "historical_metadata": "UNRECONSTRUCTABLE HISTORY: organizer base catalogue has no field-level versions. Description/category/subcategory/brand/price/stock are assumed initial base state, but their historical correctness cannot be certified. Only creation timestamps and available timestamped full-state updates can be replayed. No current merged catalogue used.",
+      "features": 8462,
+      "solver_iterations": 15,
+      "converged": true
+    }
+  },
+  "environment": {
+    "python": "3.13.11",
+    "numpy": "2.4.2",
+    "scipy": "1.17.1",
+    "sklearn": "1.8.0"
+  },
+  "sources": {
+    "tools\\content_linear.py": "b1bed335a09e16424b44d4e957cac855e9120fca5e7ce20d78f4c1d4598e8f28",
+    "tools\\content_validate.py": "42951c60cc84c52787b396afe41f1b015919380c022be7a61644a401be6fffc7"
+  },
+  "simulation_limitation": "TRAINING-defined deterministic 20% item mask: removed from vocabulary, organic profiles, popularity and supervised exposures; available with content only during validation. Not actual launches or official cold requests; remaining products may share attributes and users. Mask selected without validation outcomes; no final test read. Historical metadata remains conditional."
+}

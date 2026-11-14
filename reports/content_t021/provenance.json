@@ -1,0 +1,40 @@
+{
+  "version": "content-t021-train-validation-only-v1",
+  "boundaries": [
+    "2026-09-15T07:00:06.371+00:00",
+    "2026-10-27T07:00:01.356+00:00",
+    "2026-11-05T07:00:00.281+00:00"
+  ],
+  "seed": 20261114,
+  "files": {
+    "train.json": "47fafcddf511849b065a5b170a4f0cd720bf3e33dfcf20f48a7ee50cebea0459",
+    "validation.json": "6f651a400973f8593fc6603bb55935f4bf37e0b5848181159bf0071584980136",
+    "catalog.json": "87f9d5489133068fdf27238ee432b25b3656f1e397b55de091409e7477a12f6d"
+  },
+  "plan": {
+    "boundaries": [
+      "2026-09-15T07:00:06.371+00:00",
+      "2026-10-27T07:00:01.356+00:00",
+      "2026-11-05T07:00:00.281+00:00"
+    ],
+    "train_sample": 20000,
+    "validation_sample": 10000,
+    "organic_sample": 200000,
+    "seed": 20261114,
+    "excluded_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "excluded_count": 0,
+    "legacy_exclusions_available": false
+  },
+  "queries": [
+    "SELECT product_id::String AS product_id, category, subcategory, brand, price_eur, description, created_at, is_active FROM shop.catalog",
+    "SELECT * FROM shop.catalog_updates WHERE ts::DateTime64(3) < '2026-11-05 07:00:00.281' ORDER BY ts::DateTime64(3), product_id::String",
+    "SELECT request_id::String AS request_id, ts::String AS ts,\n            user_id, context, recent_views, shown, propensity, clicked, purchased\n            FROM shop.history_sessions WHERE ts::DateTime64(3) >= '2026-09-15 07:00:06.371'\n            AND ts::DateTime64(3) < '2026-10-27 07:00:01.356'\n            ORDER BY cityHash64(concat(request_id::String, '20261114')), request_id::String LIMIT 20000",
+    "SELECT request_id::String AS request_id, ts::String AS ts,\n            user_id, context, recent_views, shown, propensity, clicked, purchased\n            FROM shop.history_sessions WHERE ts::DateTime64(3) >= '2026-10-27 07:00:01.356'\n            AND ts::DateTime64(3) < '2026-11-05 07:00:00.281'\n            ORDER BY cityHash64(concat(request_id::String, '20261114')), request_id::String LIMIT 10000",
+    "SELECT ts::String AS ts, user_id::String AS user_id,\n        product_id::String AS product_id, event_type::String AS event_type, price_eur\n        FROM shop.history_events WHERE ts::DateTime64(3) >= '2026-09-15 07:00:06.371' AND ts::DateTime64(3) < '2026-10-27 07:00:01.356'\n        ORDER BY cityHash64(concat(user_id::String, session_id::String, product_id::String,\n        event_type::String, ts::String, '20261114')), user_id::String, ts::String, product_id::String LIMIT 200000",
+    "SELECT product_id::String AS product_id, count() AS n\n        FROM shop.history_events WHERE event_type = 'purchase' AND ts::DateTime64(3) >= '2026-09-15 07:00:06.371'\n        AND ts::DateTime64(3) < '2026-10-27 07:00:01.356' GROUP BY product_id ORDER BY n DESC, product_id DESC LIMIT 10000"
+  ],
+  "retrieved_at_utc": "2026-11-14T15:29:27.543066+00:00",
+  "organic_sampling": "Deterministic hash sample of training events; not exhaustive profiles, no inverse sampling weights",
+  "final_test": "NOT DOWNLOADED, OPENED OR SCORED",
+  "catalog_limitation": "UNRECONSTRUCTABLE HISTORY: organizer base catalogue has no field-level versions. Description/category/subcategory/brand/price/stock are assumed initial base state, but their historical correctness cannot be certified. Only creation timestamps and available timestamped full-state updates can be replayed. No current merged catalogue used."
+}

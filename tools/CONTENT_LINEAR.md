@@ -11,7 +11,7 @@ Run from the repository root in PowerShell:
 # Existing available interpreter on this workstation; install nothing.
 $py = 'C:\Users\hecto\miniconda3\python.exe'
 # Read-only downloads; reuse the completed immutable cache on subsequent runs.
-& $py -m tools.content_data
+if (-not (Test-Path data/local_eval/content_t021/manifest.json)) { & $py -m tools.content_data }
 & $py -m tools.local_league validation --cache data/local_eval/content_t021 --plugin tools.content_linear --policies baseline,same_category,same_subcategory,mixed_category,content_only,content_linear --bootstrap 500
 & $py -m tools.content_validate --cache data/local_eval/content_t021 --bootstrap 500
 & $py -m unittest discover -s tests -p test_content_linear.py -v
@@ -90,3 +90,9 @@ organic history, frozen interests, generic text, unknown vocabulary and the limi
 of additive logistic interactions. No claimed conversion gain without measured support.
 Rollback: leave the current live champion running and discard this offline challenger.
 Promotion, integration, merge and deployment remain the serving owner's decision.
+
+Measured evidence: `reports/content_t021/validation.json`, `masked_validation.json` and
+`provenance.json`; summarized in E-CONTENT-021 / I-CONTENT-021. Neither evaluation
+establishes purchase uplift. Keep the current champion. Learned normal-validation
+SNIPS buy 0.02008 (ESS 9.98), baseline 0.02956 (ESS 406); masked-view learned
+0.03422 (ESS 6.41), baseline 0.04688 (ESS 128). All outputs valid; 16 focused tests pass.

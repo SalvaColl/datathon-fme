@@ -1,5 +1,16 @@
 # Experiment registry and champion-promotion protocol
 
+### E-CONTENT-021 — Independent TF-IDF / logistic purchase challenger
+
+- **Owner/date/branch:** Codex, 2026-11-14, T-021, `codex/content-linear-t021`; implementation `04321f3`. OFFLINE ESTIMATE only. Existing GBM/graph/serving code untouched; no installation or submission.
+- **Provenance:** read-only `shop.history_sessions`, `shop.history_events`, base `shop.catalog` including descriptions, and timestamped `shop.catalog_updates`. Train [2026-09-15 07:00:06.371, 2026-10-27 07:00:01.356) UTC; validation [2026-10-27 07:00:01.356, 2026-11-05 07:00:00.281). Seed 20261114; deterministic hash samples: 20,000 training sessions (267 purchases, 769 clicks), 10,000 validation sessions (144 purchases, 383 clicks), 200,000 training organic events (46,314 distinct users). Full training-period organic purchase counts supply fallback order. No final-test row queried, downloaded or scored.
+- **Snapshot:** private ignored `data/local_eval/content_t021`; canonical manifest SHA256 `c47898e5e337331e9229c28268b9a930bc430c04e66b473ce736cfb03d2f7282`. Exact SQL and per-file hashes recorded. Earlier legacy holdout cache is absent here; its IDs cannot be excluded, explicitly recorded. This is a newly captured sample on the same E-011 chronological boundaries, not a bit-identical reproduction of its prior results.
+- **Catalogue:** 5,000 training-start products, 10 categories, 89 subcategories, 80 brands, 4,983 distinct descriptions, median 11 words, zero missing descriptions and zero timestamped historical updates. **UNRECONSTRUCTABLE HISTORY:** base field-level description/category/brand/price/stock history is unavailable. Historical correctness assumes initial base state; eligibility/price results remain conditional. Creation times are filtered and available updates replayed; no current merged catalogue is substituted.
+- **Method/integrity:** description TF-IDF + category/subcategory/brand/price content; user profiles from recent views and strictly earlier sampled organic events, frozen at training cutoff for validation. Content retrieval versus L2 purchase logistic reranking using shared content/context interactions. No product/user ID coefficients. Uniform exposed-item binary purchase labels, no unshown negatives, no class balancing or IPS weighting in training. Slot nuisance features score at slot 0; selection/position and within-slate dependence remain unresolved. C=1 is predeclared, not claimed optimal. Optional C=.1/10 factories are untested.
+- **Comparisons:** four league baselines and content-only versus learned-ranker ablation. The stored GBM uses later training dates than this cutoff and no valid GBM league adapter is registered; it is not scored here, avoiding leakage.
+- **Cold simulation:** deterministic SHA256 20% training-ID mask, no validation outcomes used for its selection. Remove masked products from vocabulary, profiles, supervised exposures and popularity; expose metadata at validation. Also evaluate requests with masked recent views. Shared users/attributes remain; these are simulated missing interactions on existing items, not actual launches or official cold-start scores.
+- **Tests:** six policy tests + ten league tests passed. Failure cases: unknown/missing inputs, new IDs, mutable stock, missing descriptions, event equality/future views, outside-period events, unshown purchase labels, single-class fallback, vocabulary mask and insufficient inventory. Exact commands and model strengths/weaknesses: `tools/CONTENT_LINEAR.md`. No serving loop started or edited; rollback is to keep the live champion.
+
 This is a **ledger, not a claim that tests have run**. Initial pack had no results; E-010/E-011 below record team results on 2026-11-14. Keep real experiments here; raw logs and model files should live in versioned project paths / private RawTree.
 
 ## Official goal and measurement hierarchy
@@ -206,3 +217,43 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Limitaciones:** lo mostrado no fue aleatorio (v1, qrank y fallback); son compras reales con ruido, no la probabilidad del modelo oculto. Las tasas "esperadas" vienen de un modelo ajustado con los mismos datos. Ninguna de estas pruebas sustituye a la fila por versión del leaderboard.
 - **Sin cambios en** `live.py`, el writer ni `submissions`.
+
+
+### E-CONTENT-021 validation results ? OFFLINE ESTIMATE
+
+10,000 requests, 383 logged clicks, 144 purchases, 216 UTC-hour blocks; 500 paired seeded hourly-block bootstrap replicates. Zero invalid propensities. Maximum unclipped weight 956.94. Source integrity checks: zero duplicate logged slates, purchases outside shown, or future recent views in either period.
+
+| Policy | click hit@10 | buy IPS | buy SNIPS [95% CI] | click IPS / SNIPS | matches / ESS | p95 / p99 ms |
+|---|---:|---:|---|---|---|---|
+| baseline | 0.3812 | 0.004467 | 0.0296 [0.0132, 0.0481] | 0.005956 / 0.0394 | 406 / 406.00 | 0.11 / 0.17 |
+| same_category | 0.7572 | 0.008736 | 0.0104 [0.0063, 0.0147] | 0.015976 / 0.0189 | 2159 / 1687.16 | 0.10 / 0.15 |
+| same_subcategory | 0.2689 | 0.010092 | 0.0108 [0.0041, 0.0196] | 0.038474 / 0.0410 | 825 / 97.93 | 0.10 / 0.14 |
+| mixed_category | 0.7154 | 0.010092 | 0.0108 [0.0041, 0.0196] | 0.038474 / 0.0410 | 825 / 97.93 | 0.10 / 0.15 |
+| content_only | 0.1305 | 0.004213 | 0.0134 [0.0010, 0.0509] | 0.024830 / 0.0793 | 66 / 7.31 | 66.43 / 81.51 |
+| content_linear | 0.2298 | 0.002975 | 0.0201 [0.0063, 0.0520] | 0.003941 / 0.0266 | 90 / 9.98 | 93.61 / 114.11 |
+
+All six policies: 100% reconstructed exact-ten/unique/eligible outputs, zero exceptions. Learned-ranker versus content-only click hit@10: 0.2298 vs 0.1305; baseline 0.3812. Purchase SNIPS paired 95% delta interval learned minus baseline [-0.02781, +0.02007]. ESS ~10 for learned and ~7 for content-only makes first-action estimates weak. No purchase uplift established; do not promote. The baseline rows reproduce earlier E-011 validation points, despite the richer/larger training snapshot.
+
+Inference p50/p95/p99/max (ms): content-only 45.37/66.43/81.51/2579.85; learned 65.11/93.61/114.11/1903.18. Two offline replays ran concurrently on this workstation; timings include CPU contention, exclude polling/network/submission and do not establish the 3-second E2E SLA. Cold index construction contributes to maxima.
+
+Versioned, request-free evidence: `reports/content_t021/validation.json` (all click/purchase IPS/SNIPS intervals, paired deltas, hashes, validity and latency) and `reports/content_t021/provenance.json` (exact SQL/snapshot hashes). Raw datasets remain private/ignored. Reproduction commands: `tools/CONTENT_LINEAR.md`. No final-test file exists in this experiment; no merge or deployment performed.
+
+
+### E-CONTENT-021 masked-item stress results ? OFFLINE ESTIMATE
+
+992 products masked (SHA256 `9d8429068e073de82cdaa2918992e64c31ff5efd0e9f5215f12d98bdbb75300f`). Masked training: 171,002 retained exposed rows / 244 purchases, 28,998 skipped exposures, 162,885 retained sampled organic events. Logistic model converged in 15 iterations with 8,462 features. Fixed mask used no validation outcomes. Mask removed 14.5% of exposures and 8.6% of purchase positives, so simulated cold exposure is not uniformly weighted across products.
+
+| Cohort / policy | click hit@10 | buy IPS | buy SNIPS [95% CI] | click IPS / SNIPS | matches / ESS | p95 / p99 ms |
+|---|---:|---:|---|---|---|---|
+| all 10,000 / masked_baseline | 0.3812 | 0.004467 | 0.0296 [0.0132, 0.0481] | 0.005956 / 0.0394 | 406 / 406.00 | 0.11 / 0.16 |
+| all 10,000 / masked_content_only | 0.1305 | 0.004213 | 0.0153 [0.0010, 0.0604] | 0.024830 / 0.0899 | 69 / 6.40 | 67.29 / 82.66 |
+| all 10,000 / masked_content_linear | 0.2689 | 0.003568 | 0.0152 [0.0055, 0.0377] | 0.004162 / 0.0177 | 125 / 11.37 | 94.28 / 114.90 |
+| masked-view 3,063 / masked_baseline | 0.3475 | 0.007292 | 0.0469 [0.0160, 0.0850] | 0.009723 / 0.0625 | 128 / 128.00 | 0.08 / 0.12 |
+| masked-view 3,063 / masked_content_only | 0.1064 | 0.000000 | 0.0000 [0.0000, 0.0000] | 0.000000 / 0.0000 | 15 / 5.65 | 43.36 / 50.70 |
+| masked-view 3,063 / masked_content_linear | 0.1844 | 0.004200 | 0.0342 [0.0046, 0.1109] | 0.005416 / 0.0441 | 42 / 6.41 | 60.53 / 70.24 |
+
+All outputs valid with zero exceptions in both cohorts. Masked-view cohort has 53 purchases. Its content-only zero purchase/click intervals are degenerate because no matched first-slot rewards were observed; they do NOT establish zero conversion or a valid population upper bound. Learned masked-view purchase ESS 6.41 / 42 matches gives extremely weak support. Bootstrap cannot fix support or exposure bias. No cold-start advantage established; not official cold-start evaluation.
+
+Environment: Python 3.13.11, NumPy 2.4.2, SciPy 1.17.1, scikit-learn 1.8.0; existing conda interpreter, nothing installed. The reference environment path in older league docs is absent on this workstation. Full raw metric/CI/latency tables, mask/source hashes and diagnostics: `reports/content_t021/masked_validation.json`. Source/snapshot fingerprints verified; final-test file and access marker absent.
+
+**Decision:** do not merge, deploy or replace the current champion. Independent content/linear policy delivered as a measured challenger; neither normal nor masked validation establishes purchase improvement. Code, exact commands, tests and limitations are available for further research. Runtime/latency was measured under concurrent offline CPU load (later masked-view replay ran alone), not an E2E serving trial.
