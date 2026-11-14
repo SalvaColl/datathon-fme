@@ -17,6 +17,7 @@
 | T-011 | P2 | Optional bounded bandit after proven ranker | TBD / TBD | HOLD | Reliable feedback attribution and offline/live evidence |
 | T-012 | P0 | Final deployment, backup, monitoring/rollback + jury demo | TBD / TBD | READY | Live loop, champion, experiment metrics |
 | T-015 | P0 | Ranker `qrank` para product/category: calidad del producto en el carrusel aleatorizado × contexto (visto, subcategoría, slot), solo misma categoría y sin lo ya comprado; módulo `recsys/qrank.py` importable por `live.py` | Javi (agente) / javi/rv-first-slate → javi/qrank-serving | **IMPLEMENTED/TESTED sobre el writer de Salva (rama `javi/qrank-serving`, 30 tests, dry-run OK); sin desplegar, pendiente de A/B en vivo por el dueño del writer** | Feedback en vivo de v1; no toca `live.py` |
+| T-016 | P0 | Laboratorio nocturno contra el leaderboard: `recsys/night_lab.py` rota variantes de `policy.json`/`d130.json` del writer único en bloques, registra cada snapshot (conversión vs `baseline` y `reference` de la misma ventana), guardia de seguridad con vuelta a la mejor variante y tabla de ablación. Solo escribe esos dos JSON; nunca toca RawTree | Javi (agente) / javi/night-lab | **IN PROGRESS** | Writer con variantes de PR #1–#3; lo arranca Javi en su Mac |
 
 ## Proposed responsibility split (adapt to actual team size)
 
