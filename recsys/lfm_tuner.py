@@ -86,6 +86,8 @@ class Tuner:
         self.scale = st.get("scale") or {s: 1.0 for s in SEGS}          # los pasos se reducen a la mitad tras cada vuelta completa
         self.round = int(st.get("round", 0))
         self.stop = False
+        self.base_file = None      # set by main() when --coef is not lfm_coef.json: every arm then names that file,
+                                   # because the writer applies "w" on top of the committed weights unless told otherwise
 
     # ---- pesos ----
     def weight(self, seg, f): return float(self.best[seg].get(f, self.base[seg].get(f, 0.0)))
@@ -102,6 +104,7 @@ class Tuner:
                 a["w"][seg] = w
         for a in arms: a["w"] = {s: w for s, w in a["w"].items() if w}
         arms = [{k: v for k, v in a.items() if v} for a in arms]
+        if self.base_file: arms = [{**a, "file": self.base_file} for a in arms]
         k = r % 3; arms = arms[k:] + arms[:k]      # el writer reparte usuarios por posición: rotar evita que el control sea siempre el mismo tercio
         return arms, moves
 
@@ -115,7 +118,8 @@ class Tuner:
 
     def final_arms(self, mode):
         best = {s: w for s, w in self.best.items() if w}
-        return [{"tag": "best", "w": best}] if (mode == "best" and best) else []
+        if mode != "best" or not (best or self.base_file): return []
+        return [{"tag": "best", **({"file": self.base_file} if self.base_file else {}), **({"w": best} if best else {})}]
 
     # ---- una ronda ----
     def decide(self, ctrl, cand, seg="known"):
@@ -220,6 +224,7 @@ def main(argv=None):
     if a.cmd == "check": print("ok" if not problems else "no arrancar hasta resolverlo"); return 1 if problems else 0
     if problems and not a.dry: return 1
     t = Tuner(a.data, json.loads(Path(a.coef).read_text()), out, a.round_min * 60, a.margin, a.z, None, a.min_requests, a.dry)
+    if Path(a.coef).name != "lfm_coef.json": t.base_file = Path(a.coef).name      # must live next to lfm.py (writer rule)
     def stop(*_): t.stop = True; print("parando al final de esta espera...", flush=True)
     signal.signal(signal.SIGINT, stop); signal.signal(signal.SIGTERM, stop)
     t.run(a.rounds, parse_until(a.until) if a.until else None, a.finish)

@@ -1,4 +1,4 @@
-"""I-207 / T-025 · Generalisation rehearsal for the final: returning shoppers scored as if they had NO history.
+"""I-207 / T-027 · Generalisation rehearsal for the final: returning shoppers scored as if they had NO history.
 
     python explore_i207.py                       # uses the cached data/lfm_*.parquet (run `python lfm_build.py --pull` first)
     python explore_i207.py --cut "2026-11-14 13:10"

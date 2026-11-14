@@ -177,3 +177,13 @@ caffeinate -i python night_lab.py run --arms v1,qrank,qrank+home,qrank_aff+home 
 - **`EVENTS_SINCE`:** el writer aplica `shop.events` desde `2026-11-14 07:00:00` (fijo en el código hasta ahora). Para la final, arrancar con `EVENTS_SINCE='2026-11-15 07:00:00'` (u otra hora) si no se quiere arrastrar el sábado como "hoy"; la carga va por ventanas de una hora, así que un rango largo ya no puede agotar el tiempo de la consulta.
 - **Parones:** cualquier recolección de basura de más de 200 ms queda como `{"event": "gc_pause", ...}`. Si tras este cambio sigue habiendo bucles de varios segundos sin `gc_pause` al lado, la causa es otra (red o reposo del Mac).
 - **Ensayo sin escribir** (en otra máquina, nunca junto al writer): ver la cabecera de `tools/handoff_rehearsal.py`.
+
+## Brazos fusionados de lfm — T-025 (2026-11-14)
+
+Un brazo de `lfm_arms` puede llevar `"home": {...}` (misma forma que el brazo: `file` y/o `w`; `{}` = pesos publicados) para usar otros pesos en las peticiones de home (sin vistas recientes). Sirve para juntar lo mejor de dos brazos cuando uno gana en producto/categoría y otro en home:
+
+```json
+{"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "f1", "w": {"known": {"hcart": 1.5, "islast": 3.0}, "new": {"nbp": 0.6, "bsub": 0.6}}, "home": {}}, {"tag": "r3", "file": "lfm_coef_r3.json"}]}
+```
+
+Las etiquetas no cambian (`v3-lfm-<tag>-k|-n|-kh|-nh`). Sin `home` el brazo se comporta como antes. Necesita un reinicio (con relevo) para cargar el código.

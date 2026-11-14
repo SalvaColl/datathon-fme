@@ -254,7 +254,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
 - **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.
 
-### E-250 — Ensayo de generalización I-207: usuarios que vuelven puntuados sin historial (T-025)
+### E-250 — Ensayo de generalización I-207: usuarios que vuelven puntuados sin historial (T-027)
 - **Date / owner / branch:** 2026-11-14 16:45 UTC / Javi (agente) / `javi/i207-run`. Script `recsys/explore_i207.py` (escrito en `javi/i207-generalization`, 9fd2a64). Offline, sin consultas ni escrituras durante el ensayo; datos refrescados antes con `lfm_build.py --pull --no-write` (58.046 peticiones, 731 compras, hasta 16:35 UTC).
 - **Cambio al script en la primera ejecución:** main ya tenía las features `ucat` / `usub` (T-024), que también salen del historial; se añadió `mix_amnesia` para que la versión sin historial las calcule solo con las vistas de hoy. El resto corrió tal cual.
 - **Diseño:** ajuste antes de 14:55 UTC (todas las features, incluidas las de r3), medida después. Orden dentro de los 10 productos enseñados.

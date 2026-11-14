@@ -149,9 +149,11 @@ class LiveFit:
     def set_arms(self, arms):
         """Tuning arms served side by side (T-021). Each arm: {"tag": "x1", "file": "lfm_coef_r2.json" (optional),
         "w": {"known": {"islast": 3.0}, "new": {...}} (optional absolute overrides)}. An arm without file and
-        without w is the committed weights (control). Replaces the previous arms in one step; raises on bad input."""
-        alt = {}
-        for a in arms:
+        without w is the committed weights (control). Replaces the previous arms in one step; raises on bad input.
+        Fused arms: an optional "home": {"file": ..., "w": ...} (same shape; {} = committed weights) gives the weights
+        used on home requests (no recent views), so one arm can serve one weight set on product/category pages and
+        another on home."""
+        def build(a):
             if a.get("file"):
                 c = json.loads((HERE / a["file"]).read_text())
                 w = {k: np.array([c[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
@@ -160,7 +162,11 @@ class LiveFit:
                 w = {k: v.copy() for k, v in self.w.items()}; b = dict(self.b)
             for seg, over in (a.get("w") or {}).items():
                 for f, val in over.items(): w[seg][FEATS.index(f)] = float(val)
-            alt[a["tag"]] = (w, b)
+            return w, b
+        alt = {}
+        for a in arms:
+            alt[a["tag"]] = build(a)
+            if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
         self.alt = alt
 
     # ---- refresher thread ----
@@ -226,7 +232,7 @@ class LiveFit:
         bought, lc, hc = state[:3]; bt = state[3] if len(state) > 3 else ()
         aff = aff_obj.affinity_all(req["user_id"], rv)
         seg = "new" if req.get("is_new_user") else "known"
-        w, b0 = self.alt[model] if model else (self.w, self.b)
+        w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
         X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None)
         s = X @ w[seg] + b0[seg]
