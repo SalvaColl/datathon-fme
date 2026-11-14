@@ -510,3 +510,20 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Tests:** 13 en `tests/test_lfm_newp.py` (250 en total): solo cambia el slot 10, sale de los puestos 11–60, nunca un excluido ni comprado, modos por tipo de usuario, validación del writer y aceptación de la política de la noche entera con sus rutas.
 - **Ensayo en seco (nube, `--dry-run`, 4 brazos con un brazo de exploración `true`, 5 min):** 852 peticiones, 0 errores, bucle p50 145 ms / p95 397 ms; 57 caducadas en el arranque en frío.
 - **No es conversión.** Sirve para medir en el leaderboard cuánto vende lo que lfm no prioriza.
+
+### E-410 — og1: pesos de lfm ajustados con compras orgánicas (T-041), 14 nov 20:40 UTC
+- **Qué es:** `recsys/og_build.py`. Por cada petición contestada en página de producto/categoría con vistas (81.534 desde las 11:09 UTC), positivo = producto que ese usuario compró en `shop.events` en los 30 min siguientes y que lfm podía servir en ese momento; 5.089 peticiones tienen uno (3.069 más tienen compra, pero de un producto ya comprado, muerto para ese usuario o sin stock: lfm nunca lo serviría, quedan fuera). Negativos = 40 productos al azar entre todos los que lfm podía servir a esa petición (lfm puntúa el catálogo activo entero, ese es su pool; **no** son los pools de `make_pools`, que son del camino v1/qrank). Features con `lfm.features` y el estado a la hora de la petición (los helpers de réplica de `lfm_build`). Logística por segmento, lista de features de r3, C=10; `home` conserva el peso de r3 (es constante en páginas).
+- **Hold-out temporal** (ajuste antes de las 17:45 UTC, prueba después; puesto de la compra orgánica entre todos los productos servibles, las mismas peticiones con ambos pesos):
+
+| segmento | pesos | compras | mediana | media | MRR | top 1 | top 10 | top 30 |
+|---|---|---|---|---|---|---|---|---|
+| conocidos | r3 | 1.231 | 137 | 445 | 0,063 | 2,4% | 14,0% | 24,9% |
+| conocidos | og1 | 1.231 | 104 | 368 | 0,073 | 3,0% | 16,2% | 28,0% |
+| nuevos | r3 | 507 | 215 | 572 | 0,045 | 1,8% | 7,7% | 19,1% |
+| nuevos | og1 | 507 | 174 | 525 | 0,043 | 1,4% | 9,1% | 19,1% |
+
+- Conocidos: og1 coloca la compra más arriba en el 64,1% de los casos y r3 en el 32,6%. Nuevos: 55,2% frente a 42,8%, pero MRR y top 1 empeoran y top 30 no se mueve: no es una mejora clara, así que el fichero deja a los nuevos con los pesos de r3.
+- Solapamiento del top 10 entre r3 y og1: 6,5 de 10 (conocidos), 6,2 (nuevos). Productos lanzados hoy en el top 10: conocidos 0,5% con r3 y 1,1% con og1; nuevos 0,1% y 0,5%. og1 no resuelve los productos lanzados (eso es `np1`).
+- **Qué cambia en los pesos de conocidos (r3 → og1):** `usub` 1,29 → 7,82, `chn` 0,73 → 1,83, `cl` 0,63 → 1,50, `aff10` 2,13 → 2,62; `islast` 1,45 → −0,32, `oinrv` 1,72 → 0,94, `ssub2` 0,72 → 0,13, `scat2` 0,53 → 0,02. Es decir: más peso a la subcategoría habitual del usuario y a sus carritos, menos al producto que está mirando y a sus vecinos.
+- **Límites.** La métrica del hold-out es la misma etiqueta con la que se ajustó og1, así que su ventaja ahí es esperable; no dice qué vende el carrusel. T-024 midió que lo orgánico engaña para el carrusel (lo visto y no carritado es el 30% de las compras orgánicas y vende 3 veces menos en el carrusel) y r3 se ajustó hasta las 16:00 con otra etiqueta. El riesgo concreto es `islast` negativo: el producto que se está viendo deja de ir primero. El único veredicto es el leaderboard.
+- Salida completa: `og1_holdout.txt` (carpeta del proyecto, `og1/`).
