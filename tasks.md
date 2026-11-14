@@ -16,6 +16,7 @@
 | T-010 | P1 | Slate ordering/diversity/price ablation | TBD / TBD | READY | T-005/T-006 or T-007 |
 | T-011 | P2 | Optional bounded bandit after proven ranker | TBD / TBD | HOLD | Reliable feedback attribution and offline/live evidence |
 | T-012 | P0 | Final deployment, backup, monitoring/rollback + jury demo | TBD / TBD | READY | Live loop, champion, experiment metrics |
+| T-013 | P1 | `home` page + new-user candidates (no session views): organic user affinity / global converters, new module `recsys/home_cands.py` importable by `live.py`; offline time-split eval | Javi's agent (Claude) / javi/home-new-users | **IN PROGRESS (claimed 2026-11-14 13:30 CET)** | I-010; RawTree read access; does not edit `fe.py`/`live.py` |
 
 ## Proposed responsibility split (adapt to actual team size)
 
