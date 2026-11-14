@@ -437,6 +437,13 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Implicación:** las mejoras de +0,05–0,1 pp del tablero (I-201, I-202, I-204, I-209) no se pueden validar offline. Sí se pueden leer en `api/state?by=model` sin ruido: 3 brazos a la vez dan unas 900 peticiones por brazo y hora en el segmento más pequeño fuera de home.
 - **What changed:** brazos de pesos de lfm configurables en caliente (D-210).
 
+
+### I-K30 - pending cart x shopper taste, separate from a uniform cart boost
+- **Owner/status:** Codex / `salva/k30`; HYPOTHESIS, implemented for review; E-K30. Returning product/category users only, per team's updated priority.
+- **Rationale:** `javi/known-session` already tests larger cart coefficients. A bounded interaction can favor relevant carts while leaving weak/neutral-affinity carts alone. Existing affinity and cart columns suffice; no new data/model/features or request-path calls.
+- **OFFLINE DIAGNOSTIC:** 600 as-of requests, 1,200 valid slates; high-affinity cart slots 1.693 -> 1.997, 401 changed slates, no changes in 1,200 new-user/home parity probes. Both arms include all 12 logged buys. This is composition/validity evidence, not conversion uplift. See E-K30 and `recsys/K30.md` for timing, leakage limitations and exact-window test.
+- **Coordination:** latest `main@90e6e03` integrated, preserving Javi's r3/category-share and purchase-backfill work; not duplicating it. Optional score patch via coefficient artifact; `live.py`/writer untouched. Parked cold-start work stays on local `salva/k29@6f13d81`, overlapping teammate cold-start branch; not in this PR.
+
 ### I-240 — Los usuarios que vuelven compran casi solo en sus categorías favoritas del historial, y lfm no lo miraba
 - **Status / date / owner:** SUPPORTED (LIVE FEEDBACK, usuarios apartados) · 2026-11-14 16:40 UTC · Javi (agente, T-024, rama `javi/known-gap`).
 - **Evidence (carrusel propio, 11:09–16:00 UTC, usuarios que vuelven, páginas de producto y categoría, productos no muertos):** producto que el usuario nunca echó al carrito, según la parte de sus vistas de 60 días que cae en la categoría del producto: más del 20% -> 20,4 compras por 10.000 impresiones (86 compras, 42.222 impresiones); 13–20% -> 3,1 (9 / 28.799); menos del 13% -> 1,3 (14 / 106.171). El 79% de esas compras sale del 24% de las impresiones. Con productos del carrito pasa lo mismo, más suave: 53,9 frente a 13,5–18,1.

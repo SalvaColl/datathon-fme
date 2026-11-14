@@ -77,3 +77,8 @@ Decisión recomendada y pendiente: pasar a `{"variant": "lfm"}` al 100%.
 - Ideas, evidencia y decisiones: `insights.md`, `experiments.md`, `decisions.md` (solo se añaden entradas; hay IDs repetidos entre tareas paralelas, por ejemplo dos T-018, buscar por nombre). Tareas: `tasks.md`. Operación: `runbook.md`.
 - Presentación al jurado: `presentation/` (faltan cifras finales).
 - Sin fusionar a propósito: `feat/graph-recommender` (rama de otro miembro) y el renombrado de etiqueta `v4-lfm-r1` de `javi/lfm-live-fit` (se mantiene `v3-lfm-r1`, que es lo que escribe el writer).
+
+
+## Optional returning-user challenger K30 (Codex, salva/k30)
+
+Team's returning product/category priority: an optional taste-conditioned pending-cart boost is ready for review, with full instructions in [recsys/K30.md](recsys/K30.md). It differs from Javi's uniform cart weights; exact r1/r2/r3 coefficient clones plus a bounded score patch (r2 used in the replay), no live.py/serving.py changes. Local replay: 600 real as-of requests, zero invalid slates, relevant-cart placements 1.69 -> 2.00/slate; no online conversion claim. 162 tests OK (eight Windows POSIX skips). A new branch does not update a running Python process: deployment is Javi's, with one writer. Do not overwrite active tuner settings; use the review-only planner and fixed-window reporter, then restore saved arms if worse. No live activation or main merge was performed. Latest main 90e6e03 integrated into this branch; Javi's r3, purchase backfill and transport guard and fused home specs are preserved. No merge into main.

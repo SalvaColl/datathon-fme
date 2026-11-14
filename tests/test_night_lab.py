@@ -74,7 +74,7 @@ class NightLabTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             L, _ = lab(tmp, ["v1", "qrank"], hours=2.3)
             L.run()
-            files = sorted(str(p.relative_to(tmp)) for p in Path(tmp).rglob("*") if p.is_file())
+            files = sorted(p.relative_to(tmp).as_posix() for p in Path(tmp).rglob("*") if p.is_file())
             self.assertEqual(files, ["night_lab/report.md", "night_lab/segments.jsonl", "night_lab/snapshots.jsonl"])
 
     def test_d130_file_untouched_when_no_arm_uses_it(self):

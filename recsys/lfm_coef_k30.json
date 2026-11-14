@@ -1,0 +1,93 @@
+{
+ "known": {
+  "w": {
+   "aff10": 2.1038,
+   "chn": 1.2182,
+   "cl": 1.187,
+   "islast": 2.186,
+   "oinrv": 2.1148,
+   "ssub2": 1.2221,
+   "scat2": 1.1549,
+   "na": 0.3432,
+   "home": -0.8808,
+   "lq": 0.5909,
+   "sbrand": -0.0416,
+   "nbp": 0.0256,
+   "bsub": 0.4077,
+   "hcart": 0.8839,
+   "p40": 0.1263,
+   "segcheap": -0.3055,
+   "seglq": 0.0251
+  },
+  "b": -9.907,
+  "slot": -0.3897,
+  "cal": [
+   -1.1384,
+   1.1711
+  ],
+  "n": 212341,
+  "clicks": 763,
+  "buys": 204
+ },
+ "new": {
+  "w": {
+   "aff10": 0.8899,
+   "chn": 0.0,
+   "cl": 1.4996,
+   "islast": 2.1092,
+   "oinrv": 2.258,
+   "ssub2": 1.153,
+   "scat2": 0.9291,
+   "na": 0.4293,
+   "home": -0.2037,
+   "lq": 0.6293,
+   "sbrand": 0.3771,
+   "nbp": 0.6173,
+   "bsub": 0.6219,
+   "hcart": -0.2969,
+   "p40": 0.0214,
+   "segcheap": 0.4357,
+   "seglq": 0.039
+  },
+  "b": -9.0253,
+  "slot": -0.6203,
+  "cal": [
+   -1.1311,
+   1.1282
+  ],
+  "n": 131523,
+  "clicks": 578,
+  "buys": 214
+ },
+ "lq0": -10.435722834431914,
+ "meta": {
+  "fitted_on": "2026-11-14 11:09:47.360000 .. 2026-11-14 15:14:22.346000 UTC",
+  "requests": 44026,
+  "buy_weight": 3.0,
+  "C": 10.0,
+  "label": "click, purchases x3",
+  "feats": [
+   "aff10",
+   "chn",
+   "cl",
+   "islast",
+   "oinrv",
+   "ssub2",
+   "scat2",
+   "na",
+   "home",
+   "lq",
+   "sbrand",
+   "nbp",
+   "bsub",
+   "hcart",
+   "p40",
+   "segcheap",
+   "seglq"
+  ],
+  "k30_base": "lfm_coef_r2.json",
+  "k30_base_sha256": "641ce7e602678a72afe12dbf0afb0b2c54eb292a784e2e1a6b6d1cf63cd32049",
+  "k30_status": "UNTESTED ONLINE; frozen r2 coefficients, optional taste-conditioned cart score patch only"
+ },
+ "score_patch": "k30"
+}

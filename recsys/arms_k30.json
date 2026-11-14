@@ -1,0 +1,7 @@
+{
+  "variant": "lfm",
+  "lfm_arms": [
+    {"tag": "q7a", "file": "lfm_coef_r2.json"},
+    {"tag": "q7b", "file": "lfm_coef_k30.json"}
+  ]
+}

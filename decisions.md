@@ -189,3 +189,10 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - Arrancar siempre el writer nuevo con `python live.py --takeover` mientras el viejo sigue sirviendo. El nuevo carga, aplica el día, puntúa peticiones reales sin enviar, y solo entonces pide al viejo que pare; empieza a escribir cuando el sistema operativo le entrega `writer.lock`. Nunca hay dos writers: sin el candado no se escribe, y el diario compartido evita responder dos veces.
 - Evidencia: E-220. Estado: implementado y ensayado sin escribir; la primera aplicación real la hace el dueño del writer (el proceso actual es anterior y necesita `--replace-pid`).
 - Vuelta atrás: el mismo relevo con el commit anterior, o `kill` + arranque normal como hasta ahora.
+
+
+### D-K30 - proposed optional returning-user policy arm, no live change
+- **Owner/status:** Codex, `salva/k30`; PROPOSED FOR CONTROLLED TEST, not promoted. E-K30 / I-K30 / `recsys/K30.md`.
+- Recognize `score_patch: "k30"` only in an explicitly selected LF arm coefficient file. Preserve ordinary arm math, training/features and the serving loop. New module consumes existing features; no new dependencies, queries or state.
+- Require a matched coefficient/override control, existing private opaque labels, fixed same-window returning/non-home comparison, and Javi's single writer. The planner selects an exact r1/r2/r3 clone and copies the chosen arm's overrides into both arms; unknown/stale bases are rejected rather than silently substituted. Coordinate around the active tuner; no concurrent controller edits during the trial.
+- Rollback: restore saved policy arm list (next hot refresh disables patch); code rollback uses owner's existing deployment process. No live process/config changes or tests on the live laptop were performed here. Promotion requires actual online evidence; local coverage/composition is not conversion uplift.
