@@ -61,16 +61,17 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         b = [r for r in good if r["variant"] == name]
         per[name] = dict(stats([r["diff"] for r in b]), requests=sum(r["requests"] for r in b),
                          cold_mean=round(sum(r["cold"] for r in b) / len(b), 3) if b else None, worst_on_time=min((r["on_time"] for r in b), default=None))
-    byk = {r["k"]: r for r in good}; paired = {}; paired_all = {}
+    paired = {}; paired_all = {}
     for name in dict.fromkeys(seq):
         if name == champion: continue
         v, w = [], []
         for r in good:
             if r["variant"] != name: continue
-            nb = [byk[j] for j in (r["k"] - 1, r["k"] + 1) if j in byk and byk[j]["variant"] == champion]
-            if nb: w.append(r["diff"] - sum(x["diff"] for x in nb) / len(nb))
-            nb = [x for x in nb if x["burst"] == r["burst"]]
-            if nb: v.append(r["diff"] - sum(x["diff"] for x in nb) / len(nb))
+            for same, acc in ((False, w), (True, v)):       # nearest champion block(s), at most 2 blocks away (ABBA / random pairs)
+                c = [x for x in good if x["variant"] == champion and 0 < abs(x["k"] - r["k"]) <= 2 and (not same or x["burst"] == r["burst"])]
+                if not c: continue
+                d0 = min(abs(x["k"] - r["k"]) for x in c); nb = [x for x in c if abs(x["k"] - r["k"]) == d0]
+                acc.append(r["diff"] - sum(x["diff"] for x in nb) / len(nb))
         paired[name + "_minus_" + champion] = stats(v); paired_all[name + "_minus_" + champion] = stats(w)
     res = dict(kind="time rotation, team row minus reference per block; not a user-split A/B", block_min=block_min, seq=seq, champion=champion,
                per_variant=per, paired=paired, paired_all_neighbours=paired_all,
