@@ -21,7 +21,8 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 ## Hypothesis registry (UNTESTED unless evidence attached)
 
 ### I-001 — Strong personalized heuristic vs static best sellers
-- **Status:** IDEA (not yet empirically tested)
+- **Status:** INVESTIGATING — offline support (Javi, 2026-11-14, E-002/E-003); live test pending
+- **Evidence so far:** viewed-in-session items convert 13× more than other shown items; same subcategory 2.4×; user's past cart on the item is the strongest within-session signal (see I-010…I-014). Live baseline realized conversion 0.62% (3,219 feedback rows) vs 1.7% for the old historical system.
 - **Hypothesis:** Recent views, co-views, subcategory/brand affinity and organic purchase history beat the starter's all-time best sellers.
 - **Test:** B0 vs B1 on temporally separated `history_sessions`, particularly product-page sessions and cold requests; live results if safe to deploy.
 - **Risk:** Historical exposure bias; noisy old users; profile leakage.
@@ -49,7 +50,7 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Owner/evidence:** TBD / no team experiment yet.
 
 ### I-005 — Supervised gradient-boosted ranking
-- **Status:** IDEA (training dataset now confirmed)
+- **Status:** INVESTIGATING — offline support (Javi, 2026-11-14, E-003): within-session hit@1 0.49–0.52 vs 0.31 logged order; implemented in `recsys/` (sklearn HistGradientBoosting; LightGBM needs libomp, not installed)
 - **Hypothesis:** Purchase-prediction ranker based on context, recent views, product metadata, history and organic signals beats engineered weights.
 - **Test:** LightGBM/CatBoost vs logistic/heuristic with time-split evaluation, IPS support checks, calibration and cold-start ablation.
 - **Risk:** Historical best-seller exposure/position bias; new product distribution shift; train/inference cost.
@@ -82,6 +83,37 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Test:** Examine `starter/offline_eval.ipynb`; compare naive metric vs clipped IPS, effective sample size, variance, temporal slices and compatibility with purchase vs click reward.
 - **Risk:** Per-slot propensities may not give usable support for unseen slates; extremely high-variance inverse weights. Never claim unbiased conversion from invalid estimator.
 - **Owner/evidence:** TBD / public notebook exists, no team experiment yet.
+
+
+## Data findings — Javi, 2026-11-14 (history_sessions 15 Sep–14 Nov, 1.99M sessions; scripts in `recsys/explore_*.py`)
+
+### I-010 — The old carousel is category-locked; home page is the dead zone
+- **Status:** SUPPORTED (descriptive)
+- **Evidence:** every non-home historical slate has all 10 items in the category of the last viewed product (1.59M sessions); 100% of clicks/purchases with views are in that category. Home = 20% of sessions, always zero `recent_views`, conversion 0.14% vs 1.71% (category page) / 1.72% (product page). Live stream mix (last 5k requests): 56% product, 24% category, 20% home; ~30% `is_new_user`.
+- **Weakness:** "always same category" is the logging policy, so we cannot tell from history how much cross-category items would sell.
+- **Implication:** non-home: candidates from last-viewed category. Home: personalise from organic user history (70% of live users appear in `history_events`).
+
+### I-011 — Items already viewed in the session sell ~13× more
+- **Status:** SUPPORTED (observational, 3.2M shown-item rows)
+- **Evidence:** purchase rate per shown item 1.95% if viewed in session vs 0.15% otherwise; last-viewed item 2.0%. 16% of purchases are a product viewed earlier in the session, but only 13% of old slates contained any viewed item. Same subcategory as last view 0.34% vs 0.14% (2.4×); same brand 0.26% vs 0.16%.
+- **Weakness:** confounded with interest; still a strong ranking feature.
+
+### I-012 — Strong position effect
+- **Status:** SUPPORTED
+- **Evidence:** purchase rate by slot (items with views): 0.54%, 0.28%, 0.22%, 0.15%, 0.12%, 0.10%, 0.09%, 0.08%, 0.07%, 0.07%. Slot 1 ≈ 8× slot 10 (partly popularity of what the old system put first).
+- **Implication:** put the highest-probability item first; order matters more than the tail.
+
+### I-013 — Past add-to-cart by this user on this item is the top within-session signal
+- **Status:** SUPPORTED (model importance, E-003)
+- **Evidence:** permutation importance on the purchase model: user total activity, user×category purchases, user×item add-to-cart, item cart rate, same category, slot. Purchase always equals the click (100%): one purchase max per request.
+
+### I-014 — Live session/feedback facts
+- **Status:** SUPPORTED
+- **Evidence:** at ~12:45 CET the team baseline writer was serving ~70% of requests (`served_by=team` 1,285 vs `fallback/missing` 515 in 10 min) → the starter's 50-row window/poll loop is losing requests; reliability is 10 pts. `catalog_updates` by 13:00: 620 price changes, 100 new products, 90 out-of-stock, 54 back-in-stock.
+
+### I-015 — Live-feature refresh must be incremental
+- **Status:** SUPPORTED (dry-run measurement)
+- **Evidence:** rebuilding all live user tables every 20 s pushed request age to p95 2.2 s / max 2.87 s in one window; incremental dict tables + 1.8 s deadline guard → p95 0.9–1.5 s, max 1.9 s over 300 requests.
 
 ## Correction register (superseded briefing assumptions)
 

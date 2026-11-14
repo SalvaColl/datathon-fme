@@ -1,0 +1,5 @@
+# Large downloaded data: regenerate with download_*.py. Only the small catalog and the model are committed.
+*
+!.gitignore
+!catalog.parquet
+!model_buy.joblib
