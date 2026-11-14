@@ -253,3 +253,30 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Validación 2, corte temporal (ajuste antes de 14:33 UTC, medida después):** AUC de compra 0,868 -> 0,900 (vuelve, 170 compras) y 0,865 -> 0,910 (nuevo, 116). El acierto del producto comprado entre los 3 primeros es mixto en slates servidos por lfm (0,64 -> 0,60 en los que vuelven), donde el orden registrado favorece a r1.
 - **Ensayo en seco (writer real, sin escribir, brazos r1 y r3):** 328 peticiones, 0 slates inválidos, 2,3 ms por petición (p95 5,5). r3 en usuarios que vuelven: 2,8 productos de carrito por slate frente a 2,3, y menos "misma categoría que la última vista" (2,8 frente a 3,5) a favor de sus categorías habituales.
 - **Lo que no se sabe:** cuánto sube la conversión del modelo oculto. La estimación del propio modelo (+12% relativo en los que vuelven) se califica a sí misma y ya ha sobreestimado antes (I-211). Hay que leerlo como brazo en el leaderboard.
+
+### E-260 — Búsqueda de la siguiente palanca sobre lfm r3: nada offline la mejora (T-026)
+- **Date / owner / branch:** 2026-11-14 18:10 UTC / Javi (agente) / `javi/next-lever`. Solo lectura en RawTree.
+- **Datos:** 64.266 peticiones con feedback de hoy (826 compras, 2.616 clics) y 155.000 carruseles del historial del 8 al 13 de noviembre con el estado de cada usuario reconstruido a fecha 8-nov.
+- **Vara de medir:** verosimilitud de qué producto de los 10 enseñados se compró o se clicó, posición corregida, usuarios apartados, fuera de home. r1 -> r3 fueron +34 (compra) y +98 (clic) en usuarios que vuelven. Base r3: -627,5 / -2.370,2 (vuelve, 406 compras) y -597,7 / -1.685,9 (nuevo, 359).
+
+| Idea | Vuelve (compra / clic) | Nuevo (compra / clic) | Veredicto |
+|---|---|---|---|
+| Peso de las compras en el ajuste x1, x10, x30, solo compras | -631,6…-635,4 / peor | -598,5…-610,3 / peor | REJECTED: x3 ya es lo mejor |
+| Parte de las vistas del usuario en la marca | -627,7 / -2.368,4 | igual | REJECTED |
+| Precio del producto frente al precio habitual del usuario; precio | -629,8 / -627,9 | -597,3 | REJECTED |
+| Reparto de categorías por carritos | -628,1 | igual | REJECTED |
+| Carrito x calidad, x afinidad, x categoría favorita; afinidad al cuadrado | -626,1…-629,5 | -595,7…-600,6 | REJECTED (±2) |
+| Modelo no lineal (gradient boosting) con las mismas señales | -645,3 / -2.419,1 | -606,1 / -1.720,1 | REJECTED: peor |
+| Producto visto hoy fuera de las vistas recientes | -628,5 | -599,1 | REJECTED |
+| Pesos distintos en páginas de categoría | -630,5 | -600,1 | REJECTED |
+| Antigüedad del carrito de hoy | -626,6…-627,5 | -597,7…-598,6 | REJECTED |
+| Afinidad por frase: máximo, mínimo, producto, 20 pesos | -624,6…-630,4 | -597,0…-598,9 | REJECTED (±3) |
+| Afinidad calculada con carritos y compras | -624,0 / -2.360,6 | igual | Débil (+3,5 / +10); no compensa un reinicio |
+| Co-visitas producto-producto del historial (3,3 M pares) | -629,4 | -595,1 / -1.679,6 | REJECTED en los que vuelven; débil en nuevos |
+| Ajustar con el historial (solo, o junto con hoy) | -682,0 solo; -627,6 junto | n/d | REJECTED: no añade nada; los pesos de hoy puntúan el historial igual que los suyos propios (-933,0 frente a -937,9) |
+| Reajuste con los datos hasta las 17:10 (r4) | pesos iguales a r3 (cambios < 0,35) | | No se publica |
+
+- **Lo que confirma el historial (carruseles con política antigua, 130.000 fuera de home):** comprado antes 126 compras por 10.000 impresiones (la organización avisa de que en vivo no vale, y en vivo medimos 1,3); carrito sin comprar 58; nunca tocado 4,8; visto y nunca echado al carrito 3,4. Home 0,15% de conversión frente a 1,71% en producto/categoría con la misma política: home tiene el techo 12 veces más bajo, no es donde está el hueco.
+- **Referencia, 17:00–17:24 UTC:** en peticiones no frías 2,32% frente a 1,77% nuestro, 2,11% team_06, 1,85% team_42. En frías la referencia hace 1,76% y nosotros 2,43%. No hay documentación de qué hace; por los segmentos, vive del historial del usuario.
+- **Home en prueba:** tres brazos de home daban 0,17–0,31% (356 peticiones) frente a 0,69% del home de lfm (188) en esa ventana: unos 0,04 pp globales de coste mientras duren.
+- **Conclusión:** con las señales que sabemos construir, los pesos de r3 están en su sitio. Lo único que puede mover más es afinar contra el leaderboard; `lfm_tuner.py` empieza ahora por `ucat` y `usub`, que son las señales nuevas y las de más peso.
