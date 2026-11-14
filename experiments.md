@@ -206,3 +206,9 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Limitaciones:** lo mostrado no fue aleatorio (v1, qrank y fallback); son compras reales con ruido, no la probabilidad del modelo oculto. Las tasas "esperadas" vienen de un modelo ajustado con los mismos datos. Ninguna de estas pruebas sustituye a la fila por versión del leaderboard.
 - **Sin cambios en** `live.py`, el writer ni `submissions`.
+
+### E-K27 — parked targeted ranking challenger (Codex / salva/k27)
+- Read latest main daaa2ca, HANDOFF, new rankers/hooks and I-200..I-210. Claimed I-202 and built optional isolated returning-home ranking test with opaque public labels, unchanged defaults and incumbent parity. Detailed scope, controls, risks and commands: recsys/K27.md.
+- OBSERVED DATA / OFFLINE DIAGNOSTIC: immutable private replay of 400 target requests (397 users), 14:47:40–15:04:56 UTC, after committed coefficients' fitting cutoff. 0 invalid slates; 372 changed; historical-cart slots 2.7275 -> 6.55. Only 2 logged purchases: control hit 2, challenger hit 1. No causal conversion or hidden-model lift claimed. Earlier E-203/I-202 is observational motivation, not proof of this rule.
+- 118 tests pass. Identical predictions on two cached replays; ranking p95 1.48–1.83ms / p99 2.56–5.09ms across arms/runs, excluding polling/network/writes. Initial catalogue field history unverified; as-of organic events/available updates replayed; private carousel purchases and refresh delays omitted. No training, installation, serving, submissions, config edits or final-test access.
+- User then prioritized on-time delivery; this ranking branch is PARKED, not promoted or merged. Javi owns the only live writer. Rollback unchanged original policy; optional future online plan and guarded aggregation are documented in K27.md.

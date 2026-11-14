@@ -368,7 +368,7 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Test:** hold-out de `lfm_build.py` (AUC y hit@1 del segmento nuevo); en vivo, versión `v3-lfm-r2-n` frente a `v3-lfm-r1-n`.
 
 ### I-202 — Home para el usuario que vuelve: solo carritos del histórico
-- **Status / owner:** SUPPORTED offline (E-203) · **owner: free**
+- **Status / owner:** SUPPORTED offline (E-203) · **owner: Codex / salva/k27 (T-K27)**
 - **Hipótesis:** en home, a un usuario que vuelve lo genérico no le vende nada; solo vende lo que carritó y no compró.
 - **Evidencia (E-203, coincide con I-130 e I-131 de T-013):** home, usuario que vuelve: genéricos **1 compra en 23.363 impresiones** (0,4 por 10.000; 0 compras en los tres cuartiles bajos de calidad); carrito del histórico 6 en 5.441 (11,0 por 10.000); carrito de hoy 1 en 307. La fila `v3-lfm-r1-kh` va al 0,35% (143 peticiones) frente a 2,39% de `-k`.
 - **Ganancia esperada:** home de usuario que vuelve es el 14% del tráfico al 0,35%. Llenando los 10 slots con carritos del histórico (hoy lfm pone unos 3) y ordenándolos por afinidad, objetivo 0,7–1,0%: **+0,05–0,09 pp**. **Coste:** 1 h (regla en `lfm.slate` para `page == "home"`: primero todos los carritos, después afinidad). El 96% de estos usuarios tiene carrito sin comprar y el 45% más de 10 (I-180).
@@ -428,3 +428,6 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Evidencia:** peticiones fuera de home de usuarios nuevos según compras orgánicas hechas hoy antes de la petición: 0 compras **0,85%** (48/5.666); 1 compra 1,73% (36/2.081); 2 compras 3,82% (30/785); 3 o más **9,46%** (53/560). En usuarios que vuelven casi no cambia (0,56% → 1,10%). El aumento se reparte por todos los tipos de producto (×2,1–3,2 sobre lo esperado), así que es propensión del comprador, y además se concentra en productos parecidos a lo comprado (I-201).
 - **Implicación:** el 15% de las peticiones de usuarios nuevos (2 o más compras hoy) da el 50% de sus compras en el carrusel (83 de 167). Ahí es donde más vale el orden del slate, y es el caso típico de la final.
 - **Debilidad:** observacional; `is_new_user` significa "no está en el histórico", no "primera visita de hoy".
+
+### I-K27 — returning-home ranking hypothesis parked, no online improvement established
+- Codex / salva/k27: I-202 implemented as an optional challenger; 118 tests, exact incumbent control parity and opaque final labels, reproducible replay. Only 2 logged purchases (coverage control 2 / treatment 1), so no claim of uplift. Details E-K27 / recsys/K27.md. Not deployed; user prioritized on-time delivery next.

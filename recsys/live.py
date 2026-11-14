@@ -11,10 +11,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, k27
     from .serving import Journal, WriterLock, age, repair, serve
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, k27
     from serving import Journal, WriterLock, age, repair, serve
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -48,7 +48,7 @@ VERSION_L = "v3-lfm-r1"            # live-fitted model (T-018); served with a se
 # ab_attr_aff = 50/50, qrank_aff vs attr_aff (only the ranker of pages with views differs between arms).
 VERSION_T = "v3-attr-r1"
 VERSION_TA = "v3-attr-aff-r1"
-VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm")
+VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm", "k27", "k27a", "k27b")
 POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": []}
 # Optional tuning arms for plain-qrank requests, measured by the leaderboard's per-model_version breakdown:
 #   {"variant": "qrank", "qrank_arms": [{"tag": "vf045", "viewed_factor": 0.45}, {"tag": "vf100", "viewed_factor": 1.0}]}
@@ -70,7 +70,7 @@ def use_aff(r):
 def use_lfm(r):
     """Does lfm answer this request? Needs the affinity object (AP) and a catalogue snapshot; otherwise never."""
     v = POLICY['variant']
-    return LF is not None and LF.ok and AP is not None and (v == 'lfm' or (v == 'ab_lfm' and treated(r['user_id'])))
+    return LF is not None and LF.ok and AP is not None and (v == 'lfm' or v in k27.VARIANTS or (v == 'ab_lfm' and treated(r['user_id'])))
 def is_new(r): return r.get('is_new_user') in (True, 1, 'true', 'True', '1')
 def use_qrank(r):
     v = POLICY['variant']
@@ -324,11 +324,17 @@ def lfm_slates(reqs, unavail, versions):
         with feature_lock: states = [LF.user_state(reqs[k]['user_id']) for k in idx]
         for k, st in zip(idx, states):
             r = reqs[k]; new = is_new(r)
-            try: s = LF.slate(dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new), st, AP.aff, exclude=unavail)
+            label = VERSION_L + ('-n' if new else '-k') + ('h' if not r['rv'] else '')
+            request = dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new)
+            try:
+                if POLICY['variant'] in k27.VARIANTS:
+                    s, label = k27.slate(LF, request, st, AP.aff, exclude=unavail, variant=POLICY['variant'])
+                else:
+                    s = LF.slate(request, st, AP.aff, exclude=unavail)
             except Exception as e:
                 print('lfm slate error', type(e).__name__, e, flush=True); s = None
             if s is not None:
-                out[k] = s; versions[k] = VERSION_L + ('-n' if new else '-k') + ('h' if not r['rv'] else '')
+                out[k] = s; versions[k] = label
     except Exception as e:
         print('lfm error', type(e).__name__, e, flush=True)
     return out
@@ -415,6 +421,11 @@ def send_answers(reqs, answers, journal, seen, dry=False):
         version = original.get('model_version', VERSION + '-guard')
         if items != original.get('items'):
             version = VERSION + '-guard'
+        if POLICY['variant'] in k27.VARIANTS:
+            # Covers urgency guards, repair, failed model loads and wrapper suffixes.
+            # No public label reveals the policy family or shopper segment.
+            version = k27.public_version(r, POLICY['variant'], version,
+                                         repaired=items != original.get('items'))
         answer = dict(request_id=rid, items=items, model_version=version)
         if dry or journal.claim(answer):
             batch.append(answer)
@@ -472,7 +483,7 @@ def main():
         def deliver(reqs, answers):
             send_answers(reqs, answers, journal, seen, dry=DRY)
         def score(reqs):
-            ctrl = [r for r in reqs if AB and zlib.crc32(r['user_id'].encode()) % 2 == 0]
+            ctrl = [r for r in reqs if AB and POLICY['variant'] not in k27.VARIANTS and zlib.crc32(r['user_id'].encode()) % 2 == 0]
             model = [r for r in reqs if r not in ctrl]
             return (predict(model) if model else []) + fallback_answers(ctrl, 'baseline-ctrl')
         while True:

@@ -85,6 +85,10 @@ def install(g, history=None):
 
     def predict(reqs):
         m = mode(); _touched.clear()
+        # T-K27 is a predeclared isolated experiment; don't overwrite either arm
+        # with a second home policy or append revealing public version suffixes.
+        if g.get('POLICY', {}).get('variant') in ('k27', 'k27a', 'k27b'):
+            m = 'off'
         out = o_predict(reqs)
         if m == "off": return out
         try:
