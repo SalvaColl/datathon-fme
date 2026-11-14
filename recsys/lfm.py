@@ -27,6 +27,10 @@ from __future__ import annotations
 import json, math
 from pathlib import Path
 import numpy as np, pandas as pd
+if __package__:
+    from . import k30
+else:
+    import k30
 
 HERE = Path(__file__).resolve().parent
 ART = HERE / "lfm_coef.json"
@@ -112,7 +116,7 @@ class LiveFit:
     def __init__(self, coef: dict, history: pd.DataFrame | None = None):
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
-        self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
+        self.alt = {}                 # arm -> (w, b[, opt-in score patch]); legacy pairs remain supported
         self.lq0 = float(coef.get("lq0", 0.0)); self.meta = coef.get("meta", {})
         self.hcart, self.hbought = {}, {}
         if history is not None:
@@ -137,15 +141,18 @@ class LiveFit:
         without w is the committed weights (control). Replaces the previous arms in one step; raises on bad input."""
         alt = {}
         for a in arms:
+            patch = None
             if a.get("file"):
                 c = json.loads((HERE / a["file"]).read_text())
+                patch = c.get('score_patch')
+                if patch not in (None,'k30'): raise ValueError('Unknown score patch')
                 w = {k: np.array([c[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
                 b = {k: float(c[k]["b"]) for k in ("known", "new")}
             else:
                 w = {k: v.copy() for k, v in self.w.items()}; b = dict(self.b)
             for seg, over in (a.get("w") or {}).items():
                 for f, val in over.items(): w[seg][FEATS.index(f)] = float(val)
-            alt[a["tag"]] = (w, b)
+            alt[a["tag"]] = (w, b, patch) if patch else (w, b)
         self.alt = alt
 
     # ---- refresher thread ----
@@ -176,9 +183,12 @@ class LiveFit:
         bought, lc, hc = state[:3]; bt = state[3] if len(state) > 3 else ()
         aff = aff_obj.affinity_all(req["user_id"], rv)
         seg = "new" if req.get("is_new_user") else "known"
-        w, b0 = self.alt[model] if model else (self.w, self.b)
+        spec = self.alt[model] if model else (self.w, self.b)
+        w, b0 = spec[:2]
         X = features(S, aff, rv, req.get("page", "product"), hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")))
         s = X @ w[seg] + b0[seg]
+        if len(spec)>2 and spec[2]=='k30':
+            s = k30.adjust(req,X,s,FEATS,(AFF_CAP-NEUTRAL)*10.)
         dead = ~S.ok
         st = S.stale(req["user_id"])
         if st is not None:

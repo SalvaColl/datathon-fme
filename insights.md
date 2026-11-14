@@ -436,3 +436,10 @@ Orden por ganancia esperada. "pp" = puntos de conversión global. Todas las gana
 - **Segundo dato:** el modelo sobreestima sus propios slates. Para `v3-lfm-r1-n` predice 4,8 compras por 100 peticiones y el leaderboard dice 2,9; para `-k` predice 2,75 y son 2,15–2,33. La estimación "modelo sobre su slate" ya no sirve para decidir entre variantes parecidas.
 - **Implicación:** las mejoras de +0,05–0,1 pp del tablero (I-201, I-202, I-204, I-209) no se pueden validar offline. Sí se pueden leer en `api/state?by=model` sin ruido: 3 brazos a la vez dan unas 900 peticiones por brazo y hora en el segmento más pequeño fuera de home.
 - **What changed:** brazos de pesos de lfm configurables en caliente (D-210).
+
+
+### I-K30 ? pending cart ? shopper taste, separate from a uniform cart boost
+- **Owner/status:** Codex / `salva/k30`; HYPOTHESIS, implemented for review; E-K30. Returning product/category users only, per team's updated priority.
+- **Rationale:** `javi/known-session` already tests larger cart coefficients. A bounded interaction can favor relevant carts while leaving weak/neutral-affinity carts alone. Existing affinity and cart columns suffice; no new data/model/features or request-path calls.
+- **OFFLINE DIAGNOSTIC:** 600 as-of requests, 1,200 valid slates; high-affinity cart slots 1.693 ? 1.997, 401 changed slates, no changes in 1,200 new-user/home parity probes. Both arms include all 12 logged buys. This is composition/validity evidence, not conversion uplift. See E-K30 and `recsys/K30.md` for timing, leakage limitations and exact-window test.
+- **Coordination:** based on latest fetched main d842407; aware of unmerged `javi/known-gap` r3/category-share work, not duplicating it. Optional score patch via coefficient artifact; `live.py`/writer untouched. Parked cold-start work stays on local `salva/k29@6f13d81`, overlapping teammate cold-start branch; not in this PR.
