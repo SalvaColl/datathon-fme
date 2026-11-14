@@ -187,3 +187,13 @@ Un brazo de `lfm_arms` puede llevar `"home": {...}` (misma forma que el brazo: `
 ```
 
 Las etiquetas no cambian (`v3-lfm-<tag>-k|-n|-kh|-nh`). Sin `home` el brazo se comporta como antes. Necesita un reinicio (con relevo) para cargar el código.
+
+## lfm r5: co-ocurrencia producto a producto — T-027 (2026-11-14)
+
+Con el writer reiniciado (con relevo) en un commit que incluya T-027:
+
+```json
+{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "r5", "file": "lfm_coef_r5.json"}]}
+```
+
+r5 son los pesos de r3 más `cv` (grafo `recsys/lfm_graph_B.json`, se carga solo al arrancar). Etiquetas `v3-lfm-r5-k|-n|-kh|-nh`. Para probar otro peso sin reiniciar: `{"tag": "r6", "file": "lfm_coef_r3.json", "w": {"known": {"cv": 0.5}, "new": {"cv": 0.5}}}`. Rehacer el grafo: `python lfm_graph_build.py`; reajustar: `python lfm_build.py --pull --base lfm_coef_r3.json --add cv --out lfm_coef_r5.json`.

@@ -34,12 +34,18 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # r2 (T-021): weights missing from a coefficient file count as 0, so r1 files keep working unchanged
          "nbp", "bsub", "hcart", "p40", "segcheap", "seglq",
          # r3 (T-024): the shopper's own category mix, from the views of the 60-day history plus today's
-         "ucat", "usub"]
+         "ucat", "usub",
+         # r5 (T-027): product-to-product co-occurrence with what the shopper is looking at right now
+         "cv"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
 # ucat / usub: share of the shopper's views that fall in this product's category / subcategory (shrunk to "no preference")
+# cv: sum of graph weights (lfm_graph_B.json: sessions of the organic history, view 1 / cart 3 / purchase 6) between this
+#     product and each recent view and each product carted today; 0 for products without edges (new products)
 UC_PRIOR = 5.0
+GRAPH = HERE / "lfm_graph_B.json"
+CV_SCALE, CV_CAP = 10.0, 5.0
 SEG_REGIONS = ("Andalucía", "Canarias", "Murcia")
 def in_segment(device, region): return device == "android" and region in SEG_REGIONS
 AFF_CAP, NEUTRAL = 0.35, 0.10
@@ -61,6 +67,7 @@ class Snap:
         # home_cands keeps "viewed in the 60-day history, never carted" as one bitmap per user; map its bit order to ours
         self.ucode = self.scode = None        # stable category / subcategory codes of each product (LiveFit.set_catalog)
         self.hc = hc
+        self.g = None                         # product-to-product graph: row -> (neighbour rows, weights), see LiveFit._graph_catalog
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
 
     def stale(self, u):
@@ -114,6 +121,12 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         cv, sv = mix; t = float(cv.sum())
         X[:, 17] = ((cv[S.ucode] + UC_PRIOR / len(cv)) / (t + UC_PRIOR) - 1.0 / len(cv)) * (S.ucode >= 0)
         X[:, 18] = ((sv[S.scode] + UC_PRIOR / len(sv)) / (t + UC_PRIOR) - 1.0 / len(sv)) * (S.scode >= 0)
+    if S.g is not None:
+        acc = X[:, 19]
+        for k in set(rows) | set(lc):
+            e = S.g.get(k)
+            if e is not None: acc[e[0]] += e[1]
+        np.minimum(acc * CV_SCALE, CV_CAP, out=acc)
     return X if idx is None else X[idx]
 
 
@@ -136,6 +149,7 @@ class LiveFit:
         self.urow, self.UC, self.US = {}, None, None            # user -> row of the history matrices
         self.lmix = {}                                          # today's views: user -> {product: views}
         self.NC, self.NS = 16, 160                              # fixed widths, so codes stay valid when the catalog grows
+        self.graph = None                                       # {product: [[neighbour, weight], ...]}, read once from GRAPH
 
     @classmethod
     def load(cls, history=None, path=ART):
@@ -182,7 +196,23 @@ class LiveFit:
         S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
+        try: self._graph_catalog(S)
+        except Exception as e: print("lfm graph off:", type(e).__name__, e, flush=True); S.g = None
         self.snap = S                                                     # one atomic swap
+
+    def _graph_catalog(self, S):
+        """Graph edges as row indices of this snapshot. No file -> cv stays 0 and every weight file behaves as before."""
+        if self.graph is None: self.graph = json.loads(GRAPH.read_text())["adj"] if GRAPH.exists() else {}
+        if not self.graph: return
+        old = self.snap
+        if old is not None and old.g is not None and old.ids == S.ids: S.g = old.g; return        # same products, same rows
+        r = S.row.get; g = {}
+        for a, nb in self.graph.items():
+            k = r(a)
+            if k is None: continue
+            e = [(j, w) for j, w in ((r(b), w) for b, w in nb) if j is not None]
+            if e: g[k] = (np.array([j for j, _ in e], dtype=np.int64), np.array([w for _, w in e], dtype=np.float64))
+        S.g = g
 
     def _mix_catalog(self, S, cat):
         for p, c, sb in zip(cat.index, cat["category"].values, cat["sub"].values):

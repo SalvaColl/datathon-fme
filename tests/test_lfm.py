@@ -272,3 +272,63 @@ class FusedArmTests(unittest.TestCase):
         self.assertEqual(L.alt['f1'][0]['known'][j], 1.5)
         self.assertEqual(L.alt['f1@home'][0]['known'][j], 0.0)       # home part = committed weights
         self.assertNotIn('t1@home', L.alt)
+
+
+class R5GraphTests(unittest.TestCase):
+    """cv: product-to-product co-occurrence with the recent views and today's carts (T-027)."""
+    GRAPH = {'A30': [['B11', 0.20], ['A31', 0.05]], 'A10': [['B11', 0.10], ['B12', 0.30]], 'B11': [['A30', 0.20]], 'ZZ': [['A00', 1.0]]}
+
+    def build(self, graph=None):
+        cat = catalog(); aff = FakeAff(list(cat.index))
+        lf = lfm.LiveFit(COEF, HIST); lf.graph = self.GRAPH if graph is None else graph
+        lf.set_catalog(cat, set(), aff, {p: 0.0 for p in cat.index}, None)
+        return lf, aff
+
+    def cv(self, lf, rv=(), cart=()):
+        S = lf.snap
+        X = lfm.features(S, np.full(S.n, 0.1), list(rv), 'product', {}, set(cart))
+        return {p: round(float(X[S.row[p], lfm.FEATS.index('cv')]), 6) for p in ('B11', 'B12', 'A31', 'A30', 'A00')}
+
+    def test_sums_edges_of_recent_views_and_todays_carts(self):
+        lf, _ = self.build()
+        self.assertEqual(self.cv(lf, rv=('A30',)), {'B11': 2.0, 'B12': 0.0, 'A31': 0.5, 'A30': 0.0, 'A00': 0.0})
+        self.assertEqual(self.cv(lf, rv=('A30', 'A30'), cart={'A10'}), {'B11': 3.0, 'B12': 3.0, 'A31': 0.5, 'A30': 0.0, 'A00': 0.0})
+        self.assertEqual(self.cv(lf, rv=('A30',), cart={'A30'})['B11'], 2.0)          # a product viewed and carted counts once
+        self.assertEqual(self.cv(lf, rv=('unknown', 'A05')), {'B11': 0.0, 'B12': 0.0, 'A31': 0.0, 'A30': 0.0, 'A00': 0.0})
+
+    def test_is_capped_and_zero_without_a_graph(self):
+        lf, _ = self.build({'A30': [['B11', 9.0]]})
+        self.assertEqual(self.cv(lf, rv=('A30',))['B11'], lfm.CV_CAP)
+        lf, aff = self.build({})
+        self.assertIsNone(lf.snap.g); self.assertEqual(self.cv(lf, rv=('A30',))['B11'], 0.0)
+        self.assertEqual(len(set(slate(lf, aff))), 10)
+
+    def test_weight_brings_a_neighbour_of_another_category_and_old_files_ignore_it(self):
+        lf, aff = self.build()
+        base = slate(lf, aff, rv=('A30',))
+        self.assertNotIn('B11', base)                                   # COEF has no cv weight: the graph changes nothing
+        lf0, aff0 = self.build({}); self.assertEqual(base, slate(lf0, aff0, rv=('A30',)))
+        lf.set_arms([{'tag': 'g', 'w': {'known': {'cv': 3.0}}}])
+        req = dict(user_id='u9', rv=['A30'], page='product', is_new_user=False)
+        s = lf.slate(req, lf.user_state('u9'), aff, model='g')
+        self.assertEqual(len(set(s)), 10); self.assertIn('B11', s[:3])
+
+    def test_graph_rows_survive_a_catalog_refresh(self):
+        lf, aff = self.build()
+        g = lf.snap.g
+        lf.set_catalog(catalog(), {'A31'}, aff, None, None)
+        self.assertIs(lf.snap.g, g)                                     # same products: reused, not rebuilt
+        cat = catalog(); cat.loc['C00'] = ['C', 'C-s0', 'b0', 5.0]
+        aff2 = FakeAff(list(cat.index)); lf.set_catalog(cat, set(), aff2, None, None)
+        self.assertEqual(self.cv(lf, rv=('A30',))['B11'], 2.0)
+
+    def test_committed_graph_and_r5_file(self):
+        import json
+        g = json.loads(lfm.GRAPH.read_text()); self.assertGreater(len(g['adj']), 4000)
+        self.assertEqual(g['meta']['config']['w_cart'], 3); self.assertEqual(g['meta']['config']['w_buy'], 6)
+        arms = live.clean_lfm_arms([{'tag': 'r3', 'file': 'lfm_coef_r3.json'}, {'tag': 'r5', 'file': 'lfm_coef_r5.json'}])
+        self.assertEqual([a['tag'] for a in arms], ['r3', 'r5'])
+        r3 = json.loads((lfm.HERE / 'lfm_coef_r3.json').read_text()); r5 = json.loads((lfm.HERE / 'lfm_coef_r5.json').read_text())
+        for seg in ('known', 'new'):
+            self.assertGreater(r5[seg]['w']['cv'], 0)
+            self.assertEqual({k: v for k, v in r5[seg]['w'].items() if k != 'cv'}, r3[seg]['w'])

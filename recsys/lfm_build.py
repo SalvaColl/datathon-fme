@@ -3,6 +3,7 @@
     python lfm_build.py --pull          # download feedback/requests/events/catalog to data/lfm_*.parquet, then fit
     python lfm_build.py                 # refit from the cached files
     python lfm_build.py --cut "2026-11-14 13:10"    # time split used for the hold-out report (default: last 30%)
+    python lfm_build.py --base lfm_coef_r3.json --add cv --out lfm_coef_r5.json    # keep r3's weights, fit only the new feature
 
 What it does
   1. Replays every answered request: for each of the 10 products shown it rebuilds, AS OF the request time, the
@@ -159,6 +160,30 @@ def p_buy(coef, seg, X, slot):
     return 1.0 / (1.0 + np.exp(-(c["cal"][0] + c["cal"][1] * z)))
 
 
+def fit_add(I, base, add):
+    """`base` weights kept exactly as they are; only the weights of the features in `add` (plus intercept and slot) are
+    fitted, with the base score as a fixed offset. Gives a clean A/B: the new arm differs from the base arm ONLY in `add`."""
+    out = {}
+    for seg, new in (("known", False), ("new", True)):
+        a = I[(I.new_user == new) & (I.dead == 0)]
+        off = a[lfm.FEATS].values @ np.array([0.0 if f in add else base[seg]["w"].get(f, 0.0) for f in lfm.FEATS])
+        Z = np.column_stack([np.ones(len(a)), a.ls.values] + [a[f].values for f in add])
+        y = a.clk.values.astype(float); sw = np.where(a.buy == 1, BUY_W, 1.0)
+        th = np.zeros(Z.shape[1]); th[0] = base[seg]["b"]; th[1] = base[seg].get("slot", 0.0)
+        pen = np.r_[0.0, np.ones(Z.shape[1] - 1) / C_REG]
+        for _ in range(50):                                   # Newton steps of a weighted logistic regression with offset
+            p = 1.0 / (1.0 + np.exp(-(off + Z @ th)))
+            g = Z.T @ (sw * (y - p)) - pen * th
+            H = (Z * (sw * p * (1 - p))[:, None]).T @ Z + np.diag(pen)
+            step = np.linalg.solve(H, g); th = th + step
+            if np.abs(step).max() < 1e-8: break
+        se = np.sqrt(np.diag(np.linalg.inv(H)))
+        w = dict(base[seg]["w"]); w.update({f: round(float(v), 4) for f, v in zip(add, th[2:])})
+        out[seg] = dict(base[seg], w=w, b=round(float(th[0]), 4), slot=round(float(th[1]), 4), n=int(len(a)), clicks=int(a.clk.sum()),
+                        buys=int(a.buy.sum()), added={f: dict(w=round(float(v), 4), se=round(float(s), 4)) for f, v, s in zip(add, th[2:], se[2:])})
+    return out
+
+
 R1_FEATS = lfm.FEATS[:11]
 
 
@@ -231,16 +256,26 @@ def main():
     cut = pd.Timestamp(sys.argv[sys.argv.index("--cut") + 1]) if "--cut" in sys.argv else d.ts.quantile(0.7)
     train = I[I.ts < cut]; test_rids = d.index[d.ts >= cut]
     print("time split at", cut, "| train requests", int((d.ts < cut).sum()), "test", len(test_rids))
+    add = sys.argv[sys.argv.index("--add") + 1].split(",") if "--add" in sys.argv else None     # e.g. --base lfm_coef_r3.json --add cv
+    base = json.loads((lfm.HERE / sys.argv[sys.argv.index("--base") + 1]).read_text()) if "--base" in sys.argv else None
+    if add:
+        for f in add:
+            for seg, new in (("known", False), ("new", True)):
+                a = I[(I.new_user == new) & (I.dead == 0)]; nz = a[a[f] > 0]; z = a[a[f] == 0]
+                print(f"{f} {seg}: impressions with {f}>0 {len(nz)} ({len(nz) / len(a):.1%}), clicks {int(nz.clk.sum())}, buys {int(nz.buy.sum())}"
+                      f" -> {1e4 * nz.buy.mean():.1f} buys per 10k vs {1e4 * z.buy.mean():.1f} without")
     cands = {"r1 features, refit": fit(train, R1_FEATS), "all features, refit": fit(train, lfm.FEATS)}
+    if add: cands = {"base " + sys.argv[sys.argv.index("--base") + 1]: base, "base + " + ",".join(add): fit_add(train, base, add)} | cands
     try:
         old = json.loads(lfm.ART.read_text())
         if all("cal" in old[k] for k in ("known", "new")): cands = {"committed " + lfm.ART.name: old} | cands
     except Exception: pass
     holdout(I, test_rids, cands)
-    report(d, I, LF, aff, carts, buys, fit(train, feats), test_rids)
-    coef = fit(I, feats)
+    report(d, I, LF, aff, carts, buys, fit_add(train, base, add) if add else fit(train, feats), test_rids)
+    coef = fit_add(I, base, add) if add else fit(I, feats)
     coef["lq0"] = LF.lq0
     coef["meta"] = dict(fitted_on=f"{d.ts.min()} .. {d.ts.max()} UTC", requests=int(len(d)), buy_weight=BUY_W, C=C_REG, label="click, purchases x3", feats=feats)
+    if add: coef["meta"].update(base=sys.argv[sys.argv.index("--base") + 1], added=add, feats=base.get("meta", {}).get("feats", feats) + add)
     if "--no-write" not in sys.argv:
         out.write_text(json.dumps(coef, indent=1)); print("\nwrote", out.name)
     for seg in ("known", "new"): print(seg, coef[seg])

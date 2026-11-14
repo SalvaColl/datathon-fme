@@ -189,3 +189,8 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - Arrancar siempre el writer nuevo con `python live.py --takeover` mientras el viejo sigue sirviendo. El nuevo carga, aplica el día, puntúa peticiones reales sin enviar, y solo entonces pide al viejo que pare; empieza a escribir cuando el sistema operativo le entrega `writer.lock`. Nunca hay dos writers: sin el candado no se escribe, y el diario compartido evita responder dos veces.
 - Evidencia: E-220. Estado: implementado y ensayado sin escribir; la primera aplicación real la hace el dueño del writer (el proceso actual es anterior y necesita `--replace-pid`).
 - Vuelta atrás: el mismo relevo con el commit anterior, o `kill` + arranque normal como hasta ahora.
+
+### D-270 — r5 (r3 + `cv`) se decide solo por el leaderboard
+- **Date / owner:** 2026-11-14 · Javi. **Status:** PROPOSED, pendiente del reinicio con relevo.
+- **Decisión:** tras cargar el código, `"lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "r5", "file": "lfm_coef_r5.json"}]` durante 30 minutos; se queda solo el brazo que gane en el leaderboard. No se descarta por validación offline (I-270: el histórico y nuestro feedback no pueden medirla). No más de dos brazos a la vez.
+- **Rollback:** quitar r5 de `lfm_arms` (sin reinicio). Sin `lfm_graph_B.json`, o con pesos sin `cv`, lfm se comporta exactamente como antes.
