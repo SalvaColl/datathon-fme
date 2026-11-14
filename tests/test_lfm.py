@@ -332,3 +332,48 @@ class R5GraphTests(unittest.TestCase):
         for seg in ('known', 'new'):
             self.assertGreater(r5[seg]['w']['cv'], 0)
             self.assertEqual({k: v for k, v in r5[seg]['w'].items() if k != 'cv'}, r3[seg]['w'])
+
+
+class FeatureDemandTests(unittest.TestCase):
+    """Serving builds cv only for weights that use it (T-027b); the training path still gets every column."""
+    def setUp(self):
+        t = R5GraphTests(); self.lf, self.aff = t.build()
+        self.lf.set_arms([{'tag': 'z'}, {'tag': 'g', 'w': {'known': {'cv': 3.0}}}])       # z: no cv weight; g: cv for returning only
+        self.calls = []
+        real = lfm.features
+        def spy(*a, **k): self.calls.append(k.get('need')); return real(*a, **k)
+        self._real = real; lfm.features = spy
+    def tearDown(self): lfm.features = self._real
+
+    def req(self, new=False, rv=('A30',)): return dict(user_id='u9', rv=list(rv), page='product', is_new_user=new)
+
+    def test_demand_is_the_optional_features_with_a_weight(self):
+        w = np.zeros(len(lfm.FEATS)); self.assertEqual(lfm.demand(w), frozenset())
+        w[lfm.FEATS.index('cv')] = -0.2; w[0] = 1.0; self.assertEqual(lfm.demand(w), frozenset({'cv'}))
+
+    def test_zero_cv_arm_skips_the_graph_and_scores_are_bit_identical(self):
+        S = self.lf.snap; st = self.lf.user_state('u9'); cvi = lfm.FEATS.index('cv')
+        for new in (False, True):
+            for rv in (('A30',), ('A30', 'A10', 'B11'), ()):
+                r = self.req(new, rv)
+                _, s_skip = self.lf.scores(r, st, self.aff, model='z')
+                self.assertEqual(self.calls[-1], frozenset())
+                X_full = self._real(S, self.aff.affinity_all('u9', rv), list(rv), 'product', {}, set())       # every column, as before T-027b
+                w, b = self.lf.alt['z']; seg = 'new' if new else 'known'
+                s_full = X_full @ w[seg] + b[seg]
+                if rv: self.assertGreater(X_full[:, cvi].max(), 0)
+                self.assertTrue(np.array_equal(s_skip[np.isfinite(s_skip)], s_full[np.isfinite(s_skip)]))
+                self.assertEqual(self.lf.slate(r, st, self.aff, model='z'), self.lf.slate(r, st, self.aff))     # same slate as no arm
+
+    def test_graph_arm_still_gets_cv_only_in_the_segment_that_weighs_it(self):
+        st = self.lf.user_state('u9')
+        s = self.lf.slate(self.req(False), st, self.aff, model='g'); self.assertEqual(self.calls[-1], frozenset({'cv'})); self.assertIn('B11', s[:3])
+        self.lf.slate(self.req(True), st, self.aff, model='g'); self.assertEqual(self.calls[-1], frozenset())
+
+    def test_training_path_default_builds_cv(self):
+        S = self.lf.snap
+        X = self._real(S, np.full(S.n, 0.1), ['A30'], 'product', {}, set())
+        self.assertEqual(X[S.row['B11'], lfm.FEATS.index('cv')], 2.0)
+        X0 = self._real(S, np.full(S.n, 0.1), ['A30'], 'product', {}, set(), need=frozenset())
+        self.assertEqual(X0[:, lfm.FEATS.index('cv')].max(), 0.0)
+        X[:, lfm.FEATS.index('cv')] = 0; self.assertTrue(np.array_equal(X, X0))             # nothing else changes

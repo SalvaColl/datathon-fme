@@ -278,3 +278,11 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Lectura:** `cv` ayuda en páginas de producto/categoría de usuarios conocidos (+0,20 pt) y no mueve a los nuevos; en home pierde. Una sola ronda de 30 minutos: la diferencia total (+0,06 pt) está dentro del ruido. Equipo en la ventana: 1,68% (4.º; team_06 1,97%, `reference` 1,78%), 99,98% a tiempo.
 - **Siguiente:** brazo fusionado `f5c05` (`cv` 0,5 en páginas, pesos de r3 en home) contra r3 desde las 18:25 UTC; política en `recsys/policy.candidate.json`. El campeón demostrado sigue siendo r3 solo (`recsys/policy.champion.json`) hasta que `f5c05` gane una ronda.
+
+### E-272 — Los brazos sin peso en `cv` se saltan el grafo: paridad exacta y latencia
+- **Date / owner / branch:** 2026-11-14 18:35 UTC · Javi (agente) · `javi/cv-demand` (T-027b). Etiqueta: OFFLINE (medido en la nube, lejos del portátil del writer). No cambia ningún peso ni ninguna puntuación.
+- **Cambio:** `lfm.features(..., need=None)` construye todas las columnas (camino de entrenamiento, `lfm_build.py`, sin tocar). Al servir, `LiveFit.scores` pasa `need=lfm.demand(pesos del segmento)`: el conjunto de features opcionales (`lfm.OPTIONAL`, hoy solo `cv`) con peso distinto de 0. Un brazo con `cv` solo en un segmento lo calcula solo en ese segmento.
+- **Paridad (3.000 peticiones reales del feedback del 14-nov, estado reconstruido a la hora de cada una):** brazo r3, vector de puntuaciones idéntico bit a bit en 3.000 de 3.000 y slate idéntico en 3.000 de 3.000, todos con 10 productos distintos. Brazo r5 (con peso en `cv`): 3.000 de 3.000 idénticos antes y después.
+- **Latencia de `features()` (mínimo de 10 repeticiones intercaladas por petición, 5.100 productos):** con `cv` 0,370 ms de media (p95 0,736, p99 0,873); saltándolo 0,336 ms (p95 0,688, p99 0,816). Ahorro por petición: 0,034 ms de media, 0,080 en p95, 0,111 en p99 (9% de `features()`). En el tiempo total de `scores()` (0,55 ms de media) el ahorro queda por debajo del ruido entre pasadas.
+- **Lectura:** el coste del grafo era pequeño; el cambio vale por dejar explícito qué calcula cada brazo, no por latencia.
+- **Rollback:** revertir el commit; sin él todo brazo vuelve a calcular `cv` y las puntuaciones son las mismas.
