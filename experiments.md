@@ -224,3 +224,24 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Lectura:** sin ganador. El reajuste calibra mejor al usuario nuevo (los pesos publicados predicen 159 compras donde hubo 71) pero no ordena mejor. Pesos nuevos tras ajustar con todo: usuario nuevo `nbp` +0,62 y `bsub` +0,62 (parecido a lo comprado hoy), `segcheap` +0,44; usuario que vuelve `hcart` +0,88 (carrito en home), `p40` +0,13 (el precio alto no penaliza), `islast` 1,95 → 2,19.
 - **Dry-run real sin escribir (15:18 UTC, 327 peticiones, brazos r1 / r2 / t1):** 0 slates inválidos, 1,8 ms por petición (p95 3,3 ms), 12 versiones `v3-lfm-<brazo>-<segmento>` repartidas a tercios.
 - **Comandos:** `python recsys/lfm_build.py --pull --out lfm_coef_r2.json`; `python -m unittest discover -s tests` → 114 tests OK.
+
+## T-022 — páginas de producto y categoría, usuario conocido (IDs E-22x; rama `javi/known-session`)
+### E-220 — Qué vende por tipo de producto y slot (feedback propio)
+- **Date / owner:** 2026-11-14 16:45 UTC · Javi (agente) · solo lectura · `cd recsys && python explore_known_session.py`
+- **Data:** feedback propio 11:09–15:34 UTC: 20.029 peticiones de usuario conocido en producto/categoría servidas por el equipo, 207 compras, 672 clics, impresiones vivas.
+- **Results (compras / impresiones por slot 1, 2–3, 4–6, 7–10):** carrito 47 / 4.606, 41 / 7.921, 24 / 10.005, 23 / 10.945; relacionado 7 / 4.359, 9 / 11.891, 18 / 21.093, 16 / 31.780; genérico 3 / 2.611, 3 / 6.244, 1 / 11.239, 1 / 17.032; último visto 6 / 365, 1 / 386, 1 / 374, 0 / 336; otro visto reciente 2 / 602, 3 / 636, 1 / 711, 0 / 665. Solo en slates de lfm (4.993 peticiones): genéricos 6 compras en 15.909 impresiones, carritos en slots 7–10 7 en 3.493.
+- **Limitations:** tasas observadas bajo las políticas servidas (v1, qrank, lfm), no aleatorizadas; 207 compras.
+- **Decision:** ver I-220, I-221.
+
+### E-221 — Brazos de carrito repetidos por el camino del writer (dry-run sin escribir)
+- **Date / owner:** 2026-11-14 16:50 UTC · Javi (agente) · `recsys/arms_t022.json` cargado con `live.clean_lfm_arms` + `LiveFit.set_arms` y servido con `LiveFit.slate(model=tag)` sobre 3.000 peticiones de usuario conocido desde las 13:30 UTC (2.372 con sesión, 628 home), con el estado del usuario a la hora de cada petición.
+- **Integrity / latency:** 9.000 slates, **0 no válidas** (10 ids distintos, ninguno comprado ni muerto), 0,71 ms por slate.
+- **Results (por slate; compras estimadas por 100 peticiones con tasas observadas por celda tipo × slot × afinidad × calidad):** `r2` carritos 2,96, relacionados 3,69, genéricos 3,14, **1,66**; `c2` (chn 2,2, cl 2,2) 4,26 / 3,06 / 2,49, **1,98** (+0,32, ee 0,008); `c4` (chn 4,0, cl 3,2) 5,80 / 2,27 / 1,78, **2,24** (+0,59, ee 0,010). Home sin cambios: 4,86 carritos por slate con r2, 4,93 con `c2` y `c4` (`hcart` compensado).
+- **Limitations:** la estimación por celdas es optimista (los carritos añadidos tienen afinidad mediana 0,47 y calidad 3,8, por debajo de los observados; la celda solo lo recoge en tres tramos). Un modelo paramétrico con pendientes de afinidad por tipo da +0,04 compras por 100 con una penalización al genérico y 0 a negativo con el carrito muy alto. Los dos estimadores coinciden en que el genérico sobra y discrepan en carrito flojo contra relacionado bueno. El error estándar es solo de muestreo de peticiones.
+- **Decision:** no promover offline; A/B en el writer (D-220). Tests: `python -m unittest discover -s tests` → 118 OK.
+
+### E-222 — Co-vista y vista→compra entre productos (sesiones orgánicas de hoy)
+- **Date / owner:** 2026-11-14 16:30 UTC · Javi (agente) · solo lectura
+- **Data / split:** 143.801 impresiones vivas de usuario conocido en producto/categoría; ajuste antes de las 14:49 UTC (419 clics, 122 compras), prueba después (253 clics, 85 compras); co-ocurrencias solo con eventos anteriores al corte.
+- **Results:** ver I-222. Univariante sí hay señal (carrito co-visto con el último visto: 65–95 compras por 10.000 frente a 23), pero desaparece al controlar por subcategoría y categoría.
+- **Decision:** REJECTED, no se añade la feature.

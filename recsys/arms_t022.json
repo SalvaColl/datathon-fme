@@ -1,0 +1,5 @@
+{"variant": "lfm", "lfm_arms": [
+ {"tag": "r2", "file": "lfm_coef_r2.json"},
+ {"tag": "c2", "file": "lfm_coef_r2.json", "w": {"known": {"chn": 2.2, "cl": 2.2, "hcart": 0.2}}},
+ {"tag": "c4", "file": "lfm_coef_r2.json", "w": {"known": {"chn": 4.0, "cl": 3.2, "hcart": -1.05}}}
+]}
