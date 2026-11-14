@@ -122,6 +122,7 @@ Rama `javi/qrank-serving` = writer robusto de Salva (`7176c03`) + ranker `recsys
 - Prueba recomendada: `ab_qrank` durante 30–60 min y `python recsys/compare_versions.py 60` para comparar `v1-gbm-cand-r1` con `v2-qrank-r1` (compras reales; con ~5.000 peticiones por brazo y hora se distingue 1,3% de 2,1%). Para el leaderboard, un bloque de 10 min con `qrank` alineado con `updated_at`.
 - Brazos de afinado (T-019): `{"variant": "qrank", "qrank_arms": [{"tag": "vf045", "viewed_factor": 0.45}, {"tag": "vf100", "viewed_factor": 1.0}]}` reparte a los usuarios por hash entre los brazos (2 a 4) y escribe cada uno como `v2-qrank-<tag>`; se comparan en `https://datathon.rawtree.dev/api/state?by=model` (conversión esperada del modelo oculto por `model_version`). Quitar `qrank_arms` vuelve a `v2-qrank-r1`. Solo afecta a las peticiones de qrank puro (no a `qrank_aff`).
 - Rollback: `{"variant": "v1"}` en `policy.json`, o borrar el archivo y reiniciar.
+- Variante `lfm` (D-180): `{"variant": "ab_lfm"}` reparte 50/50 entre qrank y lfm; `{"variant": "lfm"}` lo pone al 100%. Sus respuestas salen como `v3-lfm-r1-k|-n|-kh|-nh` (vuelve, nuevo, y sus home), legibles por separado en `api/state?by=model`. Reajustar pesos: `python lfm_build.py --pull` y reiniciar el writer.
 - Reconstruir el artefacto: `cd recsys && python qrank_build.py --pull` (scikit-learn 1.9.1).
 
 ## Laboratorio nocturno contra el leaderboard — T-016 (2026-11-14)

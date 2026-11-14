@@ -149,3 +149,23 @@ Sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-f
 - **Verification commands/results:** existing `C:\Projects\datathonFME\datathon-env\Scripts\python.exe -m unittest discover -s tests -v`: 21 tests pass. `tools/reliability_audit.py --minutes 30/60 --output data/local_eval/reliability_audit*.json`: successful read-only queries. Local feature equivalence/timing script produced `data/local_eval/reliability_feature_benchmark.json`; poll probe produced `reliability_poll_timing.json`. Full live/model dry-run NOT RUN: this checkout lacks Javi's ignored user-item history artifact. No final-test access or training experiment performed.
 - **Risks / rollout / rollback:** patch not deployed, so post-fix on-time/p95/p99 are UNTESTED. New transport scheduling, SQLite disk I/O and short timeouts need Javi's host rehearsal. Timeout claims sacrifice automatic recovery for nonduplication; a claim-before-POST crash can lose a request. Local lock does not coordinate different hosts or old scripts. Stock freshness still depends on the network. Javi should apply only `7176c03`, test, then control exactly one writer during handoff; see `recsys/README.md`. Preserve old checkout/model and journal for rollback. No shared starter change and no stopping/starting of serving processes here.
 - **Statistical limitation:** expected leaderboard conversion is lower-noise than realized purchases, but overlapping rolling aggregates are not an identified causal A/B trial. Differences of rolling means alone do not recover unique 10-minute blocks without initial block information/denominators, and policy allocation/time drift/fallbacks confound comparison. Never present this transport benchmark as full-slate conversion evidence.
+
+### E-180 — lfm: modelo ajustado con el feedback de hoy, validación con corte temporal
+- **Date / owner / branch:** 2026-11-14 14:30 UTC / Javi (agente) / `javi/lfm-live-fit`, T-018. Solo lectura en RawTree; ningún envío.
+- **Datos:** `team_26.feedback` 11:09–14:13 UTC unido a `shop.requests`, `shop.events` y catálogo: 31.776 peticiones, 317.760 impresiones, 285 compras, 935 clics. Estado de cada usuario reconstruido con lo anterior a cada petición.
+- **Impresiones muertas (ya comprado, o visto en el histórico sin carrito):** 81.550 (26%) con 8 compras. Se excluyen del ajuste y nunca se sirven.
+- **Modelo:** regresión logística de 11 pesos (`lfm.FEATS`), una para usuarios que vuelven y otra para nuevos; etiqueta = clic con las compras pesando ×3; `log(slot)` solo en el ajuste. Pesos en `recsys/lfm_coef.json`.
+- **Hold-out (ajuste antes de 13:13 UTC, prueba después; 9.533 peticiones):** AUC de compra por impresión 0,910 (vuelve, 37 compras) y 0,862 (nuevo, 63 compras). Calibración: 43,5 compras predichas vs 37 reales y 53,0 vs 63.
+- **OFFLINE ESTIMATE del valor (4.000 peticiones del hold-out, compras esperadas por 100 peticiones según el propio modelo):**
+
+| Segmento | Peso | Real | Modelo sobre lo servido | Modelo sobre el slate de lfm |
+|---|---:|---:|---:|---:|
+| Vuelve, producto/categoría | 57% | 0,92 | 0,74 | 2,75 |
+| Vuelve, home | 13% | 0,00 | 0,20 | 1,14 |
+| Nuevo, producto/categoría | 24% | 2,37 | 2,27 | 5,07 |
+| Nuevo, home | 6% | 1,24 | 0,52 | 0,82 |
+| **Total** | | **1,18** | **1,03** | **2,99** |
+
+- **Limitación:** la última columna es el modelo puntuando su propia elección (optimista) y suma probabilidades por slot aunque solo hay una compra por petición; el slate de lfm comparte solo 1,8 de 10 productos con lo servido, así que extrapola. Descontando la mitad de la mejora quedaría en torno al 2,0%. La medida válida es la fila por versión del leaderboard (I-182).
+- **Dry-run real sin escribir (14:45 UTC, 329 peticiones del stream):** 0 slates inválidos, 1,6 ms por petición (p95 2,7 ms). Composición media del slate de un usuario que vuelve en producto/categoría: 3,1 carritos del histórico, 0,3 carritos de hoy, 0,25 vistos, 3,2 de la misma categoría y 3,1 de otra categoría por afinidad.
+- **Comandos:** `python recsys/lfm_build.py --pull` (47 s); `python -m unittest discover -s tests` → 77 tests OK.

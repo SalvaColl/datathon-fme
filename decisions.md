@@ -87,6 +87,15 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - **Affected modules/interfaces/owners:** `recsys/live.py` (dueño del writer): +42 líneas, 7 sustituidas (import, variantes, `use_attr`, carga en `initialize()`, refresco, `attr_slates()`). `tests/test_aff_policy.py`: la tabla de variantes esperadas incluye las 4 nuevas. Nuevos: `recsys/attr_model.py`, `attr_policy.py`, `attr_model_build.py`, `attr_model_eval.py`, `recsys/data/attr_model.joblib` (298 KB), `tests/test_attr_model.py`. Sin dependencias nuevas.
 - **Rollout / rollback:** `python recsys/live.py --dry-run --ab-attr-aff` en el Mac para ver latencia; después `{"variant": "ab_attr_aff"}` o un bloque completo `attr_aff` medido contra `baseline` del leaderboard. Rollback = volver a la variante anterior en `policy.json` (se relee cada ~20 s). Regenerar el artefacto: `python qrank_build.py --pull` (una vez) y `python attr_model_build.py`.
 - **Revisit condition:** si el bloque no iguala a `qrank_aff`, dejar `attr_model` solo como fuente de calidad para productos nuevos (encaja en `LiveQuality(prior=...)` de T-018).
+### D-180 — Variante `lfm` del writer: slate ajustado con el feedback de hoy (afinidad + carrito, por tipo de usuario)
+- **Date / owner / status:** 2026-11-14 / Javi (agente, T-018) / PROPOSED. Implementada y apagada por defecto; la activa el dueño del writer.
+- **Qué:** `policy.json` acepta `{"variant": "lfm"}` (todas las peticiones) y `{"variant": "ab_lfm"}` (50/50 por hash de usuario: control = qrank, tratado = lfm). lfm puntúa todos los productos activos con el modelo de E-180 y sirve los 10 mejores; quita lo ya comprado y lo visto en el histórico sin carrito.
+- **Por qué:** I-180, I-181, E-180. Es la pieza más grande sin cubrir: usuarios que vuelven (56% del tráfico a 0,72%).
+- **Cambios en código compartido:** `live.py` gana 2 variantes, `lfm_slates()` y tres ganchos de una línea (carga, eventos en vivo, refresco de catálogo). Con cualquier otra variante el comportamiento es idéntico. Si lfm falla en una petición, esa petición sigue por qrank/GBM. Necesita reiniciar el writer una vez para cargar el código (~1 min de fallback).
+- **Cómo medir:** `ab_lfm` durante 20 min y leer `api/state?by=model`: `v3-lfm-r1-k`/`-n`/`-kh`/`-nh` frente a `v2-qrank-r1` y `v1-gbm-cand-r1` (este último es el home del control).
+- **Rollout / rollback:** `{"variant": "qrank"}` en `policy.json`, sin reiniciar.
+- **Riesgo para la final:** los pesos salen del feedback de hoy; si mañana los compradores son todos nuevos solo aplica la mitad "nuevo" (carrito de hoy + afinidad de sesión). Reajustar con `python lfm_build.py --pull` antes de las 10:00 con todo el feedback de la noche.
+- **Revisit condition:** si `-k` no supera a qrank en usuarios que vuelven en el leaderboard, dejar lfm solo para usuarios nuevos o descartarlo.
 
 ## Decision template
 
