@@ -259,3 +259,23 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Lectura:** ventana fija de 30 minutos, fila de conocidos en páginas de cada brazo, mirando `conversion` y también `cold_conversion` con `cold_requests` (es el tramo "conocido con producto nuevo en las vistas"). Confirmar con un segundo bloque antes de promover (E-272). Si gana dos veces, siguiente brazo con 1,9.
 - **Se quita si:** 0,25 pt por debajo a los 30 minutos, o envíos inválidos. Rollback sin reinicio: quitar el brazo de `lfm_arms`.
 - **No a la vez que** la confirmación de `cold_new` (son cohortes distintas y podrían convivir, pero la regla es un retador cada vez).
+
+### D-420 — Confirmación de `cold_new` y `np1` sobre la base con precios corregidos (T-042). Propuesta: activa y revierte Javi
+- **Fecha / propone:** 2026-11-14 23:00 UTC · Javi (agente, T-042). Evidencia I-420, E-420…E-422. Fijado antes de ver ningún dato posterior al arreglo.
+- **Requisito:** un reinicio con relevo desde la rama `javi/snap-price-fix` (o `main` con ella fusionada). Lo decide y lo ejecuta Javi. Sea `R` la hora UTC en que el writer nuevo escribe `ready`, redondeada hacia arriba a 5 minutos.
+- **Versiones distinguibles:** las políticas nuevas usan etiquetas nuevas (`r3p`, `cn1p`, `np1p`), así que el writer les asigna códigos públicos nuevos con la misma sal privada. Ninguna fila posterior al arreglo se mezcla con una anterior. La tabla interna/pública sigue solo en el Mac.
+- **Una comparación cada vez, dos brazos, sin exploración:**
+
+| Fase | Política | Cohorte que se juzga | Control | Retador | Descubrimiento | Confirmación |
+|---|---|---|---|---|---|---|
+| A | `recsys/policy.fix_a_cold_new.json` | usuarios nuevos, producto/categoría con vistas | `v3-lfm-r3p-n` | `v3-lfm-cn1p-n` | R+10 a R+100 (90 min) | R+100 a R+160 (60 min) |
+| B | `recsys/policy.fix_b_np1.json` (cambio en caliente en R+160, anotado en `policy_changes.log`) | usuarios conocidos, producto/categoría con vistas | `v3-lfm-r3p-k` | `v3-lfm-np1p-k` | R+165 a R+255 (90 min) | R+255 a R+315 (60 min) |
+
+- **Tamaños esperados** (tráfico del 14 nov, 10.800 peticiones/h; nuevos en páginas 24%, conocidos en páginas 57%): fase A ≈1.900 por brazo en descubrimiento y ≈1.300 en confirmación (error típico de la diferencia ≈0,19 y ≈0,24 pt; conjunto ≈0,15); fase B ≈4.600 y ≈3.100 por brazo (≈0,11 y ≈0,14 pt; conjunto ≈0,09). Compras esperadas por brazo a las tasas de hoy: A ≈65 y ≈45; B ≈90 y ≈60.
+- **Agrupar controles:** con dos brazos no hay nada que agrupar. Si Javi prefiere mantener más brazos, solo se suman filas que sirvan exactamente la misma política a la cohorte (mismos pesos, sin exploración, mismo código). En la política `x2`, `np2-n` y `r3-n` cumplían eso; `np1-n` (exploración) y `og1-n` (exploración) no.
+- **Qué se anota en cada ventana** (`python recsys/confirm_read.py --from … --to … --control … --challenger …`, mismas horas para todos): peticiones, conversión esperada y compras esperadas de cada brazo, `reference` y `baseline` de la misma ventana, peticiones y conversión cold oficiales, `on_time` del equipo, diferencia con su error típico nominal y por bloques de 15 minutos. Sin miradas intermedias que cambien el plan.
+- **Regla, fijada de antemano:** el retador se promueve solo si (1) la diferencia del bloque de descubrimiento es positiva, (2) la del bloque de confirmación, que es un bloque nuevo, también, (3) la diferencia conjunta supera 2 errores típicos (el mayor entre el nominal y el de bloques), (4) su conversión cold no cae más de 2 errores típicos y (5) `on_time` ≥ 99,5% en las dos ventanas. Si el descubrimiento sale negativo se quita el retador sin bloque de confirmación. Cualquier otro resultado es no concluyente: sigue el campeón (`recsys/policy.fix_champion.json`, r3 solo con precios).
+- **Límites de hora:** nada se lee después de las 07:15 UTC del 15 nov; elección a las 07:30 UTC, congelación a las 08:00 UTC, sin cambios en el writer de 09:00 a 13:00 UTC. Si `R` es posterior a las 01:45 UTC la fase B no cabe entera y queda como no concluyente. Si solo cabe una fase, va la A.
+- **`np2` y `og1`:** exploratorios. No entran en estas dos comparaciones y no se sube más el peso de `newp`.
+- **Vuelta atrás:** política, `cp policy.fix_champion.json data/policy.json` (en caliente). Código, reiniciar con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json` (r3 solo: sin brazo `lq` el código antiguo sirve los precios bien).
+- **Lo que no se puede afirmar:** una mejora vista esta noche es de esta noche. La final trae compradores, productos y tendencias nuevos; lo observado hoy no se atribuye a mañana.

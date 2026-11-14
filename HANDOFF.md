@@ -2,6 +2,15 @@
 
 Leer antes `AGENTS.md`. Este documento dice qué corre en vivo, cómo cambiarlo y qué queda por hacer antes de la final (domingo 15 nov, 10:00–12:00 CET, leaderboard oculto).
 
+## Arreglo pendiente de desplegar: precios del snapshot de lfm (T-042, 14 nov 23:00 UTC)
+
+- **Fallo:** con cualquier brazo `"lq"` en la política (todas las de la noche llevan `cn1`), `p40` y `cheap` valen cero para todos los brazos desde las 19:07 UTC (I-420). r3 solo (`policy.champion.json`) no está afectado.
+- **Arreglo:** rama `javi/snap-price-fix`, 10 líneas en `recsys/lfm.py`, 13 tests nuevos (263 en total). Replay E-421: indicadores iguales al catálogo, 84% de las listas de r3 cambian, 100% válidas, misma latencia. Ensayo en seco E-422.
+- **Cómo se despliega:** un reinicio con relevo que decide Javi (frase en el hilo de despliegue). No se ha tocado el writer ni su política. Tras el reinicio la política sigue siendo `data/policy.json`; para las comparaciones se usan `recsys/policy.fix_a_cold_new.json` y luego `recsys/policy.fix_b_np1.json`, con etiquetas nuevas (`r3p`, `cn1p`, `np1p`) para que ninguna fila posterior al arreglo se mezcle con las anteriores. Plan, ventanas y regla: D-420. Lectura: `python recsys/confirm_read.py`.
+- **Qué deja de valer:** las lecturas de `cold_new` (E-273, E-274) y las de la noche (`np1`, `np2`, `og1`) se hicieron sobre r3 sin precios. No se suman a las posteriores al arreglo.
+- **Antes de la final, pase lo que pase:** no dejar una política con brazo `lq` sobre código sin el arreglo. Si no hay reinicio, la opción segura es r3 solo (`policy.champion.json`), que sirve los precios bien con el código actual.
+- **Vuelta atrás:** `cp policy.fix_champion.json data/policy.json` (política) o reinicio con relevo desde `6150ffc` con `policy.champion.json` (código).
+
 ## Qué hay en vivo
 
 Actualizado 14 nov, 19:25 UTC (las secciones de más abajo conservan la historia de las 14:50).

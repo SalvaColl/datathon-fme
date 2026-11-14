@@ -510,3 +510,33 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Tests:** 13 en `tests/test_lfm_newp.py` (250 en total): solo cambia el slot 10, sale de los puestos 11–60, nunca un excluido ni comprado, modos por tipo de usuario, validación del writer y aceptación de la política de la noche entera con sus rutas.
 - **Ensayo en seco (nube, `--dry-run`, 4 brazos con un brazo de exploración `true`, 5 min):** 852 peticiones, 0 errores, bucle p50 145 ms / p95 397 ms; 57 caducadas en el arranque en frío.
 - **No es conversión.** Sirve para medir en el leaderboard cuánto vende lo que lfm no prioriza.
+
+### E-420 — Reproducción y regresiones del fallo de precios del snapshot de lfm (T-042), 14 nov 22:45 UTC
+- **Etiqueta:** OBSERVED DATA (código). Rama `javi/snap-price-fix`.
+- **Reproducción** (`tests/test_snap_prices.py::test_the_reported_reproduction`), precios [10, 30, 80]: sin correcciones `cheap` = [1, 0, 0] y `p40` = [0, 0, 1]; con cualquier diccionario de correcciones no vacío (válido, con ids desconocidos, con valores no finitos o que no cambian ninguna calidad) el código de `6150ffc` daba [0, 0, 0] en los dos.
+- **Arreglo:** el buffer pasa a llamarse `corrected_lq` y los precios se leen solo del catálogo (`"price" in c.columns`). Pesos, firmas, política y transporte sin cambios. 10 líneas de `recsys/lfm.py`.
+- **Por qué no lo vieron los tests anteriores:** `tests/test_lfm_cold_arm.py` usa pesos sin `p40` ni `segcheap` y compara control y retador dentro del mismo snapshot, que estaba mal para los dos.
+- **Tests nuevos (13; 9 fallan con el código antiguo, todos pasan con el arreglo; 263 en total):** umbrales (5, 19,99, 20, 20,01, 39,99, 40, 40,01, 80), precio ausente o ilegible = 20, catálogo sin columna de precio; correcciones ausentes, vacías, válidas, sin efecto, desconocidas, NaN, ±inf y texto; indicadores idénticos en todos esos casos; puntuaciones y listas del control idénticas entre un snapshot construido sin correcciones y otro construido con ellas; home, peticiones sin vistas y usuarios conocidos bajo `cold_new` iguales al control limpio; contra el snapshot limpio solo cambian `lq` y `seglq` del producto corregido; vectores de solo lectura y separados; compras, stock y la exclusión del writer se respetan en los tres brazos; un test de guarda comprueba que en ese escenario los pesos de precio sí mueven listas; las tres políticas `policy.fix_*.json` pasan la validación del writer con etiquetas nuevas.
+- **Comando:** `python -m unittest discover -s tests` → 263 tests, OK.
+
+### E-421 — Replay con datos reales: qué cambia el arreglo con los mismos pesos (T-042), 14 nov 22:48 UTC
+- **Etiqueta:** OBSERVED DATA / diagnóstico. **No es conversión.** Hecho en la nube, no en el Mac.
+- **Método** (`recsys/snap_price_replay.py`, sobre `cold_lq_replay.py`): 6.527 peticiones respondidas entre las 19:07 y las 22:44 UTC (1 de cada 8). Para cada una, catálogo, stock, correcciones y estado del comprador a la hora de la petición (44 snapshots; evidencia orgánica solo de tramos de 10 minutos ya cerrados). Cada petición se puntúa dos veces con los mismos pesos: con los indicadores de precio que construye la clase `Snap` de `6150ffc` (cargada de git y ejecutada con las mismas entradas) y con los del código nuevo. Nada más difiere.
+- **Indicadores frente al catálogo:** código antiguo, 44 de 44 snapshots mal (161.402 indicadores distintos del catálogo; `p40` y `cheap` valen 0 en los 5.400 productos). Código nuevo, 0 distintos: de media 1.989 productos por encima de 40 EUR y 1.679 por debajo de 20, igual que el catálogo de cada instante.
+- **Listas (brazo r3):**
+
+| Cohorte | Peticiones | Listas distintas | Primer slot distinto | Productos sustituidos por lista | Impresiones < 20 / 20–40 / > 40 EUR, antes → después |
+|---|---|---|---|---|---|
+| Conocidos, producto/categoría | 3.708 | 82,8% | 7,8% | 0,59 | 53,2 / 20,7 / 26,0 → 56,7 / 23,0 / 20,3 |
+| Nuevos, producto/categoría | 1.549 | 86,8% | 11,5% | 0,97 | 55,9 / 16,6 / 27,5 → 63,7 / 17,4 / 18,9 |
+| Conocidos, home | 883 | 82,2% | 6,6% | 0,53 | 53,2 / 20,5 / 26,3 → 56,6 / 22,2 / 21,2 |
+| Nuevos, home | 387 | 89,1% | 11,9% | 0,97 | 56,3 / 17,6 / 26,1 → 64,3 / 18,2 / 17,5 |
+| Todas | 6.527 | 84,1% | 8,7% | 0,70 | 54,1 / 19,5 / 26,4 → 58,8 / 21,2 / 20,0 |
+
+  La mayoría de los cambios son de orden: el conjunto de 10 productos cambia en el 51% de las listas. El segmento sensible al precio (android en Andalucía, Canarias o Murcia) es donde más se nota en usuarios nuevos: en páginas, 98,8% de listas distintas, 29% de primeros slots y 2,8 productos por lista; las impresiones por debajo de 20 EUR pasan del 61% al 89% (168 peticiones).
+- **Otros brazos, misma muestra:** `cn1` y `np1` cambian como r3 (84% y 86%); `np2` 89%; `og1` en conocidos de páginas solo 28,9% de listas y 1,0% de primeros slots (sus pesos de precio son casi nulos), pero su home y sus usuarios nuevos usan r3 y cambian igual que r3. La cuota de productos lanzados durante el evento apenas se mueve (r3 0,27% → 0,23%; `np1` en conocidos 7,8% → 7,3%; `np2` 48,1% → 47,5%; `cn1` en nuevos 2,8% → 3,3%).
+- **Validez:** 100% de listas válidas antes y después en los 5 brazos (10 productos distintos, en catálogo, con stock, no comprados).
+- **Latencia de `slate` (contenedor de la nube):** antes p50 0,85 / p95 1,72 / p99 3,57 ms; después 0,84 / 1,70 / 3,50 ms (32.635 llamadas cada uno). Sin coste.
+- **No reconstruido:** retraso de refresco del writer (20 s catálogo y eventos, 1 s stock), resolución de 10 minutos de la evidencia orgánica, el slot de exploración y las compras hechas a través de nuestro carrusel.
+- **Salida completa:** `/mnt/project-files/precios-snapshot/replay_e420.json` (carpeta del proyecto).
+- **Conclusión:** el arreglo restaura las features y cambia la gran mayoría de las listas de todos los brazos, también del control. Que eso convierta más no está demostrado: hace falta lectura en el leaderboard (D-420).

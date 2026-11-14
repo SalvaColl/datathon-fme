@@ -194,3 +194,26 @@ class CrossSnapshotTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FixPolicyTests(unittest.TestCase):
+    """The policies for the confirmation on the fixed base: fresh tags (so the leaderboard rows of the fixed control
+    never mix with the rows served before the fix), one challenger each, same weights as the control."""
+
+    def test_committed_policies_are_accepted_and_differ_from_the_control_by_one_key(self):
+        import json
+        from pathlib import Path
+        from recsys import live
+        here = Path(lfm.__file__).parent
+        ctl = {"tag": "r3p", "file": "lfm_coef_r3.json"}
+        old = {a["tag"] for f in here.glob("policy.*.json") if ".fix_" not in f.name for a in json.loads(f.read_text()).get("lfm_arms", [])}
+        want = {"policy.fix_champion.json": [], "policy.fix_a_cold_new.json": [("cn1p", {"lq": "cold_new"})],
+                "policy.fix_b_np1.json": [("np1p", {"w": {"known": {"newp": 1.0}}})]}
+        for name, extra in want.items():
+            raw = json.loads((here / name).read_text())
+            self.assertEqual(raw["variant"], "lfm")
+            arms = live.clean_lfm_arms(raw["lfm_arms"])
+            self.assertEqual(arms, raw["lfm_arms"], name); self.assertEqual(arms[0], ctl)
+            self.assertEqual([(a["tag"], {k: v for k, v in a.items() if k not in ("tag", "file")}) for a in arms[1:]], extra)
+            self.assertFalse({a["tag"] for a in arms} & old, name)                 # distinguishable from every earlier row
+            self.assertFalse(any("explore" in a for a in arms))
