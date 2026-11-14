@@ -583,3 +583,31 @@ Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer 
 - Etiquetas internas servidas, como se esperaba: en la fase A `v3-lfm-r3p-k/-kh/-n/-nh` y `v3-lfm-cn1p-n` (el resto del tráfico del brazo `cn1p` sale como control); en la fase B las cuatro de `r3p` y las cuatro de `np1p`. Con una sal de prueba cada una recibió su código nuevo.
 - Un `stock refresh failed ReadTimeout` aislado en la segunda ejecución (consulta a RawTree), sin efecto en las respuestas.
 - **Límite:** el p99 de la nube no es el del Mac. No mide conversión.
+### E-430 — Variantes de carritos de un solo brazo para la rotación (T-043), 14 nov 23:40 UTC, contenedor en la nube
+
+`OFFLINE ESTIMATE` + diagnóstico. `recsys/cart_variants.py` (`fit`, `replay`, `check`). Datos de solo lectura hasta las 23:03 UTC. Nada desplegado.
+
+- **Tabla de base (feedback propio, conocidos en páginas con vistas, 11:09–23:03 UTC, 1.140 compras), compras por 10.000 impresiones por tipo de producto y puesto (1 / 2–3 / 4–5 / 6–7 / 8–10):** carrito de la categoría de la sesión 158 / 63 / 34 / 23 / 17; carrito de otra categoría 53 / 30 / 19 / 9 / 11; misma subcategoría 30 / 20 / 11 / 11 / 4; misma categoría 30 / 14 / 11 / 9 / 7; categoría propia del usuario 29 / 13 / 9 / 5 / 3; relleno (otra categoría) 4 / 3 / 2 / 1 / 1. Entre usuarios con 15 o más carritos pendientes, el carrito de otra categoría NO vende más que un producto de la categoría de la sesión (58 / 35 / 22 frente a 62 / 44 / 17). El relleno ocupa 167.500 de 800.000 impresiones y da 30 compras.
+- **Lectura:** lo que falta no es "más carritos" sino (a) los carritos de la categoría de la sesión arriba (r3 pone 0,57 en los tres primeros puestos) y (b) quitar el relleno. Subir solo `chn` (cx3) deja además los carritos de HOY (`cl` 0,63) por debajo de los del histórico.
+- **Repetición a fecha de cada petición (9.352 peticiones desde las 17:00 UTC, 5.309 de conocidos en páginas; catálogo, stock y estado anteriores a cada petición).** Contra r3, conocidos en páginas:
+
+| variante | listas que cambian | puesto 1 cambia | productos sustituidos | carritos por lista | carritos de sesión en top 3 | relleno | estimación estratificada | modelo paramétrico |
+|---|---|---|---|---|---|---|---|---|
+| r3 | 0 | 0 | 0 | 3,08 | 0,57 | 16,3% | 0 | 0 |
+| cx3 (en rotación) | 90,4% | 48,5% | 2,71 | 5,51 | 0,84 | 10,3% | +0,30 pp | −0,19 pp |
+| og1 (en rotación) | 100% | 53,3% | 3,95 | 5,08 | 0,71 | 10,9% | +0,16 pp | −0,16 pp |
+| **cs2r** | 99,6% | 53,5% | 4,65 | 4,54 | 1,17 | 0,1% | +0,62 pp | −0,11 pp |
+| **ogsr** | 100% | 58,7% | 4,87 | 5,52 | 1,11 | 0,7% | +0,57 pp | −0,15 pp |
+| **cs4r** | 99,9% | 50,0% | 3,64 | 5,28 | 1,02 | 1,5% | +0,48 pp | −0,09 pp |
+| **cx6l** | 95,6% | 62,1% | 4,26 | 7,10 | 0,89 | 6,8% | +0,41 pp | −0,22 pp |
+| **fsr** | 91,7% | 40,3% | 4,07 | 2,36 | 0,72 | 1,0% | +0,31 pp | −0,10 pp |
+| cx3l | 92,4% | 47,6% | 2,92 | 5,91 | 0,86 | 9,4% | +0,34 pp | −0,07 pp |
+
+  Usuarios nuevos y home: 0 listas cambiadas en todas (comprobado). Sobre todo el tráfico cambian el 52–57% de las listas.
+- **Los dos estimadores no coinciden en el signo y ninguno es conversión.** "Estratificada" = tasas por (carritos pendientes del usuario × tipo × puesto) de la tabla de arriba aplicadas a la lista nueva; supone que el quinto producto de un tipo vende como los que r3 eligió (optimista). "Modelo" = logística sobre las mismas impresiones con rasgos del usuario; el puesto y la puntuación de r3 son casi colineales, así que penaliza cualquier lista que no sea la de r3 (pesimista: en el hold-out de 20:00–23:03 predice 328 compras frente a 291 y sobrevalora los carritos de otra categoría, 81 frente a 57). Sirven para ordenar las variantes entre sí; el veredicto es equipo − referencia en el leaderboard.
+- **Intentado y descartado:** pesos ajustados solo a compras del feedback propio (con o sin rasgos del usuario) ordenan peor el hold-out que r3 (MRR 0,41–0,54 frente a 0,55): el puesto absorbe la señal. Ordenar carritos con un modelo propio no cabe en `policy.json` (los pesos son comunes a carritos y no carritos; solo `chn` y `cl` son propios del carrito): necesita código y reinicio.
+- **Ensayo con el camino del writer (`check`: `clean_lfm_arms` → `set_arms` → `LiveFit.slate`, 1.590 peticiones desde las 21:00 UTC por política):** las 6 políticas aceptadas enteras, 100% de listas válidas (10 distintas, en stock, no compradas), mismo resultado que el camino rápido de `replay` (0 diferencias). Latencia de `slate` en el contenedor: p50 1,3 ms, p95 2,5 ms, p99 3,5–3,7 ms, igual que r3 (1,35 / 2,73 / 3,98).
+- **Brazo `nc2` del hilo de auditoría (`w.new.cl` 2,2), mismo replay:** en usuarios nuevos en páginas cambia el 42,3% de las listas (puesto 1 el 20,0%), carritos por lista 0,58 → 0,94, peticiones con carritos y ninguno mostrado 27,4% → 14,1%. Tal como está escrito también cambia el 40,8% de las listas de home de usuarios nuevos; con `"home": {"file": "lfm_coef_r3.json"}` se queda en páginas.
+- **Tests:** `tests/test_cart_variants.py` (2): el writer acepta cada política entera, un solo brazo, sin `lq` ni exploración, y usuarios nuevos y home puntúan exactamente como r3.
+- **Salida:** `/mnt/project-files/variantes-carritos/replay_e430.json`.
+
