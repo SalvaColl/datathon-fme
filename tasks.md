@@ -56,3 +56,5 @@ logger(request_id, submitted_items, model_version, timings)
 `n| T-013 | P0 | Three-period reproducible offline league, registry, uncertainty and leakage tests | Codex / current working branch; tools/local_league.py, tools/league_*, tests, evaluation docs | DONE; E-010/E-011, 10 tests pass; final test unscored | Read-only RawTree; live starter excluded |
 
 | T-014 | P0 | Investigate v1-gbm-cand missing/invalid feedback; harden deadline handling, transport and stock checks | Codex / salva/serving-reliability; recsys serving/tests + diagnostics/docs | IMPLEMENTED/TESTED; code 7176c03; 21 tests pass; E-REL-001; rollout with Javi | Javi owns live process on his laptop; no deployment or second writer |
+
+| T-016 | P0 | Ranker por atributos generalizable (`attr_model`): calidad = f(categoría, frases de la descripción, marca, precio relativo en la subcategoría) × afinidad del usuario calculada solo con `recent_views`; calidad por ID solo como corrección con shrinkage. Variante de policy apagada por defecto. IDs de docs 16x | Javi (agente) / javi/attr-model (sobre javi/aff-serving) | IN PROGRESS | qrank.py, attr_affinity.py, cold_items.py; no toca `live.py` |
