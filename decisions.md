@@ -194,3 +194,9 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Date / owner:** 2026-11-14 · Javi. **Status:** PROPOSED, pendiente del reinicio con relevo.
 - **Decisión:** tras cargar el código, `"lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "r5", "file": "lfm_coef_r5.json"}]` durante 30 minutos; se queda solo el brazo que gane en el leaderboard. No se descarta por validación offline (I-270: el histórico y nuestro feedback no pueden medirla). No más de dos brazos a la vez.
 - **Rollback:** quitar r5 de `lfm_arms` (sin reinicio). Sin `lfm_graph_B.json`, o con pesos sin `cv`, lfm se comporta exactamente como antes.
+
+### D-280 — cold_lq se prueba como brazo de lfm, no por bloques de tiempo (T-028)
+
+- **Decisión:** la calidad de productos nuevos de `cold_lq` (T-CS01) se sirve por brazo: `{"tag": "c1", "file": "<pesos del ganador>", "lq": "cold"}` contra el ganador de r3/r5, 30 minutos, lectura por `-k` y `-n` en `api/state?by=model&from=`. `"cold_new"` la aplica solo a usuarios nuevos. Máximo dos brazos a la vez. `data/coldlq.json` no se usa.
+- **Coste:** un reinicio con relevo para cargar `lfm.py`, `live.py` y `cold_lq.py`. Sin ningún brazo con `"lq"` no se calcula nada y lfm sirve exactamente igual que antes.
+- **Rollback:** quitar el brazo de `lfm_arms` (sin reinicio). Si `cold_lq` falla o no hay productos nuevos, el brazo sirve sus pesos con la calidad de qrank.

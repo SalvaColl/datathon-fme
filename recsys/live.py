@@ -12,10 +12,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq
     from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq
     from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -77,8 +77,9 @@ def clean_lfm_arms(raw):
         if not isinstance(a, dict): continue
         tag, main = str(a.get('tag', '')), spec(a)
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {})})
+        lqm = a.get('lq')                                      # T-028: "cold" | "cold_new" = cold_lq quality for today's products
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     return arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -165,8 +166,11 @@ BOUGHT = collections.defaultdict(set)      # user -> products bought today (orga
 AP = None                                  # aff_policy.AffPolicy, loaded by initialize(); None -> aff variants act as v1/qrank
 ATP = None                                 # attr_policy.AttrPolicy, loaded by initialize(); None -> attr variants act as v1/qrank_aff
 LF = None                                  # lfm.LiveFit, loaded by initialize(); None -> lfm variants act as v1/qrank
+CLQ = None                                 # cold_lq.ColdLQ (T-CS01/T-028), loaded by initialize(); None -> arms with "lq" act as their weights alone
 def initialize():
-    global MODEL, BASE, U_ITEMS, QR, AP, ATP, LF
+    global MODEL, BASE, U_ITEMS, QR, AP, ATP, LF, CLQ
+    try: CLQ = cold_lq.ColdLQ()
+    except Exception as e: print('cold_lq not loaded, lq arms act as their weights alone:', type(e).__name__, e, flush=True)
     try: AP = aff_policy.AffPolicy.load(DATA)
     except Exception as e: print('aff_policy not loaded, affinity variants disabled:', type(e).__name__, e, flush=True)
     try: QR = qrank.Ranker.load(DATA / 'qrank.joblib')
@@ -327,6 +331,16 @@ def make_pools(cat, unavail, T):
 # user's own past items (base history), for candidates
 # U_ITEMS loaded by initialize(), never on import or inside the serving loop.
 
+def cold_lq_for_arms(cat, T):
+    """T-028: cold_lq's quality dict for lfm arms that ask for it ("lq": "cold"|"cold_new"); None when no arm does,
+    when it is unavailable or on any error, and then those arms serve exactly their weights with qrank's lq."""
+    try:
+        if CLQ is None or QR is None or not LF.alt_lq: return None
+        out = CLQ.lq_for_lfm(QR, cat, BASE["item"], T.item_frame(), AP.cold.desc, force=True)
+        return None if out is QR.lq else out
+    except Exception as e:
+        print('cold_lq for arms failed', type(e).__name__, e, flush=True); return None
+
 def refresher():
     while True:
         try:
@@ -347,7 +361,7 @@ def refresher():
                 try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
-                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC)
+                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T))
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:

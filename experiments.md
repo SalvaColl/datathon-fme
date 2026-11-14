@@ -262,3 +262,10 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Cuánto cambia el slate frente a r3 (3.000 peticiones del tramo final):** vuelven, páginas con vistas: 0,16 productos de 10 distintos y el primero cambia en el 3%; nuevos: 0,61 de 10 y el primero en el 11%. Con `cv` = 0,5 a mano serían 1,5 y 1,9 de 10 (primero 29% y 32%); con 1,0, 3,1 y 3,6.
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
+
+### E-280 — cold_lq como brazo de lfm (T-028), ensayo en seco, 14 nov 18:10–18:15 UTC
+
+- **Qué:** writer real en la nube con `--dry-run` (sin escribir), 5 minutos, `lfm_arms` = `r3` contra `c1` (mismos pesos r3 + `"lq": "cold"`). 300 productos nuevos en catálogo (tandas de 10:00, 14:00 y 18:00 UTC).
+- **Resultado:** 851 peticiones, 0 errores, 100% de slates válidos (10 distintos). Caducadas: 54 en el arranque en frío de la nube y 5 después. Bucle p50 138 ms, p95 357 ms.
+- **Productos nuevos en las impresiones:** r3 0,2% (6 de 3.290); c1 10,2% (306 de 3.090): conocidos 10,8%, nuevos 7,2%, home conocidos 10,4%, home nuevos 11,3%. Slates de c1 con al menos uno nuevo: 63%. Slot 1 nuevo: 10%.
+- **Límite:** solo comprueba que el brazo sirve y cuánto cambia la exposición. No dice nada de conversión: eso solo lo decide el leaderboard. La exposición queda varias veces por encima de la cuota orgánica de vistas (2,4% con 200 productos, E-CS01b), así que puede restar.
