@@ -117,7 +117,7 @@ Sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/datathon-f
 - **Repeatability (OBSERVED DATA):** two complete cached validation runs produced exactly identical predictions (SHA256), all point estimates, seeded intervals and source/snapshot fingerprints; latency measurements appropriately vary. Final-test access marker absent. Both script and module entry points use the same plugin registry.
 
 
-## E-020 — Item-to-item graph challenger (T-020, d4xn+Claude, branch `feat/graph-recommender`) — OFFLINE ESTIMATE
+## E-GR01 — Item-to-item graph challenger (T-GR01, d4xn+Claude, branch `feat/graph-recommender`) — OFFLINE ESTIMATE
 
 - **Date:** 2026-11-14 ~15:00 CET. League snapshot `data/local_eval/league_v2` (seed 20261114, 10,000 impressions per
   period), **validation period only** [2026-10-27 07:00:01.356, 2026-11-05 07:00:00.281) UTC; final test NOT opened.

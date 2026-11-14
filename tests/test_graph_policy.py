@@ -1,4 +1,4 @@
-"""Tests for the graph league policies (T-020). Synthetic artifacts only; no network.
+"""Tests for the graph league policies (T-GR01). Synthetic artifacts only; no network.
 
     python -m unittest tests.test_graph_policy -v      (or: python -m pytest -q tests/test_graph_policy.py)
 """

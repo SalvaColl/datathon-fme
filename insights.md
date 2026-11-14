@@ -83,8 +83,8 @@ Statuses: `IDEA`, `INVESTIGATING`, `SUPPORTED`, `REJECTED`, `SUPERSEDED`, `BLOCK
 - **Risk:** Per-slot propensities may not give usable support for unseen slates; extremely high-variance inverse weights. Never claim unbiased conversion from invalid estimator.
 - **Owner/evidence:** TBD / public notebook exists, no team experiment yet.
 
-### I-020 — Organic item graph: weak on logged-policy proxies, unclear as a ranker, plausible as retrieval
-- **Status:** INVESTIGATING (d4xn+Claude, 2026-11-14, E-020; offline estimate)
+### I-GR01 — Organic item graph: weak on logged-policy proxies, unclear as a ranker, plausible as retrieval
+- **Status:** INVESTIGATING (d4xn+Claude, 2026-11-14, E-GR01; offline estimate)
 - **Evidence:** on the league validation period, graph-only policies have hit@10 0.16–0.20 vs 0.38 (baseline) and
   0.72 (`mixed_category`), and lower slot-1 SNIPS(buy) with CIs excluding 0; cart/purchase weighting helps over plain
   co-views; temporal decay does not. Recent-view-first policies have ESS ≈ 7 (inconclusive).

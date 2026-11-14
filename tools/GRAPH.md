@@ -1,4 +1,4 @@
-# Graph challenger (T-020) — handoff for the offline league
+# Graph challenger (T-GR01) — handoff for the offline league
 
 Independent item-to-item graph policies built from **training-period organic `shop.history_events`** and evaluated
 with the existing league (`tools/LEAGUE.md`). Offline only: no serving code, no writer, no submissions.
@@ -43,9 +43,9 @@ rebuild changes the hash even when the graph is identical: review the diff of `g
 in the last viewed category, then global, then any eligible product. Exactly 10 distinct eligible ids whenever ≥ 10
 are eligible; otherwise all eligible ones (the league then marks it invalid; documented and tested).
 
-## Validation results (E-020, N = 10,000 validation impressions, 300 hour-block bootstrap replicates)
+## Validation results (E-GR01, N = 10,000 validation impressions, 300 hour-block bootstrap replicates)
 
-See `experiments.md` E-020 for the table. Short version: graph-only policies are **below** the popularity baselines
+See `experiments.md` E-GR01 for the table. Short version: graph-only policies are **below** the popularity baselines
 on hit@10 and slot-1 SNIPS(buy) with CIs excluding zero, and policies that diverge from the logging policy have very
 low ESS (7–59) → slot-1 IPS/SNIPS are **inconclusive** for them. Inference p99 ≤ 0.17 ms (0.64 ms with profiles);
 validation of 9 policies 18 s, peak RSS 0.5 GB; build 62 s, peak RSS 0.66 GB.

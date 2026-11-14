@@ -1,4 +1,4 @@
-"""Item-to-item graph policies for the offline league (T-020). Offline only: no serving code, no network.
+"""Item-to-item graph policies for the offline league (T-GR01). Offline only: no serving code, no network.
 
     python -m tools.local_league validation --plugin tools.graph_policy \\
         --policies baseline,mixed_category,rv_first,graph_A,graph_B,graph_C,graph_B_rv,graph_B_rv_profile
