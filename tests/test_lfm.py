@@ -193,5 +193,49 @@ class R2FeatureTests(unittest.TestCase):
         self.assertEqual(slate(lf, aff, new=True), a)                                  # COEF has no r2 weights -> same slate
 
 
+class R3CategoryMixTests(unittest.TestCase):
+    def test_mix_counts_history_and_todays_views(self):
+        lf, aff = build()
+        cv, sv = lf.user_mix('u1'); A, B = lf.ccode['A'], lf.ccode['B']
+        self.assertEqual((cv[A], cv[B], cv.sum(), sv.sum()), (4, 4, 8, 8))            # HIST: B05 x3, B06 x1, A07 x4
+        lf.add('u1', 'A10', 2, 0, 0); lf.add('u9', 'B02', 1, 0, 0); lf.add('u1', 'ZZ9', 5, 0, 0)   # unknown product: ignored
+        self.assertEqual(lf.user_mix('u1')[0][A], 6); self.assertEqual(lf.user_mix('u9')[0][B], 1)
+        self.assertEqual(lf.user_mix('nobody')[0].sum(), 0)
+        self.assertEqual(lf.user_mix('u1', asof={'B03': 4})[0][B], 8)                 # as-of view replaces the live counter
+
+    def test_feature_is_zero_without_views_and_follows_the_favourite_category(self):
+        lf, aff = build(); S = lf.snap; uc = lfm.FEATS.index('ucat'); us = lfm.FEATS.index('usub')
+        X0 = lfm.features(S, aff.affinity_all('u9'), [], 'product', {}, set(), mix=lf.user_mix('nobody'))
+        self.assertTrue(np.allclose(X0[:, [uc, us]], 0))
+        for _ in range(20): lf.add('u9', 'B02', 1, 0, 0)
+        X = lfm.features(S, aff.affinity_all('u9'), [], 'product', {}, set(), mix=lf.user_mix('u9'))
+        self.assertGreater(X[S.row['B10'], uc], 0.5); self.assertLess(X[S.row['A10'], uc], 0)
+        self.assertGreater(X[S.row['B10'], us], X[S.row['B11'], us])                  # B02 and B10 share the subcategory
+
+    def test_weights_move_the_slate_to_the_favourite_category_and_old_files_do_not(self):
+        lf, aff = build()
+        for _ in range(20): lf.add('u9', 'B02', 1, 0, 0)
+        base = slate(lf, aff, rv=())
+        coef = {s: dict(w=dict(COEF[s]['w'], ucat=4.0, usub=1.3), b=COEF[s]['b']) for s in COEF}
+        lf.add_model('r3', coef)
+        req = dict(user_id='u9', rv=[], page='product', is_new_user=False)
+        s3 = lf.slate(req, lf.user_state('u9'), aff, model='r3')
+        self.assertTrue(all(p.startswith('B') for p in s3)); self.assertFalse(all(p.startswith('B') for p in base))
+        self.assertEqual(slate(lf, aff, rv=()), base)
+
+    def test_codes_survive_a_catalog_refresh_with_new_products(self):
+        lf, aff = build(); before = dict(lf.icode)
+        cat = catalog(); cat.loc['C00'] = ('C', 'C-s0', 'b0', 5.0); aff2 = FakeAff(list(cat.index))
+        lf.set_catalog(cat, set(), aff2, {})
+        self.assertEqual({p: lf.icode[p] for p in before}, before); self.assertIn('C00', lf.icode)
+        self.assertEqual(lf.user_mix('u1')[0].sum(), 8)
+        self.assertEqual(len(set(slate(lf, aff2, user='u1'))), 10)
+
+    def test_committed_r3_file_is_a_valid_arm(self):
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'r1'}, {'tag': 'r3', 'file': 'lfm_coef_r3.json'}])[1]['file'], 'lfm_coef_r3.json')
+        import json; c = json.loads((lfm.HERE / 'lfm_coef_r3.json').read_text())
+        self.assertTrue(set(c['known']['w']) <= set(lfm.FEATS)); self.assertGreater(c['known']['w']['ucat'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()
