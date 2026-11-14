@@ -425,6 +425,33 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Exposición en B:** c1 conocidos 6,4% de impresiones nuevas (139 peticiones), c1 nuevos 1,9% (42); r3 0,2–0,5%; home de c1 0,0% (44 peticiones). 300 productos corregidos, 29 en el límite.
 - **Límite:** medido lejos del Mac; la latencia real hay que mirarla en el writer tras activar.
 
+### E-430 — Guard de compras completo y validación de `policy.json` (T-043): coste y ensayo en seco, 14 nov 23:10 UTC, contenedor en la nube
+
+Correcciones funcionales. **No se les atribuye uplift de conversión** y no hay lectura de leaderboard: nada de esto se ha desplegado. Etiqueta: OFFLINE ESTIMATE (coste) y OBSERVED DATA (ensayo en seco con peticiones reales, sin escribir).
+
+**Coste del guard** (`python tools/bench_guard.py`, catálogo sintético de 20.000 productos, mediana de 7 rondas, µs por llamada a `repair_for`):
+
+| Compras por fuente | Caso | Antes (µs) | Ahora (µs) |
+|---:|---|---:|---:|
+| 0 | lista válida sin comprados (camino habitual) | 1,65 | 1,11 |
+| 30 | lista válida sin comprados (camino habitual) | 0,85 | 2,24 |
+| 300 | lista válida sin comprados (camino habitual) | 0,88 | 2,29 |
+| 30 | lista válida con 1 comprado (antes se enviaba tal cual) | 0,86 | 5,13 |
+| 300 | lista válida con 1 comprado (antes se enviaba tal cual) | 0,87 | 18,67 |
+| 30 | lista corta, hay que rellenar | 553,77 | 3,15 |
+| 300 | lista corta, hay que rellenar | 633,17 | 16,52 |
+
+El camino habitual cuesta unos 1,4 µs más por petición (30 pruebas de pertenencia, sin copiar conjuntos ni tomar el lock). El relleno es más barato que antes porque ya no filtra la lista entera de los más vendidos. `read_policy` (hilo de refresco, un ciclo cada ~20 s): 41 µs con el fichero sin cambios, ~0,5 ms un cambio válido de 4 brazos, 84 µs un candidato rechazado.
+
+**Ensayo en seco** (`python tools/guard_policy_dryrun.py`, código real del writer con `--dry-run`, modelos, catálogo y eventos reales, política `policy.night_1114_x2.json`, 1.500 peticiones registradas 22:59–23:07 UTC, 1.379 de usuarios con alguna compra):
+
+- Peticiones tal como llegaron: 1.500 slates intactos, 0 reparados, 0 inválidos, 0 con un comprado. El código anterior tampoco enviaba ninguno aquí: lfm ya excluye lo comprado al puntuar. `repair_for` con estado real: p50 2,4 → 5,2 µs, p99 27,7 → 14,8 µs.
+- Compra que llega entre el ranking y el envío (se marca como comprado el tercer producto de cada slate, solo en memoria): el código anterior lo enviaba en 1.496 de 1.496; el nuevo en 0, con 10 productos válidos y el orden del resto conservado en los 1.496.
+- Cinco actualizaciones malas escritas en `policy.json` con el hilo de refresco real en marcha (fichero de pesos ausente, JSON cortado, peso `NaN`, variante desconocida, `cold_new` sin control): las cinco rechazadas, con política, pesos (los mismos objetos) y etiquetas servidas sin cambios. Después un fichero correcto de 2 brazos entra en el siguiente ciclo.
+- Los 15 ficheros de política del repo y de `javi/night-og1b` (incluidos `policy.night_1114_og1b.json` y `policy.night_1114_cx3.json` con el fichero de pesos de og1) pasan la validación nueva con los mismos brazos que acepta el código actual.
+
+Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer desde la nube (se ha validado su copia en `javi/night-og1b`). No mide conversión. El caso de menos de diez alternativas sin comprar solo está cubierto por test unitario (no ocurrió con datos reales).
+
 ### E-340 — replay a fecha de cada petición del modo `cold_new` (T-034). Solo diagnóstico, no conversión
 
 - **Qué:** `python cold_lq_replay.py --pull --mode cold_new --n 6000` (solo lectura). 6.534 peticiones respondidas entre 14:00 y 18:50 UTC del 14 nov, pesos r3, control contra `"lq": "cold_new"`, estado a fecha de cada petición (como E-281). 59 snapshots, hasta 300 productos corregidos, 29–30 en el límite, ninguno rechazado.
