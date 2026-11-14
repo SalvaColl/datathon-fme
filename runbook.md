@@ -207,3 +207,6 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Interruptor opcional, sin reinicio una vez cargado el código de T-036: `"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}` en `data/policy.json`. Con él, solo las compras desde `day_start` alimentan las features de "comprado hoy"; las compras siguen excluidas siempre. `"carts": "day"` además pasa los carritos anteriores a carritos de histórico (no los borra). **No recomendado sin lectura del leaderboard**: en datos reales cambia el 42% de los slates (48% con `carts: day`) y no hay evidencia de que ayude (E-360).
 - Vuelta atrás: quitar `state_window` de `policy.json` (el writer lo aplica en el siguiente ciclo y lo escribe en el log como `{"event": "policy", "state_window": null}`).
 
+## lfm r6: filtrado colaborativo — T-035 (2026-11-14)
+
+`recsys/lfm_mf.npz` (4 MB, versionado) se carga una vez al arrancar; si falta, `mf` vale 0. Brazo: `{"tag": "r6", "file": "lfm_coef_r6.json"}` (pesos de r3 más `mf` = 0,0627 en conocidos, 0 en nuevos). Otro peso sin reiniciar: `{"tag": "r6b", "file": "lfm_coef_r6.json", "w": {"known": {"mf": 0.125}}}`. Rehacer los factores (no hace falta salvo que cambie el histórico): `python download_user_items.py && python lfm_mf_build.py`. Evidencia y regla de decisión: E-350, D-350.

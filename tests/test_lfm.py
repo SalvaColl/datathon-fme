@@ -341,3 +341,37 @@ class R5GraphTests(unittest.TestCase):
         for seg in ('known', 'new'):
             self.assertGreater(r5[seg]['w']['cv'], 0)
             self.assertEqual({k: v for k, v in r5[seg]['w'].items() if k != 'cv'}, r3[seg]['w'])
+
+
+class R6CollaborativeTests(unittest.TestCase):
+    """mf (T-035): the shopper's score for each product in a factorisation of the 60-day history."""
+    def factors(self, lf):
+        items = [f'B{k:02d}' for k in range(40)] + ['GONE']                      # GONE: in the history, no longer in the catalogue
+        Q = np.zeros((len(items), 2)); Q[:10, 0] = 1.0; Q[10:40, 1] = 1.0        # two "tastes": B00-B09 and B10-B39
+        lf.mf_items, lf.mf_Q, lf.mf_P, lf.mf_u = items, Q, np.array([[3.0, 0.0], [0.0, 0.0]]), {'u9': 0, 'flat': 1}
+        lf._mf_catalog(lf.snap)
+
+    def test_feature_is_standardised_and_zero_without_opinion(self):
+        lf, aff = build(); S = lf.snap; self.factors(lf); k = lfm.FEATS.index('mf')
+        f = lambda u: lfm.features(S, aff.affinity_all(u), [], 'product', {}, set(), mfu=lf.user_mf(u))[:, k]
+        x = f('u9')
+        self.assertGreater(x[S.row['B03']], 1.0); self.assertLess(x[S.row['B20']], 0)
+        self.assertEqual(x[S.row['A03']], 0)                                      # product the factorisation never saw
+        self.assertTrue(np.allclose(f('nobody'), 0)); self.assertTrue(np.allclose(f('flat'), 0))
+        self.assertIsNone(lf.user_mf('nobody')); self.assertEqual(len(lf.user_state('u9')), 6)
+
+    def test_weight_moves_the_slate_and_old_files_do_not(self):
+        lf, aff = build(); self.factors(lf)
+        base = slate(lf, aff, rv=())
+        lf.add_model('r6', {s: dict(w=dict(COEF[s]['w'], mf=2.0), b=COEF[s]['b']) for s in COEF})
+        req = dict(user_id='u9', rv=[], page='product', is_new_user=False)
+        s6 = lf.slate(req, lf.user_state('u9'), aff, model='r6')
+        self.assertEqual(set(s6), {f'B{k:02d}' for k in range(10)}); self.assertNotEqual(set(base), set(s6))
+        self.assertEqual(slate(lf, aff, rv=()), base)
+
+    def test_missing_file_leaves_the_feature_off(self):
+        saved = lfm.MF
+        try:
+            lfm.MF = lfm.HERE / 'no_such_file.npz'; lf, aff = build()
+            self.assertIsNone(lf.snap.mf); self.assertIsNone(lf.user_mf('u9')); self.assertEqual(len(set(slate(lf, aff))), 10)
+        finally: lfm.MF = saved

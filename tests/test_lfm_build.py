@@ -50,7 +50,7 @@ class ReplayStateParityTests(unittest.TestCase):
 
     def test_replay_state_equals_serving_state(self):
         live = self.live.user_state("u9"); rep = B.replay_state(self.rep, self.aff, self.carts, self.buys, "u9", at(60))
-        self.assertEqual(len(rep), len(live)); self.assertEqual(len(rep), 5)
+        self.assertEqual(len(rep), len(live)); self.assertEqual(len(rep), 6)
         self.assertEqual(rep[:4], live[:4])
         for x, y in zip(rep[4], live[4]): self.assertTrue(np.array_equal(x, y))
 
@@ -63,9 +63,9 @@ class ReplayStateParityTests(unittest.TestCase):
         self.assertNotEqual(self.rep.slate(self.req, short, self.aff), served)
 
     def test_only_events_before_the_request_count(self):
-        b, lc, hc, bt, mix = B.replay_state(self.rep, self.aff, self.carts, self.buys, "u9", at(0))
+        b, lc, hc, bt, mix, _ = B.replay_state(self.rep, self.aff, self.carts, self.buys, "u9", at(0))
         self.assertEqual((b, lc, bt), (set(), set(), set())); self.assertEqual(mix[0].sum(), 0)     # an event stamped at the request is not yet known
-        b, lc, hc, bt, mix = B.replay_state(self.rep, self.aff, self.carts, self.buys, "u9", at(3))
+        b, lc, hc, bt, mix, _ = B.replay_state(self.rep, self.aff, self.carts, self.buys, "u9", at(3))
         self.assertEqual(lc, {"A03", "A04"}); self.assertEqual(bt, set()); self.assertEqual(mix[0].sum(), 20)
 
 
@@ -79,7 +79,7 @@ class FeedbackPurchaseTests(unittest.TestCase):
         self.assertEqual(set(fb), {"u9", "u8"}); self.assertEqual(fb["u9"]["A10"], at(10) + B.FB_LAG)
         lag = int(B.FB_LAG / np.timedelta64(1, "s"))
         for sec, known in ((5, False), (10, False), (10 + lag, False), (11 + lag, True)):
-            b, lc, hc, bt, _ = B.replay_state(lf, aff, {}, {}, "u9", at(sec))
+            b, lc, hc, bt, _, _ = B.replay_state(lf, aff, {}, {}, "u9", at(sec))
             self.assertEqual("A10" in b, known, sec); self.assertEqual("A10" in bt, known, sec)
         self.assertNotIn("B01", B.replay_state(lf, aff, {}, {}, "u9", at(900))[0])     # another shopper's purchase
 

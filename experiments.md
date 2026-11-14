@@ -438,3 +438,22 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 
 - **Qué:** writer real con `--dry-run` (no escribe), 3,5 minutos. 0 errores, 100% de slates válidos, bucle p50 139 ms / p95 393 ms (445 peticiones tras el arranque, 4 caducadas).
 - **Etiquetas emitidas por lfm:** `r3-k` (204), `r3-kh` (54), `r3-nh` (23), `r3-n` (37) y `cn1-n` (34). No aparece ninguna etiqueta `cn1` fuera de la cohorte objetivo. Productos nuevos en las impresiones: `cn1-n` 1,76%, `r3-n` 0,27%.
+
+## E-350 — Filtrado colaborativo (`mf`) sobre el feedback en vivo (T-035, 2026-11-14 20:00 UTC)
+
+- **Tipo:** OFFLINE ESTIMATE sobre LIVE FEEDBACK (79.868 peticiones, 11:09–18:33 UTC; usuarios conocidos: 463.598 impresiones vivas, 2.162 clics, 612 compras). Código: `recsys/lfm_mf_build.py`, `recsys/lfm_build.py --base lfm_coef_r3.json --add mf`.
+- **Qué es `mf`:** SVD de rango 16 de la matriz usuario×producto del histórico orgánico (59.841 usuarios × 5.000 productos, log(1 + vistas + 3·carritos + 6·compras)); puntuación del producto para el usuario, estandarizada dentro del catálogo de cada usuario. Solo usa el histórico: nada de hoy, sin fuga.
+- **Señal en bruto (conocidos, producto/categoría, compras por 10.000 impresiones), por banda de la puntuación r3 y banda de `mf`:**
+
+| Banda r3 | `mf` < 3 | 3–7 | 7–11 | > 11 |
+|---|---:|---:|---:|---:|
+| 50% inferior | 0,1 | 1,4 | 0,0 | 4,8 |
+| 50–80% | 2,9 | 6,1 | 6,9 | 21,3 |
+| 80–95% | 14,7 | 23,2 | 30,6 | 62,6 |
+| 5% superior | 138,5 | 138,1 | 174,5 | 325,3 |
+
+- **Peso ajustado sobre r3 (resto de pesos fijos):** 0,0627 ± 0,0035 (18 errores estándar). Con todo reajustado a la vez: 0,083.
+- **Validación:** (a) corte temporal (ajuste antes de 16:20, prueba después, 260 compras): MRR de compra 0,579 → 0,597, AUC 0,901 → 0,907, log-verosimilitud −1559,6 → −1545,6. (b) CV de 5 grupos por usuario, todo reajustado: MRR de compra en producto/categoría 0,602 → 0,624, acierto en el primer puesto 42,2% → 44,5%; en home 0,689 → 0,739 (39 compras). Bootstrap por usuario de la mejora de MRR de compra: +0,024, IC 95% [+0,010; +0,038]; de clic +0,010 [+0,002; +0,017].
+- **Variantes:** rango 8/12/16/24/32 dan lo mismo (0,621–0,624); solo vistas, casi igual (0,622); binaria o sin logaritmo, peor (0,610); sin estandarizar por usuario, peor (0,609); en percentiles, nada (0,600). Vecinos producto-producto sobre el historial del usuario: nada (0,606).
+- **Cuánto cambia la lista:** con el peso ajustado, r6 y r3 comparten 8,7 de 10 productos y el primer puesto cambia en el 24% de las peticiones de conocidos. Valor estimado por el propio modelo (optimista, sirve solo en relativo): +1,6% en producto/categoría, +1,1% en home. Coste: 1,06 ms por petición de mediana con todo el cálculo de lfm.
+- **Lectura honesta:** la señal es real y nueva, pero el efecto esperado es moderado (del orden de +0,03 a +0,06 pt sobre conocidos con el peso ajustado). No explica por sí sola los ~0,45 pt que nos saca la referencia en no-cold. El feedback propio no puede medir el valor de productos que nunca enseñamos, así que el peso real puede ser mayor: se decide en el leaderboard.

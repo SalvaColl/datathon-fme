@@ -186,10 +186,11 @@ def mix_asof(LF, aff, u, ts):
 
 
 def replay_state(LF, aff, carts, buys, u, ts):
-    """EXACTLY what LiveFit.user_state returns when serving (5 parts, the category mix included), as of the request.
+    """EXACTLY what LiveFit.user_state returns when serving (6 parts, the category mix and the collaborative factors
+    included), as of the request.
     Use this for every replayed LF.slate()/LF.scores() call: with a 4-part state the model serves WITHOUT ucat/usub
     while the same replay values the slate WITH them (the E-240/E-270 report bug)."""
-    return state_asof(LF, carts, buys, u, ts, getattr(aff, "fbuys", None)) + (mix_asof(LF, aff, u, ts),)
+    return state_asof(LF, carts, buys, u, ts, getattr(aff, "fbuys", None)) + (mix_asof(LF, aff, u, ts), LF.user_mf(u))
 
 
 def impressions(d, LF, aff, carts, buys):
@@ -198,9 +199,9 @@ def impressions(d, LF, aff, carts, buys):
     d must be sorted by ts (load() does it): the catalogue cursor only moves forward cheaply."""
     S = LF.snap; rows = []; meta = []; catlog = getattr(aff, "catlog", None)
     for r in d.itertuples():
-        b, lc, hc, bt, mix = replay_state(LF, aff, carts, buys, r.user_id, r.ts)
+        b, lc, hc, bt, mix, mfu = replay_state(LF, aff, carts, buys, r.user_id, r.ts)
         idx = [S.row.get(p, -1) for p in r.shown]; safe = [k if k >= 0 else 0 for k in idx]; seg = lfm.in_segment(r.device, r.region)
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=safe, mix=mix, bought_today=bt, seg=seg)
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=safe, mix=mix, bought_today=bt, seg=seg, mfu=mfu)
         inel = None
         if catlog is not None:                       # shown products get the price they had; eligibility is only a diagnostic here
             catlog.price_features(X, np.array(safe), r.ts, seg); inel = catlog.ineligible(r.ts)
@@ -315,11 +316,11 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
         def __init__(self, ts): self.ts = ts
         def affinity_all(self, u, rv): return aff_asof(aff, u, rv, self.ts)
     for r in d.loc[rids].itertuples():
-        st = replay_state(LF, aff, carts, buys, r.user_id, r.ts); b, lc, hc, bt, mix = st      # 5 parts: the slate below is built with the category mix
+        st = replay_state(LF, aff, carts, buys, r.user_id, r.ts); b, lc, hc, bt, mix, mfu = st      # 6 parts: the slate below is built with the category mix and the factors
         seg_flag = lfm.in_segment(r.device, r.region)
         req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
         seg = "new" if r.new_user else "known"
-        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix)
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag, mix=mix, mfu=mfu)
         excl = ()
         if catlog is not None:
             catlog.price_features(X, np.arange(S.n), r.ts, seg_flag); inel = catlog.ineligible(r.ts)

@@ -246,3 +246,8 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Parada inmediata:** envíos inválidos o ausentes, más caducadas de lo habitual, o eventos `cold_lq` con `reason` distinto de `null` repetidos.
 - **Rollback:** restaurar la `policy.json` guardada (o quitar el brazo `cn1`), sin reinicio. Para la final solo entra con evidencia confirmada antes de las 08:30 CET del domingo; configuración congelada a las 09:00 CET.
 - **Riesgo conocido, anterior a este cambio:** `serving.repair` rellena con los más vendidos activos sin mirar lo ya comprado por el usuario. Solo actúa si un producto del slate se queda sin stock entre el ranking y el envío. No se toca aquí (`serving.py` es de T-014); el brazo no añade ningún camino nuevo.
+
+### D-350 — r6 (`mf`) se prueba como retador único contra el campeón del momento (propuesta, T-035)
+- **Qué:** tras fusionar `javi/mf-r6` y un reinicio con relevo, una ronda de 30 minutos con `{"tag": "r6", "file": "lfm_coef_r6.json"}` contra el campeón. Si en ese momento el campeón lleva `cv` (brazo `f5c05`), el retador equivalente es `{"tag": "r6c", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5, "mf": 0.0627}, "new": {"cv": 0.5}}, "home": {"file": "lfm_coef_r6.json"}}`.
+- **Regla:** gana quien tenga más conversión en las filas de conocidos (producto/categoría y home) de la misma ventana; los nuevos no cambian (peso 0). Si r6 gana, siguiente ronda con el peso al doble (`"w": {"known": {"mf": 0.125}}`), que se cambia sin reiniciar.
+- **Vuelta atrás:** quitar el brazo de `policy.json`. Sin `lfm_mf.npz` la feature vale 0 y todo se comporta como antes.
