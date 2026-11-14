@@ -51,8 +51,14 @@ def in_segment(device, region): return device == "android" and region in SEG_REG
 AFF_CAP, NEUTRAL = 0.35, 0.10
 
 
-LQ_MODES = ("cold",)              # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm)
+LQ_MODES = ("cold", "cold_new")    # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm);
+                                   # "cold" = returning and new shoppers, "cold_new" = new shoppers only (T-034)
 LQ_PAGES = ("product", "category")   # ...only on these pages and only with recent views; home is never touched
+
+
+def lq_target(mode, is_new_user, page, rv) -> bool:
+    """Does a request get the corrected quality under arm mode `mode`? The single rule for scoring and for routing."""
+    return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
 
 
 class Snap:
@@ -283,7 +289,7 @@ class LiveFit:
         m = getattr(self, "alt_lq", {}).get(model) if model else None      # T-028: this arm asks for the corrected quality
         page = req.get("page", "product")
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None, lq=S.lqc if m in LQ_MODES and rv and page in LQ_PAGES else None)
+                     mix=state[4] if len(state) > 4 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])

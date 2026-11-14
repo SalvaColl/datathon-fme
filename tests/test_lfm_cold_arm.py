@@ -47,7 +47,7 @@ class ArmTests(unittest.TestCase):
 
     def test_clean_keeps_lq_and_rejects_unknown_modes(self):
         self.assertEqual(live.clean_lfm_arms([{"tag": "r3"}, {"tag": "c1", "lq": "cold"}])[1], {"tag": "c1", "lq": "cold"})
-        for bad in ("hot", "cold_new", 1, True):
+        for bad in ("hot", "COLD", 1, True):
             self.assertEqual(live.clean_lfm_arms([{"tag": "r3"}, {"tag": "c1", "lq": bad}]), [])
         a = live.clean_lfm_arms([{"tag": "r3", "file": "lfm_coef_r3.json", "home": {}}, {"tag": "c1", "file": "lfm_coef_r3.json", "home": {}, "lq": "cold"}])
         self.assertEqual(a[1], {"tag": "c1", "file": "lfm_coef_r3.json", "home": {}, "lq": "cold"})
@@ -55,12 +55,12 @@ class ArmTests(unittest.TestCase):
     def test_committed_trial_policies_differ_from_their_control_only_by_lq(self):
         import json
         from pathlib import Path
-        for name in ("policy.cold_lq_r3.json", "policy.cold_lq_f5c05.json"):
+        for name in ("policy.cold_lq_r3.json", "policy.cold_lq_f5c05.json", "policy.cold_new_r3.json", "policy.cold_new_f5c05.json"):
             raw = json.loads((Path(lfm.__file__).parent / name).read_text())["lfm_arms"]
             arms = live.clean_lfm_arms(raw)
             self.assertEqual(arms, raw); self.assertEqual(len(arms), 2); self.assertNotIn("lq", arms[0])
             self.assertEqual({k: v for k, v in arms[1].items() if k not in ("tag", "lq")}, {k: v for k, v in arms[0].items() if k != "tag"})
-            self.assertEqual(arms[1]["lq"], "cold")
+            self.assertEqual(arms[1]["lq"], "cold_new" if "cold_new" in name else "cold")
 
     def test_control_is_exactly_the_unmodified_champion(self):
         for r in CASES:
@@ -142,6 +142,119 @@ class ArmTests(unittest.TestCase):
         finally:
             stop.set(); t.join()
         self.assertGreater(n[0], 3); self.assertLess(float(np.percentile(ms, 95)), 250.0)
+
+
+NEW_ARMS = [{"tag": "r3", "w": W}, {"tag": "cn1", "w": W, "lq": "cold_new"}]
+
+
+class ColdNewTests(unittest.TestCase):
+    """T-034: "lq": "cold_new" = corrected quality only for NEW shoppers on product/category pages with recent views."""
+    def setUp(self):
+        self.saved = (live.POLICY["variant"], live.LF, live.AP, live.POLICY["lfm_arms"], dict(live.LABELS))
+        self.champ, self.aff0 = build(); self.champ.set_arms([{"tag": "r3", "w": W}])
+        self.lf, self.aff = build({"B39": 2.0}); self.k = self.lf.snap.row["B39"]
+        live.LF = self.lf; live.AP = type("AP", (), {"aff": self.aff})(); live.POLICY["variant"] = "lfm"
+        arms = live.clean_lfm_arms(NEW_ARMS); self.assertEqual(arms, NEW_ARMS)
+        self.lf.set_arms(arms); live.POLICY["lfm_arms"] = arms
+    def tearDown(self):
+        live.POLICY["variant"], live.LF, live.AP, live.POLICY["lfm_arms"] = self.saved[:4]
+        live.LABELS.clear(); live.LABELS.update(self.saved[4])
+
+    def test_mode_needs_a_control_with_identical_weights(self):
+        ok = [{"tag": "f5", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}},
+              {"tag": "cn1", "file": "lfm_coef_r5.json", "w": {"known": {"cv": 0.5}}, "home": {"file": "lfm_coef_r3.json"}, "lq": "cold_new"}]
+        self.assertEqual(live.clean_lfm_arms(ok), ok)
+        self.assertEqual(live.clean_lfm_arms([{"tag": "cn1", "lq": "cold_new"}]), [])                                    # no control
+        self.assertEqual(live.clean_lfm_arms([{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "cn1", "lq": "cold_new"}]), [])   # other base
+        self.assertEqual(live.clean_lfm_arms([ok[0], dict(ok[1], w={"known": {"cv": 0.6}})]), [])                         # other override
+        self.assertEqual(live.clean_lfm_arms([ok[0], {k: v for k, v in ok[1].items() if k != "home"}]), [])               # other home
+        self.assertEqual(live.clean_lfm_arms([{"tag": "c1", "lq": "cold"}, {"tag": "cn1", "lq": "cold_new"}]), [])       # a treated arm is not a control
+        self.assertEqual(len(live.clean_lfm_arms([{"tag": "r3"}, {"tag": "c1", "lq": "cold"}])), 2)                      # "cold" keeps its behaviour
+
+    def test_target_rule(self):
+        t = lfm.lq_target
+        self.assertTrue(t("cold_new", True, "product", ["A30"])); self.assertTrue(t("cold_new", True, "category", ["A30"]))
+        for new, page, rv in ((False, "product", ["A30"]), (True, "home", ["A30"]), (True, "product", []), (True, "cart", ["A30"]), (False, "home", [])):
+            self.assertFalse(t("cold_new", new, page, rv))
+        self.assertTrue(t("cold", False, "product", ["A30"])); self.assertFalse(t("cold", False, "home", [])); self.assertFalse(t(None, True, "product", ["A30"]))
+
+    def test_control_scores_and_slates_are_exactly_the_champion(self):
+        for r in CASES:
+            self.assertTrue(np.array_equal(scores(self.champ, self.aff0, r, "r3"), scores(self.lf, self.aff, r, "r3")), r)
+            self.assertEqual(self.champ.slate(r, self.champ.user_state(r["user_id"]), self.aff0, model="r3"),
+                             self.lf.slate(r, self.lf.user_state(r["user_id"]), self.aff, model="r3"))
+
+    def test_returning_users_and_home_are_unchanged_even_inside_the_arm(self):
+        for r in CASES:
+            if r["is_new_user"] and r in VIEWS: continue
+            self.assertTrue(np.array_equal(scores(self.lf, self.aff, r, "r3"), scores(self.lf, self.aff, r, "cn1")), r)
+
+    def test_only_the_launched_product_moves_for_new_users_through_lq_and_seglq(self):
+        delta = 2.0 - (-0.39); seen = 0
+        for r in VIEWS:
+            if not r["is_new_user"]: continue
+            a, b = scores(self.lf, self.aff, r, "r3"), scores(self.lf, self.aff, r, "cn1"); seen += 1
+            rest = np.arange(len(a)) != self.k
+            self.assertTrue(np.array_equal(a[rest], b[rest]), r)
+            seg = lfm.in_segment(r.get("device"), r.get("region"))
+            self.assertAlmostEqual(b[self.k] - a[self.k], (0.5 + (0.7 if seg else 0.0)) * delta, places=9)
+        self.assertEqual(seen, 2)                                                   # one in the price-sensitive segment (seglq), one not
+
+    def reqs(self, n=80, **kw):
+        return [dict({"request_id": str(k), "user_id": f"u{k}", "rv": ["A30"], "page": "product", "is_new_user": True}, **kw) for k in range(n)]
+
+    def test_routing_untouched_traffic_keeps_the_control_label(self):
+        for kw in (dict(is_new_user=False), dict(rv=[], page="home"), dict(is_new_user=False, rv=[], page="home"), dict(rv=[]), dict(page="home")):
+            ver = {}; out = live.lfm_slates(self.reqs(**kw), set(), ver)
+            self.assertEqual(len(out), 80)
+            self.assertEqual({v.split("-")[2] for v in ver.values()}, {"r3"}, kw)        # no cn1-k / cn1-kh / cn1-nh labels exist
+        ctl = {}; base = self.reqs(is_new_user=False)
+        live.POLICY["lfm_arms"] = [NEW_ARMS[0]]; one = live.lfm_slates(base, set(), ctl)
+        live.POLICY["lfm_arms"] = NEW_ARMS; two = live.lfm_slates(base, set(), {})
+        self.assertEqual(one, two)                                                       # identical output with and without the challenger
+
+    def test_routing_target_cohort_is_split_by_user_and_deterministic(self):
+        lf, aff = build({"B39": 9.0}); lf.set_arms(NEW_ARMS); live.LF = lf; live.AP = type("AP", (), {"aff": aff})()    # large enough to reach the slate
+        rq = self.reqs(); ver = {}; out = live.lfm_slates(rq, set(), ver); ver2 = {}; out2 = live.lfm_slates(rq, set(), ver2)
+        self.assertEqual((out, ver), (out2, ver2))
+        self.assertEqual(set(ver.values()), {"v3-lfm-r3-n", "v3-lfm-cn1-n"})
+        n = sum(v == "v3-lfm-cn1-n" for v in ver.values()); self.assertTrue(25 <= n <= 55, n)
+        for k, r in enumerate(rq):
+            arm = live.lfm_arm(r["user_id"])["tag"]; self.assertEqual(ver[k], f"v3-lfm-{arm}-n")
+            self.assertEqual("B39" in out[k], arm == "cn1")
+        cat = self.reqs(page="category"); ver = {}; live.lfm_slates(cat, set(), ver)
+        self.assertEqual(set(ver.values()), {"v3-lfm-r3-n", "v3-lfm-cn1-n"})
+
+    def test_control_label_identity_is_kept_and_challenger_gets_a_fresh_opaque_one(self):
+        live.LABELS.update(salt="s", map={"v3-lfm-r3-n": "m0c62b"}, seen={})
+        self.assertEqual(live.public_label("v3-lfm-r3-n"), "m0c62b")
+        new = live.public_label("v3-lfm-cn1-n")
+        self.assertRegex(new, r"^m[0-9a-f]{5}$"); self.assertNotEqual(new, "m0c62b"); self.assertNotIn("cn1", new)
+        self.assertEqual(new, live.public_label("v3-lfm-cn1-n"))
+
+    def test_bought_and_inactive_products_cannot_enter_by_ranking_or_repair(self):
+        from recsys import serving
+        lf, aff = build({"B39": 9.0, "B38": 9.0, "B37": 9.0}, unavail={"B38"}); lf.set_arms(NEW_ARMS)
+        live.LF = lf; live.AP = type("AP", (), {"aff": aff})()
+        user = next(f"u{k}" for k in range(100, 300) if live.lfm_arm(f"u{k}")["tag"] == "cn1")
+        lf.add(user, "B37", p=1)                                   # bought today (organic stream or our carousel feedback: same call)
+        r = dict(request_id="x", user_id=user, rv=["A30"], page="product", is_new_user=True)
+        ver = {}; s = live.lfm_slates([r], set(), ver)[0]
+        self.assertEqual(ver[0], "v3-lfm-cn1-n"); self.assertEqual(len(set(s)), 10)
+        self.assertIn("B39", s); self.assertNotIn("B38", s); self.assertNotIn("B37", s)
+        s2 = live.lfm_slates([r], {"B39"}, {})[0]; self.assertNotIn("B39", s2)                      # went out of stock after the refresh
+        active = set(catalog().index) - {"B39"}
+        fixed = serving.repair(s, ["A00", "A01"], active)                                           # final check before POST
+        self.assertNotIn("B39", fixed); self.assertEqual(len(set(fixed)), 10); self.assertTrue(set(fixed) <= active)
+
+    def test_no_valid_correction_means_the_arm_is_the_control(self):
+        lf, aff = build(None); lf.set_arms(NEW_ARMS)
+        for r in CASES: self.assertTrue(np.array_equal(scores(lf, aff, r, "r3"), scores(lf, aff, r, "cn1")))
+
+    def test_cold_mode_is_unchanged_by_the_new_mode(self):
+        self.lf.set_arms(ARMS)
+        r = req(new=False); a, b = scores(self.lf, self.aff, r, "r3"), scores(self.lf, self.aff, r, "c1")
+        self.assertAlmostEqual(b[self.k] - a[self.k], 0.5 * 2.39, places=9)
 
 
 class CorrectorTests(unittest.TestCase):

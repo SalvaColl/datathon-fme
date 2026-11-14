@@ -304,3 +304,17 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Latencia del bucle (A → B):** p50 136 → 136 ms; p95 313 → 355 ms; p99 448 → 1.051 ms; máximo 3.781 → 2.399 ms; caducadas 5 → 4. Las colas son ruidosas en la nube (el máximo es del ensayo sin el brazo). El cálculo de correcciones ocupa unos 125–155 ms del hilo de refresco cada ciclo (~20–30 s) y no hace ninguna consulta.
 - **Exposición en B:** c1 conocidos 6,4% de impresiones nuevas (139 peticiones), c1 nuevos 1,9% (42); r3 0,2–0,5%; home de c1 0,0% (44 peticiones). 300 productos corregidos, 29 en el límite.
 - **Límite:** medido lejos del Mac; la latencia real hay que mirarla en el writer tras activar.
+
+### E-340 — replay a fecha de cada petición del modo `cold_new` (T-034). Solo diagnóstico, no conversión
+
+- **Qué:** `python cold_lq_replay.py --pull --mode cold_new --n 6000` (solo lectura). 6.534 peticiones respondidas entre 14:00 y 18:50 UTC del 14 nov, pesos r3, control contra `"lq": "cold_new"`, estado a fecha de cada petición (como E-281). 59 snapshots, hasta 300 productos corregidos, 29–30 en el límite, ninguno rechazado.
+- **Tráfico no objetivo (usuarios que vuelven, home, sin vistas):** 0 slates distintos de 4.987.
+- **Cohorte objetivo (usuario nuevo, producto/categoría con vistas):** 1.547 peticiones, 100% de slates válidos en los dos brazos; cambia el 19,1% de los slates y el 1,4% del slot 1; productos nuevos en las impresiones 0,05% → 2,06% (producto 0,06% → 1,87%; categoría 0,04% → 2,51%).
+- **Poca evidencia de sesión** (una sola vista reciente, sin carritos ni compras): 139 peticiones, 100% válidas, cambia el 15,8% de los slates, 0,00% → 1,73%. Con más evidencia (1.408): 19,4%, 0,06% → 2,10%.
+- **Latencia en el contenedor de la nube (no es garantía para el Mac):** camino de la petición, un slate de lfm: control p50 0,77 ms / p95 1,75 ms; brazo p50 0,76 ms / p95 1,71 ms. Refresco: correcciones p50 120 ms / p95 196 ms; `set_catalog` p50 18 ms / p95 28 ms, una vez por ciclo de refresco.
+- **No reconstruido:** compras hechas por nuestro carrusel en el estado offline (en el writer sí se excluyen), retraso de refresco y resolución de 10 minutos de la evidencia.
+
+### E-341 — ensayo en seco con `policy.cold_new_r3.json` (T-034), 14 nov ~19:05 UTC, contenedor en la nube
+
+- **Qué:** writer real con `--dry-run` (no escribe), 3,5 minutos. 0 errores, 100% de slates válidos, bucle p50 139 ms / p95 393 ms (445 peticiones tras el arranque, 4 caducadas).
+- **Etiquetas emitidas por lfm:** `r3-k` (204), `r3-kh` (54), `r3-nh` (23), `r3-n` (37) y `cn1-n` (34). No aparece ninguna etiqueta `cn1` fuera de la cohorte objetivo. Productos nuevos en las impresiones: `cn1-n` 1,76%, `r3-n` 0,27%.

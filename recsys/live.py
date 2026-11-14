@@ -77,12 +77,27 @@ def clean_lfm_arms(raw):
         if not isinstance(a, dict): continue
         tag, main = str(a.get('tag', '')), spec(a)
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
-        lqm = a.get('lq')                                      # T-028: "cold" = corrected quality for today's products (pages with views)
+        lqm = a.get('lq')                                      # T-028/T-034: "cold" | "cold_new" = corrected quality for today's products
         if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES):
             arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
-    return arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
+    arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
+    # T-034: a "cold_new" arm must have a control in the same list with exactly its weights (file, w, home): the trial's
+    # only difference is the quality of new products, and the arm's untouched traffic is served and labelled as that control
+    return arms if all(a.get('lq') != 'cold_new' or lfm_control(a, arms) for a in arms) else []
+def lfm_control(arm, arms):
+    """The arm of `arms` without "lq" whose weight spec equals `arm`'s (None if there is none)."""
+    spec = {k: v for k, v in arm.items() if k not in ('tag', 'lq')}
+    return next((c for c in arms if 'lq' not in c and {k: v for k, v in c.items() if k != 'tag'} == spec), None)
+def lfm_route(arm, new, page, rv):
+    """Tag that answers (and labels) a request of a user hashed to `arm`. A "cold_new" arm only owns new shoppers on
+    product/category pages with recent views; everything else is the control's, so no duplicate label is created."""
+    if arm is None: return None
+    if arm.get('lq') == 'cold_new' and not lfm.lq_target('cold_new', new, page, rv):
+        ctl = lfm_control(arm, POLICY['lfm_arms'])
+        if ctl is not None: return ctl['tag']
+    return arm['tag']
 def lfm_arm(user_id):
     arms = POLICY['lfm_arms']
     return arms[zlib.crc32(('lfmarm:' + user_id).encode()) % len(arms)] if arms else None
@@ -439,7 +454,7 @@ def lfm_slates(reqs, unavail, versions):
         if not idx: return out
         with feature_lock: states = [LF.user_state(reqs[k]['user_id']) for k in idx]
         for k, st in zip(idx, states):
-            r = reqs[k]; new = is_new(r); arm = lfm_arm(r['user_id']); tag = arm['tag'] if arm else None
+            r = reqs[k]; new = is_new(r); tag = lfm_route(lfm_arm(r['user_id']), new, r.get('page', 'product'), r['rv'])
             req = dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new, device=r.get('device'), region=r.get('region'))
             try: s = LF.slate(req, st, AP.aff, exclude=unavail, model=tag)
             except Exception as e:

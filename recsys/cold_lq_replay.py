@@ -2,7 +2,7 @@
 
     cd recsys
     python cold_lq_replay.py --pull            # READ-ONLY RawTree -> data/lfm_*.parquet + data/coldlq_replay/*.parquet
-    python cold_lq_replay.py [--n 4000] [--since "2026-11-14 14:00"] [--coef lfm_coef_r3.json] [--out file.json]
+    python cold_lq_replay.py [--mode cold|cold_new] [--n 4000] [--since "2026-11-14 14:00"] [--coef lfm_coef_r3.json] [--out file.json]
 
 Replaces the replay of `cold_lq_slates.py` (PR #17), which applied events up to 15:00 to earlier requests and did not
 replay stock or stale-item eligibility. Here every answered request is scored twice (control arm / arm with
@@ -89,11 +89,11 @@ class AffAsOf:
         return LB.aff_asof(self.aff, u, rv, self.ts)
 
 
-def main(n=4000, since="2026-11-14 14:00:00", coef="lfm_coef_r3.json", out=None):
-    import cold_lq_arm, lfm_build as LB, qrank
+def main(n=4000, since="2026-11-14 14:00:00", coef="lfm_coef_r3.json", out=None, mode="cold"):
+    import time, cold_lq_arm, lfm, lfm_build as LB, qrank
     d, LF, aff, carts, buys = LB.load()
     LF.lq0 = float(json.loads((HERE / coef).read_text()).get("lq0", LF.lq0))
-    LF.set_arms([{"tag": "ctl", "file": coef}, {"tag": "trt", "file": coef, "lq": "cold"}])
+    LF.set_arms([{"tag": "ctl", "file": coef}, {"tag": "trt", "file": coef, "lq": mode}])
     hc = LF.snap.hc
     d = d[d.ts >= pd.Timestamp(since)]
     step = max(1, len(d) // n); d = d.iloc[::step]
@@ -103,12 +103,14 @@ def main(n=4000, since="2026-11-14 14:00:00", coef="lfm_coef_r3.json", out=None)
     shim = AffAsOf(aff)
     d = d.assign(ver=[C.version(t) for t in d.ts], bucket=d.ts.dt.floor("10min"))
     stats = collections.defaultdict(collections.Counter); diag = []; home_changed = 0
+    ms = {"ctl": [], "trt": [], "corrections": [], "set_catalog": []}
     for (ver, bucket), g in d.groupby(["ver", "bucket"], sort=True, dropna=False):
         cat, unavail, desc = C.asof(None if pd.isna(ver) else ver)
         QR.set_catalog(cat, unavail)
         live_item = it[it.end <= bucket].groupby("i")[["v", "p"]].sum().rename(columns={"v": "it_v", "p": "it_p"})
-        corr = COR.corrections(QR.q, QR.lq, cat, hist, live_item, desc, lq0=LF.lq0)
+        t0 = time.perf_counter(); corr = COR.corrections(QR.q, QR.lq, cat, hist, live_item, desc, lq0=LF.lq0); t1 = time.perf_counter()
         LF.set_catalog(cat, unavail, aff, QR.lq, hc, lq_cold=corr or None)
+        ms["corrections"].append(1000 * (t1 - t0)); ms["set_catalog"].append(1000 * (time.perf_counter() - t1))
         new = set(desc)
         dl = np.array([corr[p] - QR.lq[p] for p in corr]) if corr else np.zeros(0)
         diag.append(dict(bucket=str(bucket), requests=len(g), new_products=len(new), unavailable=len(unavail), corrected=len(corr),
@@ -118,12 +120,18 @@ def main(n=4000, since="2026-11-14 14:00:00", coef="lfm_coef_r3.json", out=None)
             shim.ts = r.ts
             st = LB.state_asof(LF, carts, buys, r.user_id, r.ts) + (LB.mix_asof(LF, aff, r.user_id, r.ts),)
             req = dict(user_id=r.user_id, rv=r.rv, page=r.page or "product", is_new_user=bool(r.new_user), device=r.device, region=r.region)
-            a = LF.slate(req, st, shim, exclude=unavail, model="ctl") or []
-            b = LF.slate(req, st, shim, exclude=unavail, model="trt") or []
+            t0 = time.perf_counter(); a = LF.slate(req, st, shim, exclude=unavail, model="ctl") or []
+            t1 = time.perf_counter(); b = LF.slate(req, st, shim, exclude=unavail, model="trt") or []
+            ms["ctl"].append(1000 * (t1 - t0)); ms["trt"].append(1000 * (time.perf_counter() - t1))
             home = not r.rv or req["page"] not in ("product", "category")
-            home_changed += home and a != b
+            target = lfm.lq_target(mode, bool(r.new_user), req["page"], r.rv)
+            home_changed += (not target) and a != b
             seg = ("new" if r.new_user else "known") + "/" + ("home_or_no_views" if home else req["page"])
-            for key in (seg, "all", "all_with_views" if not home else "all_home"):
+            keys = [seg, "all", "target_cohort" if target else "untargeted"]
+            if r.new_user and not home:          # little session evidence: one recent view and nothing else known about the shopper
+                thin = len(r.rv) == 1 and not st[1] and not st[2] and not st[3]
+                keys.append("new/with_views/" + ("thin_evidence" if thin else "more_evidence"))
+            for key in keys:
                 c = stats[key]; c["requests"] += 1; c["changed"] += a != b; c["slot1_changed"] += a[:1] != b[:1]
                 for name, s in (("ctl", a), ("trt", b)):
                     ok = len(s) == 10 and len(set(s)) == 10 and not (set(s) & unavail) and not (set(s) & st[0]) and all(p in cat.index for p in s)
@@ -136,8 +144,10 @@ def main(n=4000, since="2026-11-14 14:00:00", coef="lfm_coef_r3.json", out=None)
             row[name] = dict(valid_pct=round(100 * c[name + "_valid"] / n_, 2), new_share_pct=round(100 * c[name + "_new"] / max(1, c[name + "_imp"]), 2),
                              slates_with_new_pct=round(100 * c[name + "_with_new"] / n_, 1), slot1_new_pct=round(100 * c[name + "_slot1_new"] / n_, 1))
         seg_out[key] = row
-    res = dict(kind="diagnostics only: exposure and validity, NOT conversion", coef=coef, since=since, requests=int(len(d)),
-               first=str(d.ts.min()), last=str(d.ts.max()), snapshots=len(diag), home_or_no_view_slates_changed=int(home_changed),
+    pct = lambda v, q: round(float(np.percentile(v, q)), 2) if len(v) else None
+    res = dict(kind="diagnostics only: exposure and validity, NOT conversion", coef=coef, mode=mode, since=since, requests=int(len(d)),
+               first=str(d.ts.min()), last=str(d.ts.max()), snapshots=len(diag), untargeted_slates_changed=int(home_changed),
+               latency_ms_cloud_container={k: dict(p50=pct(v, 50), p95=pct(v, 95), p99=pct(v, 99), n=len(v)) for k, v in ms.items()},
                segments=seg_out, snapshots_first_last=[diag[0], diag[-1]] if diag else [],
                corrected_max=max((x["corrected"] for x in diag), default=0), clipped_max=max((x["clipped"] for x in diag), default=0),
                not_reconstructed=["carousel purchases in the bought set (organic purchases only; brief C2)",
@@ -151,6 +161,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--pull", action="store_true"); ap.add_argument("--n", type=int, default=4000)
     ap.add_argument("--since", default="2026-11-14 14:00:00"); ap.add_argument("--coef", default="lfm_coef_r3.json"); ap.add_argument("--out")
+    ap.add_argument("--mode", default="cold", choices=("cold", "cold_new"))
     a = ap.parse_args()
     if a.pull: pull()
-    main(a.n, a.since, a.coef, a.out)
+    main(a.n, a.since, a.coef, a.out, a.mode)
