@@ -23,6 +23,16 @@ Escribir `recsys/data/policy.json`; el proceso lo relee cada ~20 s y anota `{"ev
 
 Otros interruptores, todos apagados: `data/d130.json` (`{"mode": "nodead"|"home"}`, candidatos de home, D-130), `data/lq.json` (`{"mode": "on"|"ab"}`, calidad en vivo, D-180) y `qrank_arms` dentro de `policy.json` (brazos de afinado de qrank, T-019, ver `runbook.md`).
 
+## Etiquetas públicas (`model_version`)
+
+El leaderboard enseña nuestras etiquetas a todos los equipos, así que no deben describir el método. Desde el commit que añade `public_label` en `recsys/live.py`, si existe `recsys/data/labels.json` (no versionado, se relee cada ~20 s) el writer escribe códigos neutros en vez de los nombres internos:
+
+```json
+{"salt": "<cadena aleatoria, solo en la máquina del writer>", "map": {"<etiqueta interna>": "<código público opcional>"}}
+```
+
+Las etiquetas que no estén en `map` reciben un código estable derivado de `salt` (`m` + 5 caracteres). Cada pareja interna/pública se anota una vez en el log (`{"event": "label", ...}`): ese log y `labels.json` son la única tabla de correspondencia; no copiarla al repositorio ni a canales públicos. Cambiar `salt` rota todos los códigos (parte la serie del leaderboard: cada código nuevo necesita ~300 peticiones para aparecer). Las variantes nuevas siguen usando nombres internos descriptivos en el código; la traducción es automática. Hasta el próximo reinicio el writer sigue escribiendo los nombres antiguos.
+
 ## Cómo medir
 
 `https://datathon.rawtree.dev/api/state?by=model` da, por `model_version`, la conversión esperada del modelo oculto en la última hora (se recalcula cada 60 s). Es la medida de referencia: con unas 500–1.000 peticiones por versión ya es estable. `python recsys/compare_versions.py 60` da compras reales, mucho más ruidosas. Salud por minuto: tabla `team_26.feedback` (`served_by = 'team'` contra `fallback_reason = 'missing'`).

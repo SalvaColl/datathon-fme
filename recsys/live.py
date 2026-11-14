@@ -62,6 +62,26 @@ def clean_arms(raw):
 def qrank_arm(user_id):
     arms = POLICY['qrank_arms']
     return arms[zlib.crc32(('arm:' + user_id).encode()) % len(arms)] if arms else None
+# Public labels: the leaderboard shows model_version to every team, so the names above never leave this process when
+# data/labels.json exists (untracked, hot-reloaded): {"salt": "<any string>", "map": {"<internal label>": "<public code>"}}.
+# Labels missing from the map get a stable neutral code derived from the salt. Each pairing is logged once
+# ({"event": "label", ...}) so results can be decoded locally. No file -> labels are written as they are.
+LABELS = {"salt": None, "map": {}, "seen": {}}
+def read_labels():
+    try:
+        conf = json.loads((DATA / 'labels.json').read_text())
+        salt, mp = str(conf.get('salt') or ''), {str(k): str(v) for k, v in (conf.get('map') or {}).items()}
+        if (salt, mp) != (LABELS['salt'], LABELS['map']): LABELS.update(salt=salt, map=mp, seen={})
+    except FileNotFoundError:
+        if LABELS['salt'] is not None: LABELS.update(salt=None, map={}, seen={})
+    except Exception as e: print('labels.json ignored', type(e).__name__, flush=True)
+def public_label(version):
+    if LABELS['salt'] is None: return version
+    code = LABELS['seen'].get(version)
+    if code is None:
+        code = LABELS['map'].get(version) or 'm%05x' % (zlib.crc32((LABELS['salt'] + '|' + version).encode()) & 0xfffff)
+        LABELS['seen'][version] = code; print(json.dumps(dict(event='label', internal=version, public=code)), flush=True)
+    return code
 def treated(user_id): return zlib.crc32(user_id.encode()) % 2 == 1      # A/B arm, stable per user
 def use_aff(r):
     """Does this request get the affinity policy under the active variant? Never if aff_policy failed to load."""
@@ -93,6 +113,7 @@ def read_policy():
             POLICY['qrank_arms'] = arms; print(json.dumps(dict(event='policy', qrank_arms=arms)), flush=True)
     except FileNotFoundError: pass
     except Exception as e: print('policy.json ignored', type(e).__name__, flush=True)
+    read_labels()
 
 def query(sql, timeout=20):
     r = session().post(f"{API}/v1/query", json={"sql": sql}, timeout=timeout); r.raise_for_status(); return r.json()["data"]
@@ -415,7 +436,7 @@ def send_answers(reqs, answers, journal, seen, dry=False):
         version = original.get('model_version', VERSION + '-guard')
         if items != original.get('items'):
             version = VERSION + '-guard'
-        answer = dict(request_id=rid, items=items, model_version=version)
+        answer = dict(request_id=rid, items=items, model_version=public_label(version))
         if dry or journal.claim(answer):
             batch.append(answer)
         seen.add(rid)
