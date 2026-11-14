@@ -49,7 +49,22 @@ VERSION_L = "v3-lfm-r1"            # live-fitted model (T-018); served with a se
 VERSION_T = "v3-attr-r1"
 VERSION_TA = "v3-attr-aff-r1"
 VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm")
-POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": []}
+POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "lfm_arms": []}
+# T-021: tuning arms for lfm requests, read by the leaderboard per model_version ("v3-lfm-<tag>-k|-n|-kh|-nh"):
+#   {"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}, {"tag": "x1", "w": {"known": {"islast": 3.0}}}]}
+# An arm with only a tag is the committed weights (control). Users are split evenly by hash across 2-4 arms.
+def clean_lfm_arms(raw):
+    arms = []
+    for a in (raw or [])[:4]:
+        tag, f, w = str(a.get('tag', '')), a.get('file'), a.get('w') or {}
+        ok = tag.isalnum() and len(tag) <= 8 and (f is None or (isinstance(f, str) and f.startswith('lfm_coef') and f.endswith('.json') and '/' not in f))
+        ok = ok and isinstance(w, dict) and set(w) <= {'known', 'new'} and all(
+            isinstance(o, dict) and all(k in lfm.FEATS and isinstance(v, (int, float)) and abs(v) <= 20 for k, v in o.items()) for o in w.values())
+        if ok: arms.append({'tag': tag.lower(), **({'file': f} if f else {}), **({'w': w} if w else {})})
+    return arms if len(arms) >= 2 and len({a['tag'] for a in arms}) == len(arms) else []
+def lfm_arm(user_id):
+    arms = POLICY['lfm_arms']
+    return arms[zlib.crc32(('lfmarm:' + user_id).encode()) % len(arms)] if arms else None
 # Optional tuning arms for plain-qrank requests, measured by the leaderboard's per-model_version breakdown:
 #   {"variant": "qrank", "qrank_arms": [{"tag": "vf045", "viewed_factor": 0.45}, {"tag": "vf100", "viewed_factor": 1.0}]}
 # Users are split evenly by hash across the arms; each arm is written as model_version "v2-qrank-<tag>".
@@ -111,6 +126,11 @@ def read_policy():
         arms = clean_arms(conf.get('qrank_arms'))
         if arms != POLICY['qrank_arms']:
             POLICY['qrank_arms'] = arms; print(json.dumps(dict(event='policy', qrank_arms=arms)), flush=True)
+        arms = clean_lfm_arms(conf.get('lfm_arms'))
+        if arms != POLICY['lfm_arms'] and LF is not None:
+            try: LF.set_arms(arms)                 # weights first: a request never sees an arm without its weights
+            except Exception as e: print('lfm_arms ignored', type(e).__name__, e, flush=True); arms = []; LF.set_arms([])
+            POLICY['lfm_arms'] = arms; print(json.dumps(dict(event='policy', lfm_arms=arms)), flush=True)
     except FileNotFoundError: pass
     except Exception as e: print('policy.json ignored', type(e).__name__, flush=True)
     read_labels()
@@ -344,12 +364,16 @@ def lfm_slates(reqs, unavail, versions):
         if not idx: return out
         with feature_lock: states = [LF.user_state(reqs[k]['user_id']) for k in idx]
         for k, st in zip(idx, states):
-            r = reqs[k]; new = is_new(r)
-            try: s = LF.slate(dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new), st, AP.aff, exclude=unavail)
+            r = reqs[k]; new = is_new(r); arm = lfm_arm(r['user_id']); tag = arm['tag'] if arm else None
+            req = dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new, device=r.get('device'), region=r.get('region'))
+            try: s = LF.slate(req, st, AP.aff, exclude=unavail, model=tag)
             except Exception as e:
                 print('lfm slate error', type(e).__name__, e, flush=True); s = None
+            if s is None and tag is not None:      # a broken arm must not cost the request its lfm slate
+                try: s = LF.slate(req, st, AP.aff, exclude=unavail); tag = None
+                except Exception: s = None
             if s is not None:
-                out[k] = s; versions[k] = VERSION_L + ('-n' if new else '-k') + ('h' if not r['rv'] else '')
+                out[k] = s; versions[k] = (VERSION_L if tag is None else 'v3-lfm-' + tag) + ('-n' if new else '-k') + ('h' if not r['rv'] else '')
     except Exception as e:
         print('lfm error', type(e).__name__, e, flush=True)
     return out
@@ -408,7 +432,7 @@ def fallback_answers(reqs, version=None):
     return [{"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"} for r in reqs]
 
 def pull(seen):
-    rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60", timeout=(0.5, 2.0))
+    rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, context.device::String device, context.region::String region, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60", timeout=(0.5, 2.0))
     fresh = []
     for r in rows:
         if r["request_id"] in seen: continue

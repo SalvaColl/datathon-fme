@@ -35,13 +35,16 @@ def pull():
         clicked::String clicked, purchased::String purchased FROM {team}.feedback WHERE request_id::String != '__init__'""")
     t0 = q(f"SELECT min(ts::DateTime64(3))::String t FROM {team}.feedback WHERE request_id::String != '__init__'").t[0]
     rq = q(f"""SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user::Bool new_user,
-        context.page::String page, toJSONString(recent_views) rv FROM shop.requests
+        context.page::String page, context.device::String device, context.region::String region, toJSONString(recent_views) rv FROM shop.requests
         WHERE ts::DateTime64(3) >= toDateTime64('{t0[:19]}',3) - INTERVAL 10 MINUTE""")
     sb = q(f"SELECT request_id::String request_id, any(model_version::String) mv FROM {team}.submissions GROUP BY request_id")
     fb.merge(rq, on="request_id").merge(sb, on="request_id", how="left").to_parquet(DATA / "lfm_fb.parquet")
     ev = pd.concat([q(f"""SELECT user_id::String u, product_id::String i, event_type::String e, min(ts::DateTime64(3))::String t0
         FROM shop.events WHERE event_type::String IN ('add_to_cart','purchase') AND cityHash64(user_id::String)%2={m} GROUP BY u,i,e""") for m in range(2)])
     ev.to_parquet(DATA / "lfm_ev.parquet")
+    # today's organic views in 10-minute buckets: the writer's affinity includes them, so the fit must too (as of each request)
+    pd.concat([q(f"""SELECT user_id::String u, product_id::String i, toStartOfInterval(ts::DateTime64(3), INTERVAL 10 MINUTE)::String t, count() n
+        FROM shop.events WHERE event_type::String = 'view' AND cityHash64(user_id::String)%4={m} GROUP BY u,i,t""") for m in range(4)]).to_parquet(DATA / "lfm_views.parquet")
     q("""SELECT product_id::String product_id, argMax(category::String,v) category, argMax(subcategory::String,v) sub,
         argMax(brand::String,v) brand, argMax(price_eur::Float64,v) price, argMax(description::String,v) description
         FROM (SELECT product_id, category, subcategory, brand, price_eur, description, '' v FROM shop.catalog
@@ -76,25 +79,41 @@ def load():
     carts, buys = {}, {}
     for u, i, e, t in zip(ev.u.values, ev.i.values, ev.e.values, ev.t0.values):
         (carts if e == "add_to_cart" else buys).setdefault(u, {})[i] = t
+    views = {}
+    if (DATA / "lfm_views.parquet").exists():
+        v = pd.read_parquet(DATA / "lfm_views.parquet"); v = v[v.i.isin(aff.pid)]
+        v["t"] = pd.to_datetime(v.t) + pd.Timedelta(minutes=10)            # usable once its bucket has closed
+        for u, i, t, n in zip(v.u.values, v.i.values, v.t.values, v.n.values): views.setdefault(u, []).append((t, aff.pid[i], n))
+    aff.today = views
     return d, LF, aff, carts, buys
+
+
+def aff_asof(aff, u, rv, ts):
+    """AttrAffinity.affinity_all as the writer computes it: history + today's views before the request + recent views."""
+    vec = aff.user_vec(u, rv); ts = np.datetime64(ts)
+    for t, k, n in getattr(aff, "today", {}).get(u, ()):
+        if t < ts: vec = vec + aff.A[k] * n
+    return (aff.A @ vec + attr_affinity.SHRINK * attr_affinity.NEUTRAL) / (vec.sum() + attr_affinity.SHRINK)
 
 
 def state_asof(LF, carts, buys, u, ts):
     """Same triple as LiveFit.user_state, using only events before the request."""
     ts = np.datetime64(ts)
-    b = {i for i, t in buys.get(u, {}).items() if t < ts} | LF.hbought.get(u, set())
+    bt = {i for i, t in buys.get(u, {}).items() if t < ts}
+    b = bt | LF.hbought.get(u, set())
     lc = {i for i, t in carts.get(u, {}).items() if t < ts} - b
     hc = {i: a for i, a in (LF.hcart.get(u) or {}).items() if i not in b and i not in lc}
-    return b, lc, hc
+    return b, lc, hc, bt
 
 
 def impressions(d, LF, aff, carts, buys):
     """One row per (request, shown product): features, slot, labels, dead flag."""
     S = LF.snap; rows = []; meta = []
     for r in d.itertuples():
-        st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc = st
+        st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
         idx = [S.row.get(p, -1) for p in r.shown]
-        X = lfm.features(S, aff.affinity_all(r.user_id, r.rv), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx])
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, idx=[k if k >= 0 else 0 for k in idx],
+                         bought_today=bt, seg=lfm.in_segment(r.device, r.region))
         stale = S.stale(r.user_id)
         for s, (p, k) in enumerate(zip(r.shown, idx)):
             dead = k < 0 or p in b or (stale is not None and stale[k] and p not in hc and p not in lc)
@@ -105,17 +124,19 @@ def impressions(d, LF, aff, carts, buys):
     return I.merge(d[["new_user", "page", "ts"]], left_on="rid", right_index=True)
 
 
-def fit(I):
-    """-> coef dict {known/new: {w, b, slot, cal}}. cal = (a, b): P(buy) = sigmoid(a + b * logit)."""
+def fit(I, feats=None):
+    """-> coef dict {known/new: {w, b, slot, cal}}. cal = (a, b): P(buy) = sigmoid(a + b * logit).
+    feats: subset of lfm.FEATS to fit (the rest get weight 0); default all."""
     from sklearn.linear_model import LogisticRegression
+    feats = list(feats or lfm.FEATS)
     out = {}
     for seg, new in (("known", False), ("new", True)):
         a = I[(I.new_user == new) & (I.dead == 0)]
-        cols = lfm.FEATS + ["ls"]
+        cols = feats + ["ls"]
         m = LogisticRegression(C=C_REG, max_iter=5000).fit(a[cols], a.clk, sample_weight=np.where(a.buy == 1, BUY_W, 1.0))
         z = a[cols].values @ m.coef_[0] + m.intercept_[0]
         c = LogisticRegression(C=100.0, max_iter=5000).fit(z.reshape(-1, 1), a.buy)
-        out[seg] = dict(w=dict(zip(lfm.FEATS, m.coef_[0][:-1].round(4).tolist())), b=round(float(m.intercept_[0]), 4),
+        out[seg] = dict(w=dict(zip(feats, m.coef_[0][:-1].round(4).tolist())), b=round(float(m.intercept_[0]), 4),
                         slot=round(float(m.coef_[0][-1]), 4), cal=[round(float(c.intercept_[0]), 4), round(float(c.coef_[0][0]), 4)],
                         n=int(len(a)), clicks=int(a.clk.sum()), buys=int(a.buy.sum()))
     return out
@@ -123,28 +144,49 @@ def fit(I):
 
 def p_buy(coef, seg, X, slot):
     """Calibrated purchase probability of feature rows X shown in `slot` (array, 1-based)."""
-    c = coef[seg]; w = np.array([c["w"][f] for f in lfm.FEATS])
+    c = coef[seg]; w = np.array([c["w"].get(f, 0.0) for f in lfm.FEATS])
     z = X @ w + c["b"] + c["slot"] * np.log(slot)
     return 1.0 / (1.0 + np.exp(-(c["cal"][0] + c["cal"][1] * z)))
 
 
-def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
-    """Hold-out: ranking quality, calibration by segment, and model-estimated value of logged vs lfm slates."""
+R1_FEATS = lfm.FEATS[:11]
+
+
+def holdout(I, test_rids, coefs):
+    """Ranking and likelihood on the hold-out for several coefficient sets {name: coef}."""
     from sklearn.metrics import roc_auc_score
     T = I[I.rid.isin(test_rids) & (I.dead == 0)]
-    for seg, new in (("known", False), ("new", True)):
-        a = T[T.new_user == new]; p = p_buy(coef, seg, a[lfm.FEATS].values, a.slot.values)
-        print(f"hold-out {seg:5s}: {len(a):6d} impressions, {int(a.buy.sum()):3d} buys, {int(a.clk.sum()):3d} clicks | "
-              f"AUC buy {roc_auc_score(a.buy, p):.3f}  click {roc_auc_score(a.clk, p):.3f} | predicted buys {p.sum():.1f}")
-    LF.w = {k: np.array([coef[k]["w"][f] for f in lfm.FEATS]) for k in ("known", "new")}; LF.b = {k: coef[k]["b"] for k in ("known", "new")}
-    S = LF.snap; res = []; slots = np.arange(1, 11)
+    rows = []
+    for name, coef in coefs.items():
+        for seg, new in (("known", False), ("new", True)):
+            a = T[T.new_user == new]; X = a[lfm.FEATS].values
+            p = p_buy(coef, seg, X, a.slot.values)
+            z = X @ np.array([coef[seg]["w"].get(f, 0.0) for f in lfm.FEATS])           # serving score (no slot)
+            g = pd.DataFrame(dict(rid=a.rid.values, z=z, buy=a.buy.values, clk=a.clk.values))
+            g["rank"] = g.groupby("rid").z.rank(ascending=False, method="average")
+            ll = float(np.sum(np.where(a.buy == 1, np.log(p), np.log1p(-p))))
+            rows.append((name, seg, len(a), int(a.buy.sum()), int(a.clk.sum()), roc_auc_score(a.buy, p), roc_auc_score(a.clk, p), ll,
+                         float((1 / g[g.buy == 1]["rank"]).mean()), float((1 / g[g.clk == 1]["rank"]).mean()), float(p.sum())))
+    H = pd.DataFrame(rows, columns=["weights", "seg", "imp", "buys", "clicks", "auc_buy", "auc_click", "loglik_buy", "mrr_buy", "mrr_click", "pred_buys"])
+    print("\nhold-out (mrr = mean reciprocal rank of the bought / clicked product among the 10 shown, by serving score):\n", H.round(3).to_string(index=False))
+    return H
+
+
+def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
+    """Model-estimated value of the logged slates vs the slates these weights would serve (optimistic: self-graded)."""
+    LF.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in lfm.FEATS]) for k in ("known", "new")}; LF.b = {k: coef[k]["b"] for k in ("known", "new")}
+    S = LF.snap; res = []
     rng = np.random.default_rng(0); rids = list(test_rids)
     if len(rids) > max_n: rids = list(rng.choice(rids, max_n, replace=False))
+    class AsOf:                                    # affinity as the writer sees it at that moment
+        def __init__(self, ts): self.ts = ts
+        def affinity_all(self, u, rv): return aff_asof(aff, u, rv, self.ts)
     for r in d.loc[rids].itertuples():
-        st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc = st
-        req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user))
+        st = state_asof(LF, carts, buys, r.user_id, r.ts); b, lc, hc, bt = st
+        seg_flag = lfm.in_segment(r.device, r.region)
+        req = dict(user_id=r.user_id, rv=r.rv, page=r.page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
         seg = "new" if r.new_user else "known"
-        X = lfm.features(S, aff.affinity_all(r.user_id, r.rv), r.rv, r.page, hc, lc)
+        X = lfm.features(S, aff_asof(aff, r.user_id, r.rv, r.ts), r.rv, r.page, hc, lc, bought_today=bt, seg=seg_flag)
         stale = S.stale(r.user_id)
         def value(items):
             v = 0.0
@@ -153,23 +195,25 @@ def report(d, I, LF, aff, carts, buys, coef, test_rids, max_n=4000):
                 if k is None or p in b or (stale is not None and stale[k] and p not in hc and p not in lc): continue   # dead: ~0
                 v += float(p_buy(coef, seg, X[k:k + 1], np.array([s + 1]))[0])
             return v
-        new = LF.slate(req, st, aff)
+        new = LF.slate(req, st, AsOf(r.ts))
         res.append((seg, r.page == "home", (r.mv or "?") if r.served_by == "team" else "FALLBACK", int(r.purchased != ""),
                     value(r.shown), value(new) if new else np.nan, len(set(new or ()) & set(r.shown))))
-    R = pd.DataFrame(res, columns=["seg", "home", "mv", "buy", "v_logged", "v_lfm", "overlap"])
-    R["mv"] = R.mv.str.replace("-guard", "").str.replace(":v1", "").str.replace("-r1", "")
-    g = R.groupby(["seg", "home"]).agg(n=("buy", "size"), real=("buy", "mean"), logged=("v_logged", "mean"), lfm=("v_lfm", "mean"), overlap=("overlap", "mean"))
+    R = pd.DataFrame(res, columns=["seg", "home", "mv", "buy", "v_logged", "v_new", "overlap"])
+    R["mv"] = R.mv.str.replace("-guard", "").str.replace(":v1", "")
+    g = R.groupby(["seg", "home"]).agg(n=("buy", "size"), real=("buy", "mean"), logged=("v_logged", "mean"), new=("v_new", "mean"), overlap=("overlap", "mean"))
     g["share"] = g.n / len(R)
-    for c in ("real", "logged", "lfm"): g[c] = (100 * g[c]).round(2)
-    print("\nexpected purchases per 100 requests (model estimate; 'real' = purchases that happened):\n", g.round(3).to_string())
-    print("\nby logged policy (non-home):\n", (R[~R.home].groupby(["seg", "mv"]).agg(n=("buy", "size"), real=("buy", "mean"), logged=("v_logged", "mean"), lfm=("v_lfm", "mean")) * [1, 100, 100, 100]).round(2).query("n >= 100").to_string())
-    tot = R[["buy", "v_logged", "v_lfm"]].mean() * 100
-    print(f"\nall hold-out requests (n={len(R)}): real {tot.buy:.2f}%  model on logged slates {tot.v_logged:.2f}%  model on lfm slates {tot.v_lfm:.2f}%")
+    for c in ("real", "logged", "new"): g[c] = (100 * g[c]).round(2)
+    print("\nexpected purchases per 100 requests (model estimate; 'real' = purchases that happened; 'new' = slates of these weights):\n", g.round(3).to_string())
+    print("\nby logged policy:\n", (R.groupby(["seg", "home", "mv"]).agg(n=("buy", "size"), real=("buy", "mean"), logged=("v_logged", "mean"), new=("v_new", "mean"), overlap=("overlap", "mean")) * [1, 100, 100, 100, 1]).round(2).query("n >= 80").to_string())
+    tot = R[["buy", "v_logged", "v_new"]].mean() * 100
+    print(f"\nall hold-out requests (n={len(R)}): real {tot.buy:.2f}%  model on logged slates {tot.v_logged:.2f}%  model on new slates {tot.v_new:.2f}%")
     return R
 
 
 def main():
     if "--pull" in sys.argv: pull()
+    out = Path(lfm.HERE / sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else lfm.ART
+    feats = R1_FEATS if "--r1" in sys.argv else lfm.FEATS
     d, LF, aff, carts, buys = load()
     I = impressions(d, LF, aff, carts, buys)
     print(len(d), "requests,", len(I), "impressions,", int(I.buy.sum()), "buys,", int(I.clk.sum()), "clicks; dead impressions:",
@@ -177,12 +221,18 @@ def main():
     cut = pd.Timestamp(sys.argv[sys.argv.index("--cut") + 1]) if "--cut" in sys.argv else d.ts.quantile(0.7)
     train = I[I.ts < cut]; test_rids = d.index[d.ts >= cut]
     print("time split at", cut, "| train requests", int((d.ts < cut).sum()), "test", len(test_rids))
-    report(d, I, LF, aff, carts, buys, fit(train), test_rids)
-    coef = fit(I)
+    cands = {"r1 features, refit": fit(train, R1_FEATS), "all features, refit": fit(train, lfm.FEATS)}
+    try:
+        old = json.loads(lfm.ART.read_text())
+        if all("cal" in old[k] for k in ("known", "new")): cands = {"committed " + lfm.ART.name: old} | cands
+    except Exception: pass
+    holdout(I, test_rids, cands)
+    report(d, I, LF, aff, carts, buys, fit(train, feats), test_rids)
+    coef = fit(I, feats)
     coef["lq0"] = LF.lq0
-    coef["meta"] = dict(fitted_on=f"{d.ts.min()} .. {d.ts.max()} UTC", requests=int(len(d)), buy_weight=BUY_W, C=C_REG, label="click, purchases x3")
+    coef["meta"] = dict(fitted_on=f"{d.ts.min()} .. {d.ts.max()} UTC", requests=int(len(d)), buy_weight=BUY_W, C=C_REG, label="click, purchases x3", feats=feats)
     if "--no-write" not in sys.argv:
-        lfm.ART.write_text(json.dumps(coef, indent=1)); print("\nwrote", lfm.ART.name)
+        out.write_text(json.dumps(coef, indent=1)); print("\nwrote", out.name)
     for seg in ("known", "new"): print(seg, coef[seg])
 
 

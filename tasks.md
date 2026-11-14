@@ -22,6 +22,7 @@
 | T-018 | P0 | Descomponer el hueco con la referencia por segmento y atacar el mayor: variante `lfm` (modelo ajustado con el feedback de hoy, pesos distintos para usuario nuevo y recurrente, carrito no comprado + afinidad) | Javi (agente) / javi/lfm-live-fit | **IMPLEMENTED/TESTED (77 tests, dry-run real sin escribir, E-180); apagada por defecto, pendiente de A/B por leaderboard por el dueño del writer (D-180)** | Writer de main; reinicio único para cargar el código |
 | T-012 | P0 | Final deployment, backup, monitoring/rollback + jury demo | TBD / TBD | READY | Live loop, champion, experiment metrics |
 | T-013 | P1 | `home` page + new-user candidates (no session views): organic user affinity / global converters, new module `recsys/home_cands.py` importable by `live.py`; offline time-split eval | Javi's agent (Claude) / javi/home-new-users | **MVP DONE, pendiente de prueba en vivo (D-130; I-130…I-132, E-130…E-132)** | I-010; RawTree read access; does not edit `fe.py`/`live.py` |
+| T-021 | P0 | lfm v2: reajuste con feedback propio, 6 features nuevas (`lfm_coef_r2.json`) y brazos de pesos en caliente (`lfm_arms` en `policy.json`) leídos por segmento en el leaderboard | Javi (agente) / javi/lfm-v2 | **IMPLEMENTED/TESTED (114 tests, dry-run real sin escribir, E-210); sin brazos no cambia nada; pendiente de reinicio y experimento por el dueño del writer (D-210)** | lfm en main |
 
 ## Proposed responsibility split (adapt to actual team size)
 

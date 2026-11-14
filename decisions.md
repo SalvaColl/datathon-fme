@@ -97,6 +97,15 @@ Record consequences affecting other agents, especially interfaces, data assumpti
 - **Riesgo para la final:** los pesos salen del feedback de hoy; si mañana los compradores son todos nuevos solo aplica la mitad "nuevo" (carrito de hoy + afinidad de sesión). Reajustar con `python lfm_build.py --pull` antes de las 10:00 con todo el feedback de la noche.
 - **Revisit condition:** si `-k` no supera a qrank en usuarios que vuelven en el leaderboard, dejar lfm solo para usuarios nuevos o descartarlo.
 
+### D-210 — Brazos de pesos de lfm en caliente, medidos por el leaderboard (T-021)
+- **Date / owner / status:** 2026-11-14 / Javi (agente, T-021) / PROPOSED. Sin brazos el comportamiento es idéntico al actual.
+- **Qué:** `policy.json` admite `"lfm_arms"`: de 2 a 4 brazos, cada uno con `tag`, opcionalmente `file` (otro `lfm_coef*.json` del repo) y `w` (pesos sueltos que sustituyen a los del brazo, por segmento `known` / `new`). Un brazo con solo `tag` son los pesos publicados (control). Los usuarios se reparten a partes iguales por hash y cada brazo escribe `v3-lfm-<tag>-k|-n|-kh|-nh`. Se relee cada ~20 s, sin reiniciar.
+- **Por qué:** I-211, E-210. Las compras ya no distinguen variantes; el leaderboard sí, en una hora.
+- **Primer experimento propuesto:** `{"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}, {"tag": "t1", "w": {"known": {"hcart": 1.5, "islast": 3.0}, "new": {"nbp": 0.6, "bsub": 0.6}}}]}`. r2 = todo reajustado; t1 = pesos publicados más solo las tres ideas del tablero (I-201, I-202, I-209). Leer a los 60 min; dejar el mejor brazo por segmento.
+- **Cambios en código compartido:** `live.py` pide también `context.device` y `context.region` en la consulta de peticiones; `lfm.py` gana 6 features (peso 0 con el fichero publicado) y `set_arms`. Hace falta reiniciar el writer una vez para cargar el código.
+- **Rollout / rollback:** quitar `lfm_arms` de `policy.json`. Un brazo mal escrito se ignora entero y se sirve lfm normal; si un brazo falla en una petición, esa petición usa los pesos publicados.
+- **Revisit condition:** si ningún brazo supera a r1 en dos lecturas de una hora, congelar r1 para la final.
+
 ## Decision template
 
 ```markdown
