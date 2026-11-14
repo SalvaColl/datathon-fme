@@ -41,5 +41,43 @@ class EvalSliceTests(unittest.TestCase):
         self.assertTrue(np.isnan(E.mrr_ci([], [])[0]))
 
 
+import json
+import lfm
+
+R3 = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home", "lq", "sbrand",
+      "nbp", "bsub", "hcart", "p40", "segcheap", "seglq", "ucat", "usub"]
+
+
+class FeatureSetTests(unittest.TestCase):
+    """T-039: "r3", "r3 + cv" and "r3 + mf" are fixed lists; a new lfm feature must not leak into any of them."""
+
+    def test_exact_memberships(self):
+        self.assertEqual(E.R3_FEATS, R3)
+        self.assertEqual(E.R3_CV_FEATS, R3 + ["cv"])
+        self.assertEqual(E.R3_MF_FEATS, R3 + ["mf"])
+        self.assertEqual(E.FEATURE_SETS["r3 features"], R3)
+        self.assertEqual(E.FEATURE_SETS["r3 + cv"], R3 + ["cv"])
+        self.assertEqual(E.FEATURE_SETS["r3 + mf"], R3 + ["mf"])
+        self.assertEqual(E.FEATURE_SETS["r1 features"], R3[:11])
+
+    def test_sets_stay_distinct(self):
+        self.assertNotIn("mf", E.R3_FEATS); self.assertNotIn("cv", E.R3_FEATS)
+        self.assertNotIn("mf", E.R3_CV_FEATS); self.assertNotIn("cv", E.R3_MF_FEATS)
+        self.assertEqual(len({tuple(v) for v in E.FEATURE_SETS.values()}), len(E.FEATURE_SETS))
+
+    def test_sets_match_the_committed_artifacts(self):
+        feats = lambda f: json.loads((ROOT / "recsys" / f).read_text())["meta"]["feats"]
+        self.assertEqual(feats("lfm_coef_r3.json"), E.R3_FEATS)
+        self.assertEqual(feats("lfm_coef_r5.json"), E.R3_CV_FEATS)
+        self.assertEqual(feats("lfm_coef_r6.json"), E.R3_MF_FEATS)
+
+    def test_a_future_feature_changes_no_set(self):
+        saved = list(lfm.FEATS)
+        try:
+            lfm.FEATS.append("zz_future")
+            self.assertEqual(E.R3_FEATS, R3); self.assertEqual(E.R3_CV_FEATS, R3 + ["cv"]); self.assertEqual(E.R3_MF_FEATS, R3 + ["mf"])
+        finally: lfm.FEATS[:] = saved
+
+
 if __name__ == "__main__":
     unittest.main()

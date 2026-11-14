@@ -168,3 +168,53 @@ class CalibrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ComponentProvenanceTests(unittest.TestCase):
+    """T-039: a cutoff check must see every learned part of a file, not only the outer meta.fitted_on."""
+    R3 = "2026-11-14 11:09:47.360000 .. 2026-11-14 16:00:29.336000 UTC"
+    MF = "2026-11-14 11:09:47.360000 .. 2026-11-14 18:33:39.355000 UTC"
+
+    def as_first_committed(self):
+        # the meta of lfm_coef_r6.json exactly as PR #36 committed it: outer cutoff = r3's, mf weight fitted until 18:33
+        return dict(meta=dict(fitted_on=self.R3, base="lfm_coef_r3.json", added=["mf"], mf_fit=dict(w=0.0627, se=0.0035, fitted_on=self.MF, requests=79868)))
+
+    def test_r6_artifact_is_rejected_for_a_1700_holdout(self):
+        r6 = json.loads((ROOT / "recsys" / "lfm_coef_r6.json").read_text())
+        self.assertEqual(B.fitted_until(r6), pd.Timestamp("2026-11-14 18:33:39.355"))
+        self.assertTrue(B.leaks(r6, "2026-11-14 17:00")); self.assertTrue(B.leaks(r6, "2026-11-14 18:33:39.355"))
+        self.assertFalse(B.leaks(r6, "2026-11-14 18:33:40"))
+        self.assertTrue(B.leaks(self.as_first_committed(), "2026-11-14 17:00"))          # the regression itself
+
+    def test_nested_fit_counts_even_when_the_declared_list_is_wrong(self):
+        c = self.as_first_committed()
+        c["meta"]["provenance"] = [dict(component="base", fitted_on=self.R3), dict(component="mf", fitted_on=self.R3)]   # understated
+        self.assertEqual(B.fitted_until(c), pd.Timestamp("2026-11-14 18:33:39.355"))
+
+    def test_missing_provenance_fails_closed(self):
+        c = self.as_first_committed(); self.assertIsNone(B.fitted_until(c))             # base/added without the per-part list
+        self.assertTrue(B.leaks(c, "2026-11-15 09:00"))
+        for prov in ([dict(component="base", fitted_on=self.R3)],                        # the added feature is missing
+                     [dict(component="mf", fitted_on=self.MF)],                          # the base is missing
+                     [dict(component="base", fitted_on=self.R3), dict(component="mf")],  # no date
+                     [dict(component="base", fitted_on=self.R3), dict(component="mf", fitted_on="yesterday")]):
+            c = self.as_first_committed(); c["meta"]["provenance"] = prov
+            self.assertIsNone(B.fitted_until(c), prov); self.assertTrue(B.leaks(c, "2026-11-15 09:00"))
+        self.assertIsNone(B.fitted_until(dict(meta=dict(fitted_on="2026-11-14 10:00 .. NaT UTC"))))
+        self.assertIsNone(B.fitted_until(dict(meta=dict(fitted_on=self.R3, mf_fit=dict(fitted_on="?")))))
+
+    def test_inherited_base_is_read_from_its_own_file(self):
+        # the note says the base stopped at 12:00, the base file in the repository says 16:00:29: the file wins
+        c = dict(meta=dict(fitted_on="2026-11-14 11:00:00 .. 2026-11-14 12:00:00 UTC", base="lfm_coef_r3.json", added=["mf"],
+                           provenance=[dict(component="base", fitted_on="2026-11-14 11:00:00 .. 2026-11-14 12:00:00 UTC"),
+                                       dict(component="mf", fitted_on="2026-11-14 11:00:00 .. 2026-11-14 12:00:00 UTC")]))
+        self.assertEqual(B.fitted_until(c), pd.Timestamp("2026-11-14 16:00:29.336"))
+        c["meta"]["base"] = "lfm_coef_r5.json"                                           # a base that is itself built on r3
+        self.assertEqual(B.fitted_until(c), pd.Timestamp("2026-11-14 17:22:28.356"))
+
+    def test_committed_files_keep_their_cutoffs(self):
+        get = lambda f: B.fitted_until(json.loads((ROOT / "recsys" / f).read_text()))
+        self.assertEqual(get("lfm_coef_r3.json"), pd.Timestamp("2026-11-14 16:00:29.336"))
+        self.assertEqual(get("lfm_coef_r5.json"), pd.Timestamp("2026-11-14 17:22:28.356"))
+        self.assertEqual([c for c, _ in B.provenance(json.loads((ROOT / "recsys" / "lfm_coef_r6.json").read_text()))][:5],
+                         ["fit", "meta.mf_fit", "base", "mf", "lfm_mf.npz"])

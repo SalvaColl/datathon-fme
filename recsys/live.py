@@ -86,8 +86,10 @@ def clean_lfm_arms(raw):
         tag, main = str(a.get('tag', '')), spec(a)
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
         lqm = a.get('lq')                                      # T-028/T-034: "cold" | "cold_new" = corrected quality for today's products
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {})})
+        mfm = a.get('mf')                                      # T-039: "known_pages" = collaborative feature only for its cohort
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) \
+                and (mfm is None or mfm in lfm.MF_MODES):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'mf': mfm} if mfm else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -95,8 +97,23 @@ def clean_lfm_arms(raw):
     # only difference is the quality of new products, and the arm's untouched traffic is served and labelled as that control
     # Promotion form (D-340): when EVERY arm is "cold_new" (one promoted arm alone, or tuner rounds built on it) there is no
     # trial of the quality itself, so no control is needed and each arm keeps its own tag for every cohort.
-    if arms and all(a.get('lq') == 'cold_new' for a in arms): return arms
-    return arms if all(a.get('lq') != 'cold_new' or lfm_control(a, arms) for a in arms) else []
+    # T-039: a "known_pages" arm must have a control in the same list that is the same arm without the collaborative
+    # weight (same file, same other overrides, same home, same "lq"): the trial's only difference is `mf` for returning
+    # shoppers on product/category pages with views, and the arm's untouched traffic is served and labelled as that control.
+    if any('mf' in a and mf_control(a, arms) is None for a in arms): return []
+    rest = [a for a in arms if 'mf' not in a]                  # the quality rules below judge the list without the mf challengers
+    if rest and all(a.get('lq') == 'cold_new' for a in rest): return arms
+    return arms if all(a.get('lq') != 'cold_new' or lfm_control(a, rest) for a in rest) else []
+def mf_control(arm, arms):
+    """The arm of `arms` without "mf" that equals `arm` once its collaborative weight is removed (None if there is none,
+    or if `arm` gives `mf` any weight outside returning shoppers on its main pages)."""
+    w = {seg: dict(o) for seg, o in (arm.get('w') or {}).items()}
+    if not w.get('known', {}).get('mf') or 'mf' in w.get('new', {}) or 'mf' in ((arm.get('home') or {}).get('w') or {}).get('known', {}) \
+            or 'mf' in ((arm.get('home') or {}).get('w') or {}).get('new', {}): return None
+    del w['known']['mf']; w = {seg: o for seg, o in w.items() if o}
+    spec = {k: v for k, v in arm.items() if k not in ('tag', 'mf', 'w')}
+    if w: spec['w'] = w
+    return next((c for c in arms if 'mf' not in c and {k: v for k, v in c.items() if k != 'tag'} == spec), None)
 def lfm_control(arm, arms):
     """The arm of `arms` without "lq" whose weight spec equals `arm`'s (None if there is none)."""
     spec = {k: v for k, v in arm.items() if k not in ('tag', 'lq')}
@@ -105,6 +122,9 @@ def lfm_route(arm, new, page, rv):
     """Tag that answers (and labels) a request of a user hashed to `arm`. A "cold_new" arm only owns new shoppers on
     product/category pages with recent views; everything else is the control's, so no duplicate label is created."""
     if arm is None: return None
+    if 'mf' in arm and not lfm.mf_target(arm['mf'], new, page, rv):       # T-039: outside its cohort the arm IS its control
+        ctl = mf_control(arm, POLICY['lfm_arms'])
+        if ctl is not None: return lfm_route(ctl, new, page, rv)
     if arm.get('lq') == 'cold_new' and not lfm.lq_target('cold_new', new, page, rv):
         ctl = lfm_control(arm, POLICY['lfm_arms'])
         if ctl is not None: return ctl['tag']

@@ -62,6 +62,15 @@ LQ_MODES = ("cold", "cold_new")    # arm key "lq" (T-028): corrected quality for
 LQ_PAGES = ("product", "category")   # ...only on these pages and only with recent views; home is never touched
 
 
+MF_MODES = ("known_pages",)        # arm key "mf" (T-039): the collaborative feature only for returning shoppers on
+                                   # product/category pages with recent views; anywhere else the arm scores without it
+
+
+def mf_target(mode, is_new_user, page, rv) -> bool:
+    """Does a request get the collaborative feature under arm mode `mode`? The single rule for scoring and for routing."""
+    return mode in MF_MODES and bool(rv) and page in LQ_PAGES and not bool(is_new_user)
+
+
 def lq_target(mode, is_new_user, page, rv) -> bool:
     """Does a request get the corrected quality under arm mode `mode`? The single rule for scoring and for routing."""
     return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
@@ -158,7 +167,7 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
     if mfu is not None and S.mf is not None:            # mfu: the shopper's factor vector (LiveFit.user_mf)
         Q, rows_mf, rows_s = S.mf                        # Q: every product of the history; rows_s[k] <-> rows_mf[k]
         sc = Q @ mfu; sd = float(sc.std())
-        if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
+        if np.isfinite(sd) and sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd      # broken factors = no opinion
     return X if idx is None else X[idx]
 
 
@@ -167,6 +176,7 @@ class LiveFit:
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
         self.alt_lq = {}              # arm tag -> "cold" | "cold_new" (T-028), see set_arms()
+        self.alt_mf = {}              # arm tag -> "known_pages" (T-039): where this arm may use the collaborative feature
         self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
         self.lq0 = float(coef.get("lq0", 0.0)); self.meta = coef.get("meta", {})
         self.hcart, self.hbought = {}, {}
@@ -221,6 +231,7 @@ class LiveFit:
             if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
         self.alt = alt
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
+        self.alt_mf = {a["tag"]: a["mf"] for a in arms if a.get("mf") in MF_MODES}
 
     # ---- refresher thread ----
     def set_window(self, day_start=None, carts="persistent"):
@@ -357,8 +368,11 @@ class LiveFit:
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
         m = getattr(self, "alt_lq", {}).get(model) if model else None      # T-028: this arm asks for the corrected quality
         page = req.get("page", "product")
+        mfu = state[5] if len(state) > 5 else None
+        mm = getattr(self, "alt_mf", {}).get(model) if model else None     # T-039: a targeted arm scores without mf outside its cohort
+        if mm is not None and not mf_target(mm, seg == "new", page, rv): mfu = None
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
+                     mix=state[4] if len(state) > 4 else None, mfu=mfu, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
         s = X @ w[seg] + b0[seg]
         dead = ~S.ok
         st = S.stale(req["user_id"])
