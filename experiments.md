@@ -470,6 +470,20 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Lectura:** +0,48 pt a favor de `cn1`, dentro de lo que oscila una ronda de 30 minutos (E-272: ±0,4 pt con 1.500 peticiones, y aquí hay ~650 por brazo). NO CONCLUYENTE: hace falta un bloque de confirmación antes de promover. El ingreso por petición baja; la puntuación es por conversión, pero conviene mirarlo en la confirmación.
 - Equipo en la ventana: 2,05%, 4.º (team_06 2,45%, team_42 2,16%, team_22 2,08%, `reference` 2,14%), 99,98% a tiempo.
 
+### E-274 — r6 (filtrado colaborativo) contra r3 en conocidos y bloque de confirmación de `cold_new`, modelo oculto
+- **Date / owner:** 2026-11-14 20:25 UTC · Javi (agente) · writer en `1f20ae3`. HIDDEN MODEL, ventana 19:50–20:20 UTC. Brazos r3 y r6 desde las 19:48; tres brazos (r3, r6, `cn1`) desde las 19:55. El writer del Mac se paró a las 20:20:22 UTC para pasarlo a otra máquina.
+
+| Grupo | r3 | r6 | `cn1` |
+|---|---:|---:|---:|
+| Conocidos, producto/categoría | 1,89% (1.907) | 1,90% (1.072) | — |
+| Conocidos, home | 0,44% (430) | 0,40% (269) | — |
+| Nuevos, producto/categoría | 3,04% (481) | 3,36% (471), mismos pesos que r3 | 3,97% (380) |
+
+- **r6:** empate en conocidos (+0,00 pt). Sin efecto medible; NO se promueve. No borrar el código.
+- **`cold_new`:** segundo bloque a favor: 3,97% contra 3,20% del control conjunto (r3-n + r6-n, 952 peticiones, mismos pesos). Primer bloque (E-273): 3,75% contra 3,26%. Sumados: 3,83% (1.047) contra 3,22% (1.585), +0,6 pt. La diferencia entre los dos controles idénticos (3,04% y 3,36%) da la escala del ruido: 0,3 pt.
+- **Estado:** `cold_new` es el único retador con dos bloques seguidos a favor. Sigue como variante en la política de la noche (`recsys/policy.night_1114_x.json`, commit `d05e349`) para el veredicto con el acumulado.
+- Puntualidad: 66 de las 84 pérdidas de 18:50–20:08 UTC son de los dos reinicios con relevo; 14 de parones de 2–4 s en el Mac (8 GB, 7,2 GB de swap) y tiempos de espera de la API. Ningún brazo es más lento (p95 ≈2,0 s en todos).
+
 ### E-390 — Feature `newp` (producto lanzado durante el evento) sobre r3 y brazo `np1` (T-039)
 - **Date / owner / branch:** 2026-11-14 20:30 UTC · Javi (agente) · `javi/new-product-arm`. LIVE FEEDBACK (sesgado: solo lo que lfm enseñó) + OFFLINE ESTIMATE. No es conversión del modelo oculto.
 - **Comandos:** `python lfm_build.py --pull --base lfm_coef_r3.json --add newp --no-write`; `python explore_t039_newp.py --cut "2026-11-14 17:10" --known 1.0 --new 0`.
