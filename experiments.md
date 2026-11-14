@@ -263,7 +263,7 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Ensayo en seco (writer real en la nube, `--dry-run`, brazos r3 y r5):** 674 peticiones, 0 errores, 0 caducadas.
 - **Lectura prevista:** `api/state?by=model&from=<epoch>`, 30 minutos, r5 contra r3 por separado en `-k` y `-n`. Con los pesos ajustados la diferencia esperable es menor que el ruido de una ronda (±0,25 pt vuelven, ±0,6 nuevos), sobre todo en los que vuelven.
 
-### E-330 — Corte brusco de stock: lfm dejaba de responder y la petición caía a v1 (T-033)
+### E-370 — Corte brusco de stock: lfm dejaba de responder y la petición caía a v1 (T-037)
 - **Date / owner / branch:** 2026-11-14 19:00 UTC · Javi (agente) · `javi/slate-stock-fix`. Etiqueta: ensayo de robustez con el código real del writer en `--dry-run` (`tools/final_rehearsal.py`, PR de T-032). No es una estimación de conversión.
 - **Causa:** `LiveFit.slate` mira los 30 productos con más puntuación y después quita los que el hilo de stock acaba de marcar como agotados. Si más de 20 de esos 30 están agotados desde la última carga de catálogo, devuelve vacío y la petición la responde el camino antiguo (`v1-gbm-cand-r1`).
 - **Ensayo (1.500 peticiones registradas, un tercio del catálogo y todas las vistas recientes agotados de golpe, RawTree sin responder):**
