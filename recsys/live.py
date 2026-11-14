@@ -12,10 +12,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms
     from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms
     from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -185,6 +185,9 @@ def initialize():
     except Exception as e: print('live_quality not installed, serving unchanged:', type(e).__name__, e, flush=True)
     try: LF = lfm.LiveFit.load(history)
     except Exception as e: print('lfm not loaded, lfm variants disabled:', type(e).__name__, e, flush=True)
+    # T-025 hook (home_arms): inert unless data/home_arms.json lists arms; only swaps slates of requests without recent_views.
+    try: home_arms.install(globals())
+    except Exception as e: print('home_arms not installed, serving unchanged:', type(e).__name__, e, flush=True)
 
 state = {"live": None, "cat": None, "unavail": set(), "stock_out": set(), "stock_checked": 0,
          "pools": None, "best": None, "ev_ts": os.environ.get("EVENTS_SINCE", "2026-11-14 07:00:00"), "cycles": 0}
