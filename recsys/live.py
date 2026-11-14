@@ -62,7 +62,9 @@ def clean_lfm_arms(raw):
         ok = ok and isinstance(w, dict) and set(w) <= {'known', 'new'} and all(
             isinstance(o, dict) and all(k in lfm.FEATS and isinstance(v, (int, float)) and abs(v) <= 20 for k, v in o.items()) for o in w.values())
         if ok: arms.append({'tag': tag.lower(), **({'file': f} if f else {}), **({'w': w} if w else {})})
-    return arms if len(arms) >= 2 and len({a['tag'] for a in arms}) == len(arms) else []
+    # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
+    # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
+    return arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
 def lfm_arm(user_id):
     arms = POLICY['lfm_arms']
     return arms[zlib.crc32(('lfmarm:' + user_id).encode()) % len(arms)] if arms else None

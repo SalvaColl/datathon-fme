@@ -139,7 +139,8 @@ class ArmTests(unittest.TestCase):
         arms = live.clean_lfm_arms(raw); live.LF.set_arms(arms); live.POLICY['lfm_arms'] = arms; return arms
 
     def test_bad_arm_lists_are_rejected(self):
-        self.assertEqual(live.clean_lfm_arms([{'tag': 'only'}]), [])                                    # needs 2+
+        self.assertEqual(live.clean_lfm_arms([{'tag': 'only'}]), [{'tag': 'only'}])                     # one arm = tuned weights left in place
+        self.assertEqual(live.clean_lfm_arms([{'tag': x} for x in 'abcde']), [])                        # more than 4
         self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'a'}]), [])                         # duplicate tag
         self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'b', 'w': {'known': {'nope': 1}}}]), [])
         self.assertEqual(live.clean_lfm_arms([{'tag': 'a'}, {'tag': 'b', 'file': '../secrets.json'}]), [])
