@@ -1,4 +1,4 @@
-"""T-036: lfm feature `newp` (product launched during the event) and the arm that weights it."""
+"""T-039: lfm feature `newp` (product launched during the event) and the arm that weights it."""
 import unittest
 import numpy as np
 
@@ -72,6 +72,94 @@ class NewpTests(unittest.TestCase):
             self.assertIsNone(live.new_products(cat))
             live.QR = None; self.assertIsNone(live.new_products(cat))
         finally: live.QR = saved
+
+
+class ExploreTests(unittest.TestCase):
+    """T-039 exploration arm: only the last slot changes, to a valid product from ranks 11..60 of the same ranking."""
+    def setUp(self):
+        self.lf, self.aff = build(newp=None)
+        self.lf.set_arms([{"tag": "r3"}, {"tag": "x1", "explore": True}])
+
+    def req(self, rid, rv=('A30',), page='product', new=False):
+        return dict(request_id=rid, user_id='u9', rv=list(rv), page=page, is_new_user=new)
+
+    def both(self, rid, exclude=(), **kw):
+        st = self.lf.user_state('u9'); r = self.req(rid, **kw)
+        return self.lf.slate(r, st, self.aff, exclude=exclude, model="r3"), self.lf.slate(r, st, self.aff, exclude=exclude, model="x1")
+
+    def test_only_the_last_slot_changes_and_comes_from_ranks_11_to_60(self):
+        st = self.lf.user_state('u9'); ranked = self.lf.slate(self.req('r0'), st, self.aff, n=60, model="r3")
+        seen = set()
+        for k in range(200):
+            a, x = self.both(f'r{k}')
+            self.assertEqual(x[:9], a[:9]); self.assertEqual(len(set(x)), 10)
+            self.assertIn(x[9], ranked[10:60]); seen.add(x[9])
+        self.assertGreater(len(seen), 30)                                        # spreads over the pool
+        self.assertEqual(self.both('r7')[1], self.both('r7')[1])                 # same request, same slate
+
+    def test_home_and_requests_without_views_are_untouched(self):
+        for kw in (dict(page='home', rv=()), dict(page='home'), dict(rv=())):
+            a, x = self.both('r1', **kw); self.assertEqual(a, x)
+
+    def test_never_serves_excluded_bought_or_out_of_stock_products(self):
+        st = self.lf.user_state('u9'); ranked = self.lf.slate(self.req('r0'), st, self.aff, n=60, model="r3")
+        gone = set(ranked[10:55]); self.lf.add('u9', ranked[55], p=1)
+        for k in range(60):
+            a, x = self.both(f'r{k}', exclude=gone)
+            self.assertEqual(len(set(x)), 10); self.assertFalse(gone & set(x)); self.assertNotEqual(x[9], ranked[55])
+        cat = catalog(); aff = FakeAff(list(cat.index)); lf = lfm.LiveFit(COEF, HIST)
+        lf.set_catalog(cat, set(cat.index[12:]), aff, {p: 0.0 for p in cat.index}, None); lf.set_arms([{"tag": "x1", "explore": True}])
+        s = lf.slate(dict(user_id='u9', rv=['A05'], page='product', is_new_user=False), lf.user_state('u9'), aff, model="x1")
+        self.assertEqual(len(set(s)), 10); self.assertTrue(set(s) <= set(cat.index[:12]))
+
+    def test_no_pool_keeps_the_ranked_slate(self):
+        cat = catalog(); aff = FakeAff(list(cat.index)); lf = lfm.LiveFit(COEF, HIST)
+        lf.set_catalog(cat, set(cat.index[10:]), aff, {p: 0.0 for p in cat.index}, None); lf.set_arms([{"tag": "r3"}, {"tag": "x1", "explore": True}])
+        r = dict(user_id='u8', rv=['A05'], page='product', is_new_user=True); st = lf.user_state('u8')
+        self.assertEqual(lf.slate(r, st, aff, model="x1"), lf.slate(r, st, aff, model="r3"))
+
+    def test_writer_validation(self):
+        arms = [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "x1", "file": "lfm_coef_r3.json", "explore": True}]
+        self.assertEqual(live.clean_lfm_arms(arms), arms)
+        for bad in ("yes", 1, 0.1, {"slot": 10}):
+            self.assertEqual(live.clean_lfm_arms([arms[0], {**arms[1], "explore": bad}]), [])
+        self.assertEqual(live.clean_lfm_arms([arms[0], {"tag": "x1", "file": "lfm_coef_r3.json", "explore": False}]), [])
+        for mode in ("new", "known"):
+            self.assertEqual(live.clean_lfm_arms([arms[0], {**arms[1], "explore": mode}])[1]["explore"], mode)
+
+    def test_mode_new_or_known_only_touches_that_kind_of_shopper(self):
+        for mode, hit, miss in (("new", True, False), ("known", False, True)):
+            self.lf.set_arms([{"tag": "r3"}, {"tag": "x1", "explore": mode}])
+            diff = 0
+            for k in range(40):
+                a, x = self.both(f'r{k}', new=miss); self.assertEqual(a, x)
+                a, x = self.both(f'r{k}', new=hit); self.assertEqual(a[:9], x[:9]); diff += a != x
+            self.assertEqual(diff, 40)
+        self.assertFalse(lfm.x_target("new", True, "home", ["A01"])); self.assertFalse(lfm.x_target("new", True, "product", []))
+        self.assertFalse(lfm.x_target(None, True, "product", ["A01"])); self.assertFalse(lfm.x_target(1, True, "product", ["A01"]))
+
+    def test_the_night_policy_file_is_accepted_whole_and_routes_as_documented(self):
+        import json, pathlib
+        raw = json.loads((pathlib.Path(lfm.HERE) / "policy.night_1114_x.json").read_text())["lfm_arms"]
+        arms = live.clean_lfm_arms(raw)
+        self.assertEqual(arms, raw); self.assertEqual([a["tag"] for a in arms], ["r3", "np1", "cvk", "cn1"])
+        saved = live.POLICY["lfm_arms"]
+        try:
+            live.POLICY["lfm_arms"] = arms; by = {a["tag"]: a for a in arms}
+            self.assertEqual(live.lfm_route(by["cn1"], False, "product", ["A01"]), "r3")      # cn1's returning shoppers are the champion's
+            self.assertEqual(live.lfm_route(by["cn1"], True, "product", ["A01"]), "cn1")
+            self.assertEqual(live.lfm_route(by["np1"], True, "product", ["A01"]), "np1")       # np1's new shoppers = the exploration row
+            self.assertEqual(live.lfm_route(by["np1"], False, "product", ["A01"]), "np1")
+        finally: live.POLICY["lfm_arms"] = saved
+        lf, aff = build(); lf.set_arms(arms)                                                    # real weight files, fixture catalogue
+        self.assertEqual(lf.alt_x, {"np1": "new"}); self.assertEqual(lf.alt_lq, {"cn1": "cold_new"})
+        st = lf.user_state('u9')
+        for new in (False, True):
+            r = dict(request_id='q1', user_id='u9', rv=['A30'], page='product', is_new_user=new)
+            s = {t: lf.slate(r, st, aff, model=t) for t in by}
+            self.assertTrue(all(v is not None and len(set(v)) == 10 for v in s.values()))
+            if new: self.assertEqual(s["np1"][:9], s["r3"][:9]); self.assertNotEqual(s["np1"][9], s["r3"][9]); self.assertEqual(s["cvk"], s["r3"])
+            else: self.assertTrue(NEW & set(s["np1"]) or s["np1"] == s["r3"])
 
 
 if __name__ == "__main__":

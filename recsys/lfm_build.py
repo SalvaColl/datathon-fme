@@ -74,7 +74,7 @@ def load():
     except Exception as e:
         print("qrank.joblib not readable, lq = 0:", type(e).__name__); lq = {}
     lq0 = float(np.median(list(lq.values()))) if lq else 0.0
-    newp = (set(cat.index) - set(lq)) if lq else None                  # launched during the event (T-036), as live.new_products
+    newp = (set(cat.index) - set(lq)) if lq else None                  # launched during the event (T-039), as live.new_products
     sub_med = pd.Series(lq).reindex(cat.index).groupby(cat["sub"]).transform("median")     # new products: subcategory median, as qrank does
     lq = {p: (lq[p] if p in lq else (float(sub_med[p]) if pd.notna(sub_med[p]) else lq0)) for p in cat.index}
     hc = home_cands.HomeCands(hist, cat)

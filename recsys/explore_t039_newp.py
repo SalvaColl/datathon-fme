@@ -1,10 +1,10 @@
-"""T-036 replay (read-only): what the new-product arm changes. For requests after --cut, as of each request, builds
+"""T-039 replay (read-only): what the new-product arm changes. For requests after --cut, as of each request, builds
 the r3 slate and the slate of the same weights plus `newp` (weights from --w, default the fitted file), and reports
 how many slates change, how many products launched during the event are shown, and the purchases each slate is
 expected to get under the model fitted BEFORE the cut (optimistic: the model grades its own choice).
 
     python lfm_build.py --pull --base lfm_coef_r3.json --add newp --out lfm_coef_np.json --cut "2026-11-14 17:10"
-    python explore_t036_newp.py --cut "2026-11-14 17:10" [--known 1.96 --new 0.86] [--n 4000]
+    python explore_t039_newp.py --cut "2026-11-14 17:10" [--known 1.96 --new 0.86] [--n 4000]
 """
 import sys, json
 import numpy as np, pandas as pd
