@@ -24,12 +24,16 @@ import requests
 from confirm_read import URL, epoch
 
 
-def stats(v):
+SD_FLOOR = 0.10     # points: SD of a paired block difference, from the calm 15-minute blocks of 14 Nov (0.08 per block)
+
+
+def stats(v, floor=0.0):
     n = len(v)
     if not n: return dict(blocks=0)
     m = sum(v) / n
     se = (sum((x - m) ** 2 for x in v) / (n - 1)) ** 0.5 / n ** 0.5 if n >= 3 else None
     h = n // 2
+    if floor and se is not None: se = max(se, floor / n ** 0.5)       # few blocks give an unreliable SE: never below the prior one
     return dict(blocks=n, mean=round(m, 3), se=None if se is None else round(se, 3), z=None if not se else round(m / se, 2),
                 halves=[round(sum(p) / len(p), 3) for p in (v[:h], v[h:]) if p] if h else [])
 
@@ -72,7 +76,7 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
                 if not c: continue
                 d0 = min(abs(x["k"] - r["k"]) for x in c); nb = [x for x in c if abs(x["k"] - r["k"]) == d0]
                 acc.append(r["diff"] - sum(x["diff"] for x in nb) / len(nb))
-        paired[name + "_minus_" + champion] = stats(v); paired_all[name + "_minus_" + champion] = stats(w)
+        paired[name + "_minus_" + champion] = stats(v, SD_FLOOR); paired_all[name + "_minus_" + champion] = stats(w, SD_FLOOR)
     res = dict(kind="time rotation, team row minus reference per block; not a user-split A/B", block_min=block_min, seq=seq, champion=champion,
                per_variant=per, paired=paired, paired_all_neighbours=paired_all,
                champion_burst_vs_calm={k: stats([r["diff"] for r in good if r["variant"] == champion and r["burst"] == (k == "burst")]) for k in ("burst", "calm")}, left_out=[r for r in rows if r not in good], blocks=rows)
