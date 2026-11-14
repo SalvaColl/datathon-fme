@@ -2,7 +2,8 @@
 
     cd recsys
     python lfm_build.py --pull     # Javi's read-only pull (feedback, requests, today's carts/purchases/views, catalogue)
-    python alpha_h1.py             # reuses lfm_build.load()/impressions(): lfm v2 features as of each request
+    python alpha_h1.py             # discovery: 70/30 time split of everything pulled (lfm v2 features as of each request)
+    python alpha_h1.py --confirm   # pre-registered: family ncp+csub, fit before CONFIRM_CUT, test after (needs a later pull)
 
 lfm v2 (T-021) already has: aff10 (phrase affinity, history + today's views + recent views), cl (product carted today),
 chn (carted in history), nbp (phrases shared with something BOUGHT today, 0/1/2), bsub (same subcategory as a purchase).
@@ -31,6 +32,9 @@ sys.path.insert(0, str(HERE))
 import lfm, lfm_build as LB  # noqa: E402
 
 NEW = ["ncp", "csub", "nbp2"]
+# PRE-REGISTERED confirmation (committed 14 Nov ~16:30 UTC, BEFORE CONFIRM_CUT): family = ncp + csub only
+# (nbp2 dropped after discovery: negative weight); fit on requests with ts < CONFIRM_CUT, test on ts >= CONFIRM_CUT.
+CONFIRM_FAMILY, CONFIRM_CUT = ["ncp", "csub"], "2026-11-14 16:35:00"
 SEED, DRAWS = 20261114, 1000
 
 
@@ -56,7 +60,7 @@ def family(d, LF, carts, buys, perm=None):
     return pd.DataFrame(np.vstack(out), columns=NEW)
 
 
-def fit_predict(train, test, cols):
+def fit_predict(train, test, cols, nf=3):
     from sklearn.linear_model import LogisticRegression
     p = np.zeros(len(test)); coefs = {}
     for new in (False, True):
@@ -67,11 +71,11 @@ def fit_predict(train, test, cols):
         c = LogisticRegression(C=100.0, max_iter=5000).fit(z.reshape(-1, 1), a.buy)
         zt = test.loc[b, cols + ["ls"]].values @ m.coef_[0] + m.intercept_[0]
         p[b] = 1 / (1 + np.exp(-(c.intercept_[0] + c.coef_[0][0] * zt)))
-        coefs["new" if new else "known"] = dict(zip(cols[-3:], m.coef_[0][len(cols) - 3:len(cols)].round(3).tolist()))
+        coefs["new" if new else "known"] = dict(zip(cols[-nf:], m.coef_[0][len(cols) - nf:len(cols)].round(3).tolist()))
     return np.clip(p, 1e-9, 1 - 1e-9), coefs
 
 
-def main():
+def main(confirm=False):
     d, LF, aff, carts, buys = LB.load()
     I = LB.impressions(d, LF, aff, carts, buys)
     F = family(d, LF, carts, buys)
@@ -83,14 +87,20 @@ def main():
     Fn = family(d, LF, carts, buys, perm=perm).add_suffix("_neg")
     I = pd.concat([I.reset_index(drop=True), F, Fn], axis=1)
     I = I[I.dead == 0].copy()
-    rids = np.sort(I.rid.unique()); cut = rids[int(0.7 * len(rids))]
+    if confirm:
+        fam = CONFIRM_FAMILY
+        cut = int(np.searchsorted(d.ts.values, np.datetime64(pd.Timestamp(CONFIRM_CUT))))
+    else:
+        fam = NEW
+        rids = np.sort(I.rid.unique()); cut = rids[int(0.7 * len(rids))]
     tr, te = I[I.rid < cut], I[I.rid >= cut].copy()
     base = list(lfm.FEATS)
     res = {"impressions_train": len(tr), "impressions_test": len(te), "buys_test": int(te.buy.sum()), "clicks_test": int(te.clk.sum()),
            "test_from": str(d.ts.iloc[cut]), "feature_prevalence_test": {c: round(float((te[c] > 0).mean()), 4) for c in NEW}}
     preds = {}
-    for name, cols in (("lfm_v2", base), ("v2+family", base + NEW), ("v2+family_negctl", base + [c + "_neg" for c in NEW])):
-        p, coefs = fit_predict(tr, te, cols); preds[name] = p; res[f"coef_{name}"] = coefs
+    res["mode"] = "confirmation (pre-registered)" if confirm else "discovery (70/30 time split)"; res["family"] = fam
+    for name, cols in (("lfm_v2", base), ("v2+family", base + fam), ("v2+family_negctl", base + [c + "_neg" for c in fam])):
+        p, coefs = fit_predict(tr, te, cols, len(fam)); preds[name] = p; res[f"coef_{name}"] = coefs
     from sklearn.metrics import roc_auc_score
     ll = {k: np.where(te.buy == 1, np.log(p), np.log1p(-p)) for k, p in preds.items()}
     te_rid = te.rid.values; ur = np.unique(te_rid); pos = {r: k for k, r in enumerate(ur)}; ix = np.array([pos[r] for r in te_rid])
@@ -112,4 +122,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(confirm="--confirm" in sys.argv)
