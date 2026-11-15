@@ -1,9 +1,9 @@
 [
   {
-    "kicker": "A recommender under pressure",
+    "kicker": "The decision behind the system",
     "title": "Ten products. Three seconds. One shopper.",
-    "seconds": 20,
-    "notes": "Every shopper gives us one decision: which ten products should we show, right now? We have three seconds, and the store keeps changing. We are Team 26. We built a recommender that remembers the shopper, adapts to the stream, and arrives before the deadline.",
+    "seconds": 15,
+    "notes": "Ten products. Three seconds. One shopper. We are Team 26. The difficult part was choosing what to trust: old data, live behavior, or a more complicated model. Our answer was to make every extra layer earn its place.",
     "source": "Official challenge contract; team final handoff, message (4).txt.",
     "shapes": [
       {
@@ -31,7 +31,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "A RECOMMENDER UNDER PRESSURE"
+          "THE DECISION BEHIND THE SYSTEM"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -363,11 +363,11 @@
     ]
   },
   {
-    "kicker": "Method / personalization",
-    "title": "One policy. Different evidence.",
-    "seconds": 35,
-    "notes": "Our final system uses one lightweight linear ranker, with different weights for the shopper and page context. For returning shoppers, it combines historical preferences with current activity and tastes inferred from previous requests. For new shoppers, it starts with the current session and remembers earlier visits. Product quality comes from organic purchases and views. We train ranking weights using our own recommendation feedback, and always exclude known purchases.",
-    "source": "Final handoff: ur2 configuration. Affinity from earlier requests applies to known shoppers on pages; previous-view memory applies to new shoppers on pages. No new-item attribute prior is claimed as deployed.",
+    "kicker": "Why this model / how we trained it",
+    "title": "A small model. A deliberate choice.",
+    "seconds": 40,
+    "notes": "We kept a linear ranker because gradient boosting did not improve our held-out results. For baseline training, each shown product becomes an example; unshown products are not labeled failures. Clicks provide more examples, while purchases receive three times the weight. We model slot position because exposure changes behavior. We reconstruct earlier shopper state and test on later requests. The final policy then combines cohort-specific refits and overrides, rather than blindly deploying the default training output.",
+    "source": "recsys/lfm_build.py: impressions(), fit(), BUY_W=3, log-slot and regularized LogisticRegression. Purchase calibration supports reports, not a guarantee for overridden final scores. R-24/E-260 documents the held-out gradient-boosting comparison. As-of metadata limitations remain in the replay reports.",
     "shapes": [
       {
         "kind": "rect",
@@ -394,7 +394,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "METHOD / PERSONALIZATION"
+          "WHY THIS MODEL / HOW WE TRAINED IT"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -433,8 +433,8 @@
         "w": 1465,
         "h": 197.64,
         "lines": [
-          "One policy.",
-          "Different evidence."
+          "A small model.",
+          "A deliberate choice."
         ],
         "size": 78,
         "color": "F5F7FA",
@@ -444,8 +444,8 @@
         "kind": "rect",
         "x": 70,
         "y": 390,
-        "w": 680,
-        "h": 250,
+        "w": 460,
+        "h": 245,
         "color": "192638",
         "radius": 22
       },
@@ -453,10 +453,10 @@
         "kind": "text",
         "x": 98,
         "y": 414,
-        "w": 624,
+        "w": 404,
         "h": 33.42,
         "lines": [
-          "RETURNING SHOPPER"
+          "01 / EXAMPLES"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -466,10 +466,10 @@
         "kind": "text",
         "x": 98,
         "y": 457,
-        "w": 624,
+        "w": 404,
         "h": 52.46,
         "lines": [
-          "History + current intent"
+          "Learn from exposure"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -479,11 +479,11 @@
         "kind": "text",
         "x": 98,
         "y": 523,
-        "w": 624,
+        "w": 404,
         "h": 71.5,
         "lines": [
-          "Preferences, activity and tastes",
-          "from earlier requests."
+          "Shown products + feedback.",
+          "Purchases weighted \u00d73."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -491,21 +491,21 @@
       },
       {
         "kind": "rect",
-        "x": 780,
+        "x": 550,
         "y": 390,
-        "w": 750,
-        "h": 250,
+        "w": 460,
+        "h": 245,
         "color": "192638",
         "radius": 22
       },
       {
         "kind": "text",
-        "x": 808,
+        "x": 578,
         "y": 414,
-        "w": 694,
+        "w": 404,
         "h": 33.42,
         "lines": [
-          "NEW SHOPPER"
+          "02 / FITTING"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -513,12 +513,12 @@
       },
       {
         "kind": "text",
-        "x": 808,
+        "x": 578,
         "y": 457,
-        "w": 694,
+        "w": 404,
         "h": 52.46,
         "lines": [
-          "Session + previous visits"
+          "Control position"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -526,13 +526,62 @@
       },
       {
         "kind": "text",
-        "x": 808,
+        "x": 578,
         "y": 523,
-        "w": 694,
+        "w": 404,
         "h": 71.5,
         "lines": [
-          "Start with what we know now.",
-          "Remember the next time they return."
+          "Regularized logistic model.",
+          "Separate known/new weights."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 1030,
+        "y": 390,
+        "w": 500,
+        "h": 245,
+        "color": "192638",
+        "radius": 22
+      },
+      {
+        "kind": "text",
+        "x": 1058,
+        "y": 414,
+        "w": 444,
+        "h": 33.42,
+        "lines": [
+          "03 / VALIDATION"
+        ],
+        "size": 18,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1058,
+        "y": 457,
+        "w": 444,
+        "h": 52.46,
+        "lines": [
+          "Test later requests"
+        ],
+        "size": 34,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1058,
+        "y": 523,
+        "w": 444,
+        "h": 71.5,
+        "lines": [
+          "Earlier training \u2192 later test.",
+          "Complexity needs evidence."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -552,21 +601,21 @@
         "x": 98,
         "y": 714,
         "w": 1437,
-        "h": 46.51,
+        "h": 45.32,
         "lines": [
-          "Affinity  +  organic quality  +  live context   \u2192   ranked, eligible products"
+          "Why linear? Fast to serve, easy to inspect, retained after held-out comparisons."
         ],
-        "size": 29,
+        "size": 28,
         "color": "F5F7FA",
         "bold": false
       }
     ]
   },
   {
-    "kicker": "Learning from the stream",
+    "kicker": "Why this adaptation / how it stays stable",
     "title": "Frozen weights. Live intelligence.",
-    "seconds": 40,
-    "notes": "Freezing the model does not freeze the store. We keep updating shopper activity, organic product quality, stock and prices. Our trend detector looks for changes in the event stream, rather than assuming yesterday's timetable will repeat. New launches can enter the ranking, with controlled exposure on home pages. At the final-round boundary, the world continues: Saturday's products and previous purchases still count. Cart events are activity signals, not pending orders.",
+    "seconds": 35,
+    "notes": "We separated changing evidence from stable model weights. Shopper memory updates as people return, including new shoppers without historical profiles. Product quality uses organic views and purchases; recommendation purchases update user memory, not the organic rate. That separation prevents a feedback loop. Trends come from recent events versus a baseline, not yesterday's clock. This lets us adapt during the final without refitting on a handful of noisy purchases. Previous purchases still stay excluded.",
     "source": "Final handoff and organizer same-world clarification. Fast trend detector is active; exact detection delay is not claimed. Home launch cap has exceptions for the shopper's own items.",
     "shapes": [
       {
@@ -594,7 +643,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "LEARNING FROM THE STREAM"
+          "WHY THIS ADAPTATION / HOW IT STAYS STABLE"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -656,7 +705,7 @@
         "w": 404,
         "h": 33.42,
         "lines": [
-          "01 / SHOPPER"
+          "01 / SHOPPER MEMORY"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -669,7 +718,7 @@
         "w": 404,
         "h": 52.46,
         "lines": [
-          "Remember intent"
+          "Use earlier visits"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -682,8 +731,8 @@
         "w": 404,
         "h": 71.5,
         "lines": [
-          "Activity and previous visits",
-          "update the evidence."
+          "Session evidence accumulates.",
+          "Known purchases stay out."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -705,7 +754,7 @@
         "w": 404,
         "h": 33.42,
         "lines": [
-          "02 / PRODUCT"
+          "02 / PRODUCT QUALITY"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -718,7 +767,7 @@
         "w": 404,
         "h": 52.46,
         "lines": [
-          "Update quality"
+          "Keep sources separate"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -731,8 +780,8 @@
         "w": 404,
         "h": 71.5,
         "lines": [
-          "Organic views and purchases.",
-          "New launches included."
+          "Organic counts \u2192 quality.",
+          "Private buys \u2192 user memory."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -754,7 +803,7 @@
         "w": 444,
         "h": 33.42,
         "lines": [
-          "03 / STORE"
+          "03 / TRENDS"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -767,7 +816,7 @@
         "w": 444,
         "h": 52.46,
         "lines": [
-          "Detect change"
+          "Compare event windows"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -780,8 +829,8 @@
         "w": 444,
         "h": 71.5,
         "lines": [
-          "Trends from events.",
-          "Stock and prices stay current."
+          "Recent activity vs baseline.",
+          "No timetable assumptions."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -792,11 +841,11 @@
         "x": 75,
         "y": 704,
         "w": 1460,
-        "h": 51.269999999999996,
+        "h": 48.89,
         "lines": [
-          "No reset at 10:00. Known purchases stay excluded."
+          "Why: adapt from live evidence; keep the final policy stable."
         ],
-        "size": 33,
+        "size": 31,
         "color": "61E4B1",
         "bold": true
       }
@@ -806,7 +855,7 @@
     "kicker": "Method / evidence",
     "title": "Measure before believing.",
     "seconds": 40,
-    "notes": "Our most useful improvement was also methodological. Historical impressions are biased, so offline evaluation uses temporal splits and only screens ideas. Live comparisons use the same time window as the organizers' reference, because traffic and trends change. Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement over the previous policy, with ten thousand eight hundred requests per policy. This was a time-block comparison, not a randomized trial. The newest preference feature has offline support, but no demonstrated live uplift yet.",
+    "notes": "Offline screening was not enough, because logged impressions reflect what earlier policies chose to show. For live checks, we compared against the reference in the same windows, so a better hour would not look like a better model. Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement, with ten thousand eight hundred requests per policy. These were time blocks, not randomized A/B. We also rejected ideas and wrote counterexamples when passing tests missed real query behavior.",
     "source": "presentation/cifras.md from javi/jury-final, section 5: 15 Nov 02:20\u201304:20 UTC; 8 \u00d7 2,700 requests, 4 blocks/policy. Mean team-minus-reference: +0.212 vs +0.044 pp; delta +0.167 pp. Deployment log assigns policies. Handoff z\u22483.0 and alternate documented z=3.5 are not repeated on-slide.",
     "shapes": [
       {
@@ -1017,7 +1066,7 @@
         "w": 1395,
         "h": 46.51,
         "lines": [
-          "Honest decisions"
+          "Counterexamples"
         ],
         "size": 29,
         "color": "F5F7FA",
@@ -1030,7 +1079,7 @@
         "w": 1395,
         "h": 38.18,
         "lines": [
-          "Retain limitations. Discard unsupported ideas."
+          "A green test is only as good as its assumptions."
         ],
         "size": 22,
         "color": "A6B5C8",
@@ -1241,10 +1290,10 @@
     ]
   },
   {
-    "kicker": "RawTree / reliability",
-    "title": "A great ranking must arrive.",
-    "seconds": 30,
-    "notes": "RawTree is our operating backbone. SQL connects requests, store events, catalogue updates and private feedback. Background snapshots feed the ranker; validation checks the ten products before batched submission. In a documented four-hour practice window, we served ninety-nine-point-nine-six percent of forty-three thousand two hundred requests on time. The ninety-ninth latency percentile was two-point-three-five seconds, below the three-second limit. One writer prevents duplicate submissions, and stored snapshots make our decisions auditable.",
+    "kicker": "Why it is fast / how RawTree supports it",
+    "title": "Precompute. Validate. Batch.",
+    "seconds": 25,
+    "notes": "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. We validate products before batched writes, with one writer and durable request claims. That design served ninety-nine-point-nine-six percent on time across forty-three thousand two hundred practice requests. RawTree snapshots and feedback let us trace a decision from input to outcome.",
     "source": "presentation/cifras.md, sections 3 and 10: 15 Nov 03:00\u201307:00 UTC / 04:00\u201308:00 CET, 43,182/43,200 on time; p50 1.22 s, p95 1.91 s, p99 2.35 s. 144 scratch snapshots recorded. Handoff's p99\u22482.0 s has no comparable window; use documented 2.35 s.",
     "shapes": [
       {
@@ -1272,7 +1321,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "RAWTREE / RELIABILITY"
+          "WHY IT IS FAST / HOW RAWTREE SUPPORTS IT"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -1311,8 +1360,8 @@
         "w": 1465,
         "h": 200.01999999999998,
         "lines": [
-          "A great ranking",
-          "must arrive."
+          "Precompute.",
+          "Validate. Batch."
         ],
         "size": 79,
         "color": "F5F7FA",
@@ -1487,11 +1536,11 @@
     ]
   },
   {
-    "kicker": "Practice result / final in progress",
-    "title": "Personalize. Adapt. Deliver.",
-    "seconds": 15,
-    "notes": "In our last measured practice hour, expected conversion reached two-point-one-five-nine percent across ten thousand eight hundred requests. The final result is still unknown. Our promise is simple: the right products, for this shopper, before the deadline.",
-    "source": "Team handoff; independently verified public api/state window 15 Nov 07:00\u201308:00 UTC / 08:00\u201309:00 CET: team_26 requests=10,800; conversion=2.1590304905720674. This hour contains several practice versions; it is a TEAM result, not an ur2-only result or final-round result.",
+    "kicker": "How we worked / AI-assisted development",
+    "title": "Agents accelerated. Evidence decided.",
+    "seconds": 25,
+    "notes": "We used Claude and Codex to implement experiments, audit code and find failure cases in isolated branches. People controlled integration, measurements and the single live deployment. The four of us covered modeling, independent challengers, cold-start research and reliability. The lesson was to use agents to move faster, while making every claimed improvement explainable and testable. Build fast. Verify carefully.",
+    "source": "Team roster supplied by the user. Claude/Codex use is confirmed at team level; no unconfirmed per-person tool or workstream assignment is asserted. Examples of agent work are in tasks and branch histories. Practice conversion 2.159% remains in EVIDENCE.md, not presented as a final result.",
     "shapes": [
       {
         "kind": "rect",
@@ -1518,7 +1567,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "PRACTICE RESULT / FINAL IN PROGRESS"
+          "HOW WE WORKED / AI-ASSISTED DEVELOPMENT"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -1555,72 +1604,108 @@
         "x": 70,
         "y": 149,
         "w": 1465,
-        "h": 347.58,
+        "h": 200.01999999999998,
         "lines": [
-          "Personalize.",
-          "Adapt.",
-          "Deliver."
+          "Agents accelerated.",
+          "Evidence decided."
         ],
-        "size": 94,
+        "size": 79,
         "color": "F5F7FA",
         "bold": true
       },
       {
         "kind": "rect",
-        "x": 875,
-        "y": 178,
-        "w": 650,
-        "h": 493,
+        "x": 70,
+        "y": 395,
+        "w": 710,
+        "h": 235,
         "color": "192638",
-        "radius": 28
+        "radius": 22
       },
       {
         "kind": "text",
-        "x": 920,
-        "y": 213,
-        "w": 615,
-        "h": 39.37,
+        "x": 98,
+        "y": 419,
+        "w": 654,
+        "h": 33.42,
         "lines": [
-          "EXPECTED CONVERSION"
+          "DEVELOPMENT TOOL"
         ],
-        "size": 23,
+        "size": 18,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 915,
-        "y": 290,
-        "w": 620,
-        "h": 165.51,
-        "lines": [
-          "2.159%"
-        ],
-        "size": 129,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 925,
+        "x": 98,
         "y": 462,
-        "w": 610,
-        "h": 50.08,
+        "w": 654,
+        "h": 52.46,
         "lines": [
-          "Practice \u00b7 10,800 requests"
+          "Claude"
         ],
-        "size": 32,
+        "size": 34,
         "color": "F5F7FA",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 925,
-        "y": 517,
-        "w": 610,
-        "h": 41.75,
+        "x": 98,
+        "y": 528,
+        "w": 654,
+        "h": 71.5,
         "lines": [
-          "15 NOV \u00b7 08:00\u201309:00 CET"
+          "Implementation, integrations",
+          "and experiments."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 800,
+        "y": 395,
+        "w": 730,
+        "h": 235,
+        "color": "192638",
+        "radius": 22
+      },
+      {
+        "kind": "text",
+        "x": 828,
+        "y": 419,
+        "w": 674,
+        "h": 33.42,
+        "lines": [
+          "DEVELOPMENT TOOL"
+        ],
+        "size": 18,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 828,
+        "y": 462,
+        "w": 674,
+        "h": 52.46,
+        "lines": [
+          "Codex"
+        ],
+        "size": 34,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 828,
+        "y": 528,
+        "w": 674,
+        "h": 71.5,
+        "lines": [
+          "Audits, evaluation",
+          "and failure cases."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -1628,29 +1713,42 @@
       },
       {
         "kind": "text",
-        "x": 925,
-        "y": 593,
-        "w": 610,
-        "h": 44.129999999999995,
+        "x": 75,
+        "y": 690,
+        "w": 1460,
+        "h": 51.269999999999996,
         "lines": [
-          "Final result: not yet known."
+          "Hypothesis \u2192 isolated code \u2192 tests \u2192 measured decision"
         ],
-        "size": 27,
-        "color": "FFAC86",
+        "size": 33,
+        "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
         "x": 75,
-        "y": 735,
+        "y": 754,
         "w": 1460,
-        "h": 50.08,
+        "h": 40.56,
         "lines": [
-          "The right products. This shopper. Before the deadline."
+          "Salvador Coll \u00b7 H\u00e9ctor Verdeal \u00b7 Daniel Nieto \u00b7 Javier Andr\u00e9s Garc\u00eda"
         ],
-        "size": 32,
+        "size": 24,
         "color": "F5F7FA",
         "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 75,
+        "y": 796,
+        "w": 1460,
+        "h": 44.129999999999995,
+        "lines": [
+          "Build fast. Verify carefully."
+        ],
+        "size": 27,
+        "color": "F5F7FA",
+        "bold": true
       }
     ]
   }

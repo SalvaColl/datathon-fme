@@ -74,3 +74,11 @@ Several versions ran within this practice hour. This is a team aggregate, NOT an
 ## Artifact validation
 
 HTML, PDF and PowerPoint share a single geometry/content source. PowerPoint uses editable vector shapes/text and includes notes. Package XML and relationships are checked locally. Rendered inspection uses the browser/SVG and PDF; a PowerPoint rendering engine is not installed.
+
+## HOW/WHY revision
+
+The revised initial pitch keeps six slides and a 180-second plan, with 378 spoken words. Slide two now explains the baseline training mechanism and model-selection reason; slide three explains source separation and stable parameters; slide six explains Claude/Codex use and credits the confirmed four-member roster.
+
+Training claims were checked directly in recsys/lfm_build.py: exposed-item rows, click labels, purchase row weight 3, separate known/new regularized logistic fits, log-slot and purchase calibration. The final JSON includes later refits/overrides; it is not claimed to be the untouched output of this default fit. R-24/E-260 supports the held-out model-choice account. See ../HOW_AND_WHY.md for the longer code walkthrough.
+
+The 2.159% practice aggregate is supporting evidence in this file and the root README, no longer the closing slide. Team member names were supplied by the user; no unconfirmed person-specific workstream or agent-version assignment is presented.

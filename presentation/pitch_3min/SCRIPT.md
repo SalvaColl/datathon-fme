@@ -3,33 +3,34 @@
 English. Six slides. Timings are rehearsal targets, not a promise of reading speed.
 Aim for roughly 130–140 words per minute and rehearse with pauses. Slide sources are in the PowerPoint notes and EVIDENCE.md.
 
-## 1. Ten products. Three seconds. One shopper. — 0:00–0:20
+## 1. Ten products. Three seconds. One shopper. — 0:00–0:15
 
-Every shopper gives us one decision: which ten products should we show, right now? We have three seconds, and the store keeps changing. We are Team 26. We built a recommender that remembers the shopper, adapts to the stream, and arrives before the deadline.
+Ten products. Three seconds. One shopper. We are Team 26. The difficult part was choosing what to trust: old data, live behavior, or a more complicated model. Our answer was to make every extra layer earn its place.
 
-## 2. One policy. Different evidence. — 0:20–0:55
+## 2. A small model. A deliberate choice. — 0:15–0:55
 
-Our final system uses one lightweight linear ranker, with different weights for the shopper and page context. For returning shoppers, it combines historical preferences with current activity and tastes inferred from previous requests. For new shoppers, it starts with the current session and remembers earlier visits. Product quality comes from organic purchases and views. We train ranking weights using our own recommendation feedback, and always exclude known purchases.
+We kept a linear ranker because gradient boosting did not improve our held-out results. For baseline training, each shown product becomes an example; unshown products are not labeled failures. Clicks provide more examples, while purchases receive three times the weight. We model slot position because exposure changes behavior. We reconstruct earlier shopper state and test on later requests. The final policy then combines cohort-specific refits and overrides, rather than blindly deploying the default training output.
 
-## 3. Frozen weights. Live intelligence. — 0:55–1:35
+## 3. Frozen weights. Live intelligence. — 0:55–1:30
 
-Freezing the model does not freeze the store. We keep updating shopper activity, organic product quality, stock and prices. Our trend detector looks for changes in the event stream, rather than assuming yesterday's timetable will repeat. New launches can enter the ranking, with controlled exposure on home pages. At the final-round boundary, the world continues: Saturday's products and previous purchases still count. Cart events are activity signals, not pending orders.
+We separated changing evidence from stable model weights. Shopper memory updates as people return, including new shoppers without historical profiles. Product quality uses organic views and purchases; recommendation purchases update user memory, not the organic rate. That separation prevents a feedback loop. Trends come from recent events versus a baseline, not yesterday's clock. This lets us adapt during the final without refitting on a handful of noisy purchases. Previous purchases still stay excluded.
 
-## 4. Measure before believing. — 1:35–2:15
+## 4. Measure before believing. — 1:30–2:10
 
-Our most useful improvement was also methodological. Historical impressions are biased, so offline evaluation uses temporal splits and only screens ideas. Live comparisons use the same time window as the organizers' reference, because traffic and trends change. Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement over the previous policy, with ten thousand eight hundred requests per policy. This was a time-block comparison, not a randomized trial. The newest preference feature has offline support, but no demonstrated live uplift yet.
+Offline screening was not enough, because logged impressions reflect what earlier policies chose to show. For live checks, we compared against the reference in the same windows, so a better hour would not look like a better model. Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement, with ten thousand eight hundred requests per policy. These were time blocks, not randomized A/B. We also rejected ideas and wrote counterexamples when passing tests missed real query behavior.
 
-## 5. A great ranking must arrive. — 2:15–2:45
+## 5. Precompute. Validate. Batch. — 2:10–2:35
 
-RawTree is our operating backbone. SQL connects requests, store events, catalogue updates and private feedback. Background snapshots feed the ranker; validation checks the ten products before batched submission. In a documented four-hour practice window, we served ninety-nine-point-nine-six percent of forty-three thousand two hundred requests on time. The ninety-ninth latency percentile was two-point-three-five seconds, below the three-second limit. One writer prevents duplicate submissions, and stored snapshots make our decisions auditable.
+To protect the deadline, SQL aggregation runs in the background and local scoring stays small. We validate products before batched writes, with one writer and durable request claims. That design served ninety-nine-point-nine-six percent on time across forty-three thousand two hundred practice requests. RawTree snapshots and feedback let us trace a decision from input to outcome.
 
-## 6. Personalize. Adapt. Deliver. — 2:45–3:00
+## 6. Agents accelerated. Evidence decided. — 2:35–3:00
 
-In our last measured practice hour, expected conversion reached two-point-one-five-nine percent across ten thousand eight hundred requests. The final result is still unknown. Our promise is simple: the right products, for this shopper, before the deadline.
+We used Claude and Codex to implement experiments, audit code and find failure cases in isolated branches. People controlled integration, measurements and the single live deployment. The four of us covered modeling, independent challengers, cold-start research and reliability. The lesson was to use agents to move faster, while making every claimed improvement explainable and testable. Build fast. Verify carefully.
 
 ## Delivery
 
-Script: 369 words. Total slide budget: 180 seconds.
+Script: 378 words. Total slide budget: 180 seconds.
 Start the browser timer with R before speaking. Right arrow/space advances; N toggles notes; F enters fullscreen.
-The practice hour includes several versions. Never describe its conversion as an ur2-only or final result.
-For the initial pitch, skip the statistics detail unless asked. Keep the caveat that the comparison used time blocks.
+The initial pitch explains HOW and WHY. Team names are credited briefly; no unconfirmed individual roles are assigned.
+For questions, HOW_AND_WHY.md provides a code walkthrough. The 2.159% practice aggregate in EVIDENCE.md is not a final result.
+Keep the caveat that the +0.17 pp comparison used time blocks, not randomized contemporaneous A/B.

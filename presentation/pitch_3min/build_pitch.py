@@ -55,10 +55,10 @@ def card(s, x, y, w, h, eyebrow, headline, body=None, accent=None):
     if body:
         text(s, x+28, y+133, body, 25, C["muted"], width=w-56)
 
-s = slide("A recommender under pressure", "Ten products. Three seconds. One shopper.", 20,
-    "Every shopper gives us one decision: which ten products should we show, right now? "
-    "We have three seconds, and the store keeps changing. We are Team 26. "
-    "We built a recommender that remembers the shopper, adapts to the stream, and arrives before the deadline.",
+s = slide("The decision behind the system", "Ten products. Three seconds. One shopper.", 15,
+    "Ten products. Three seconds. One shopper. "
+    "We are Team 26. The difficult part was choosing what to trust: old data, live behavior, or a more complicated model. "
+    "Our answer was to make every extra layer earn its place.",
     "Official challenge contract; team final handoff, message (4).txt.")
 text(s, 70, 180, "Ten products.\nThree seconds.\nOne shopper.", 100, bold=True)
 text(s, 75, 595, "A changing store.\nA different decision for every shopper.", 31, C["muted"])
@@ -71,48 +71,48 @@ for j in range(10):
     rect(s, x, y, 61, 39, C["green"] if j < 3 else C["line"], 8)
     text(s, x+19, y+7, str(j+1), 20, C["bg"] if j<3 else C["white"], True)
 
-s = slide("Method / personalization", "One policy. Different evidence.", 35,
-    "Our final system uses one lightweight linear ranker, with different weights for the shopper and page context. "
-    "For returning shoppers, it combines historical preferences with current activity and tastes inferred from previous requests. "
-    "For new shoppers, it starts with the current session and remembers earlier visits. "
-    "Product quality comes from organic purchases and views. "
-    "We train ranking weights using our own recommendation feedback, and always exclude known purchases.",
-    "Final handoff: ur2 configuration. Affinity from earlier requests applies to known shoppers on pages; "
-    "previous-view memory applies to new shoppers on pages. No new-item attribute prior is claimed as deployed.")
-text(s, 70, 143, "One policy.\nDifferent evidence.", 78, bold=True)
-card(s, 70, 390, 680, 250, "Returning shopper", "History + current intent",
-     "Preferences, activity and tastes\nfrom earlier requests.")
-card(s, 780, 390, 750, 250, "New shopper", "Session + previous visits",
-     "Start with what we know now.\nRemember the next time they return.")
+s = slide("Why this model / how we trained it", "A small model. A deliberate choice.", 40,
+    "We kept a linear ranker because gradient boosting did not improve our held-out results. "
+    "For baseline training, each shown product becomes an example; unshown products are not labeled failures. "
+    "Clicks provide more examples, while purchases receive three times the weight. We model slot position because exposure changes behavior. "
+    "We reconstruct earlier shopper state and test on later requests. "
+    "The final policy then combines cohort-specific refits and overrides, rather than blindly deploying the default training output.",
+    "recsys/lfm_build.py: impressions(), fit(), BUY_W=3, log-slot and regularized LogisticRegression. "
+    "Purchase calibration supports reports, not a guarantee for overridden final scores. R-24/E-260 documents the "
+    "held-out gradient-boosting comparison. As-of metadata limitations remain in the replay reports.")
+text(s, 70, 143, "A small model.\nA deliberate choice.", 78, bold=True)
+card(s, 70, 390, 460, 245, "01 / examples", "Learn from exposure",
+     "Shown products + feedback.\nPurchases weighted ×3.")
+card(s, 550, 390, 460, 245, "02 / fitting", "Control position",
+     "Regularized logistic model.\nSeparate known/new weights.")
+card(s, 1030, 390, 500, 245, "03 / validation", "Test later requests",
+     "Earlier training → later test.\nComplexity needs evidence.")
 rect(s, 70, 690, 1460, 87, C["line"], 16)
-text(s, 98, 714, "Affinity  +  organic quality  +  live context   →   ranked, eligible products", 29)
+text(s, 98, 714, "Why linear? Fast to serve, easy to inspect, retained after held-out comparisons.", 28)
 
-s = slide("Learning from the stream", "Frozen weights. Live intelligence.", 40,
-    "Freezing the model does not freeze the store. "
-    "We keep updating shopper activity, organic product quality, stock and prices. "
-    "Our trend detector looks for changes in the event stream, rather than assuming yesterday's timetable will repeat. "
-    "New launches can enter the ranking, with controlled exposure on home pages. "
-    "At the final-round boundary, the world continues: Saturday's products and previous purchases still count. "
-    "Cart events are activity signals, not pending orders.",
+s = slide("Why this adaptation / how it stays stable", "Frozen weights. Live intelligence.", 35,
+    "We separated changing evidence from stable model weights. "
+    "Shopper memory updates as people return, including new shoppers without historical profiles. "
+    "Product quality uses organic views and purchases; recommendation purchases update user memory, not the organic rate. "
+    "That separation prevents a feedback loop. Trends come from recent events versus a baseline, not yesterday's clock. "
+    "This lets us adapt during the final without refitting on a handful of noisy purchases. Previous purchases still stay excluded.",
     "Final handoff and organizer same-world clarification. Fast trend detector is active; "
     "exact detection delay is not claimed. Home launch cap has exceptions for the shopper's own items.")
 text(s, 70, 145, "Frozen weights.\nLive intelligence.", 79, bold=True)
-card(s, 70, 395, 460, 240, "01 / shopper", "Remember intent",
-     "Activity and previous visits\nupdate the evidence.")
-card(s, 550, 395, 460, 240, "02 / product", "Update quality",
-     "Organic views and purchases.\nNew launches included.")
-card(s, 1030, 395, 500, 240, "03 / store", "Detect change",
-     "Trends from events.\nStock and prices stay current.")
-text(s, 75, 704, "No reset at 10:00. Known purchases stay excluded.", 33, C["green"], True)
+card(s, 70, 395, 460, 240, "01 / shopper memory", "Use earlier visits",
+     "Session evidence accumulates.\nKnown purchases stay out.")
+card(s, 550, 395, 460, 240, "02 / product quality", "Keep sources separate",
+     "Organic counts → quality.\nPrivate buys → user memory.")
+card(s, 1030, 395, 500, 240, "03 / trends", "Compare event windows",
+     "Recent activity vs baseline.\nNo timetable assumptions.")
+text(s, 75, 704, "Why: adapt from live evidence; keep the final policy stable.", 31, C["green"], True)
 
 s = slide("Method / evidence", "Measure before believing.", 40,
-    "Our most useful improvement was also methodological. "
-    "Historical impressions are biased, so offline evaluation uses temporal splits and only screens ideas. "
-    "Live comparisons use the same time window as the organizers' reference, because traffic and trends change. "
-    "Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement over the previous policy, "
-    "with ten thousand eight hundred requests per policy. "
-    "This was a time-block comparison, not a randomized trial. "
-    "The newest preference feature has offline support, but no demonstrated live uplift yet.",
+    "Offline screening was not enough, because logged impressions reflect what earlier policies chose to show. "
+    "For live checks, we compared against the reference in the same windows, so a better hour would not look like a better model. "
+    "Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement, with ten thousand eight hundred requests per policy. "
+    "These were time blocks, not randomized A/B. "
+    "We also rejected ideas and wrote counterexamples when passing tests missed real query behavior.",
     "presentation/cifras.md from javi/jury-final, section 5: 15 Nov 02:20–04:20 UTC; "
     "8 × 2,700 requests, 4 blocks/policy. Mean team-minus-reference: +0.212 vs +0.044 pp; delta +0.167 pp. "
     "Deployment log assigns policies. Handoff z≈3.0 and alternate documented z=3.5 are not repeated on-slide.")
@@ -123,7 +123,7 @@ text(s, 880, 382, "Observed after refitting the weights", 24, C["muted"])
 for j, (title, body) in enumerate([
     ("Temporal offline", "Screen hypotheses without future information."),
     ("Matched windows", "Compare against the reference at the same time."),
-    ("Honest decisions", "Retain limitations. Discard unsupported ideas.")]):
+    ("Counterexamples", "A green test is only as good as its assumptions.")]):
     text(s, 78, 430+j*91, f"0{j+1}", 25, C["green"], True)
     text(s, 140, 425+j*91, title, 29, bold=True)
     text(s, 140, 463+j*91, body, 22, C["muted"])
@@ -133,16 +133,15 @@ for j, control in enumerate([True, False, True, False, False, True, False, True]
 text(s, 880, 616, "8 blocks · 10,800 requests per policy", 26, bold=True)
 text(s, 75, 762, "PRACTICE / 15 NOV 03:20–05:20 CET · TIME BLOCKS, NOT RANDOMIZED A/B", 19, C["muted"])
 
-s = slide("RawTree / reliability", "A great ranking must arrive.", 30,
-    "RawTree is our operating backbone. SQL connects requests, store events, catalogue updates and private feedback. "
-    "Background snapshots feed the ranker; validation checks the ten products before batched submission. "
-    "In a documented four-hour practice window, we served ninety-nine-point-nine-six percent of forty-three thousand two hundred requests on time. "
-    "The ninety-ninth latency percentile was two-point-three-five seconds, below the three-second limit. "
-    "One writer prevents duplicate submissions, and stored snapshots make our decisions auditable.",
+s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 25,
+    "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "
+    "We validate products before batched writes, with one writer and durable request claims. "
+    "That design served ninety-nine-point-nine-six percent on time across forty-three thousand two hundred practice requests. "
+    "RawTree snapshots and feedback let us trace a decision from input to outcome.",
     "presentation/cifras.md, sections 3 and 10: 15 Nov 03:00–07:00 UTC / 04:00–08:00 CET, "
     "43,182/43,200 on time; p50 1.22 s, p95 1.91 s, p99 2.35 s. "
     "144 scratch snapshots recorded. Handoff's p99≈2.0 s has no comparable window; use documented 2.35 s.")
-text(s, 70, 145, "A great ranking\nmust arrive.", 79, bold=True)
+text(s, 70, 145, "Precompute.\nValidate. Batch.", 79, bold=True)
 text(s, 75, 397, "99.96%", 126, C["green"], True)
 text(s, 82, 550, "valid and on time · 43,200 requests", 29)
 text(s, 83, 602, "p99  2.35 s     /     deadline  3 s", 28, C["muted"])
@@ -155,21 +154,23 @@ for j, label in enumerate(["Requests + events + catalogue", "SQL → feature sna
 text(s, 925, 626, "144 stored metric snapshots", 22, C["muted"])
 text(s, 75, 762, "PRACTICE / 15 NOV 04:00–08:00 CET · 43,182 OF 43,200 SERVED ON TIME", 19, C["muted"])
 
-s = slide("Practice result / final in progress", "Personalize. Adapt. Deliver.", 15,
-    "In our last measured practice hour, expected conversion reached two-point-one-five-nine percent across ten thousand eight hundred requests. "
-    "The final result is still unknown. "
-    "Our promise is simple: the right products, for this shopper, before the deadline.",
-    "Team handoff; independently verified public api/state window 15 Nov 07:00–08:00 UTC / 08:00–09:00 CET: "
-    "team_26 requests=10,800; conversion=2.1590304905720674. This hour contains several practice versions; "
-    "it is a TEAM result, not an ur2-only result or final-round result.")
-text(s, 70, 149, "Personalize.\nAdapt.\nDeliver.", 94, bold=True)
-rect(s, 875, 178, 650, 493, C["card"], 28)
-text(s, 920, 213, "EXPECTED CONVERSION", 23, C["green"], True)
-text(s, 915, 290, "2.159%", 129, C["green"], True)
-text(s, 925, 462, "Practice · 10,800 requests", 32, bold=True)
-text(s, 925, 517, "15 NOV · 08:00–09:00 CET", 25, C["muted"])
-text(s, 925, 593, "Final result: not yet known.", 27, C["orange"], True)
-text(s, 75, 735, "The right products. This shopper. Before the deadline.", 32)
+s = slide("How we worked / AI-assisted development", "Agents accelerated. Evidence decided.", 25,
+    "We used Claude and Codex to implement experiments, audit code and find failure cases in isolated branches. "
+    "People controlled integration, measurements and the single live deployment. "
+    "The four of us covered modeling, independent challengers, cold-start research and reliability. "
+    "The lesson was to use agents to move faster, while making every claimed improvement explainable and testable. "
+    "Build fast. Verify carefully.",
+    "Team roster supplied by the user. Claude/Codex use is confirmed at team level; no unconfirmed per-person "
+    "tool or workstream assignment is asserted. Examples of agent work are in tasks and branch histories. "
+    "Practice conversion 2.159% remains in EVIDENCE.md, not presented as a final result.")
+text(s, 70, 149, "Agents accelerated.\nEvidence decided.", 79, bold=True)
+card(s, 70, 395, 710, 235, "Development tool", "Claude",
+     "Implementation, integrations\nand experiments.")
+card(s, 800, 395, 730, 235, "Development tool", "Codex",
+     "Audits, evaluation\nand failure cases.")
+text(s, 75, 690, "Hypothesis → isolated code → tests → measured decision", 33, C["green"], True)
+text(s, 75, 754, "Salvador Coll · Héctor Verdeal · Daniel Nieto · Javier Andrés García", 24)
+text(s, 75, 796, "Build fast. Verify carefully.", 27, bold=True)
 
 def svg(s):
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="{escape(s["title"])}">']
@@ -292,8 +293,9 @@ def build_notes():
     words=sum(len(s["notes"].split()) for s in slides)
     out += ["## Delivery", "", f"Script: {words} words. Total slide budget: {elapsed} seconds.",
             "Start the browser timer with R before speaking. Right arrow/space advances; N toggles notes; F enters fullscreen.",
-            "The practice hour includes several versions. Never describe its conversion as an ur2-only or final result.",
-            "For the initial pitch, skip the statistics detail unless asked. Keep the caveat that the comparison used time blocks.", ""]
+            "The initial pitch explains HOW and WHY. Team names are credited briefly; no unconfirmed individual roles are assigned.",
+            "For questions, HOW_AND_WHY.md provides a code walkthrough. The 2.159% practice aggregate in EVIDENCE.md is not a final result.",
+            "Keep the caveat that the +0.17 pp comparison used time blocks, not randomized contemporaneous A/B.", ""]
     (HERE/"SCRIPT.md").write_text("\n".join(out),encoding="utf8")
     (HERE/"slides.json").write_text(json.dumps(slides,indent=2),encoding="utf8")
     for i,s in enumerate(slides,1):(HERE/f"slide_{i:02d}.svg").write_text(svg(s),encoding="utf8")
