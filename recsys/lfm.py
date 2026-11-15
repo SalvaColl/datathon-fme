@@ -133,29 +133,36 @@ def cap_key(is_new_user, rv) -> str:
     return ("" if rv else "home_") + ("new" if is_new_user else "known")
 
 
-def cap_launched(S, s, c, exclude=(), own=()):
-    """T-061: scores with all but the best `c` launched products (S.newp, the ones the `newp` / `newph` weights push)
+def cap_launched(S, s, c, exclude=(), own=(), n=10):
+    """T-061: scores with all but the best launched products (S.newp, the ones the `newp` / `newph` weights push)
     at -inf, so a list never carries more than `c` of them however many products have been launched. The boost on
     launched products is a weight per product, so its exposure grows with every batch of launches (0.8 on new-user home:
     0.81 per list with 400 launched, 1.41 with 500); the cap bounds it without retuning the dose. Launched products
-    the shopper has viewed this session or holds in a cart (`own`) are never dropped and count towards `c`: their
-    place comes from the shopper's own record, not from the boost. Returns `s` itself when nothing has to go."""
+    the shopper has viewed this session or holds in a cart (`own`) are never dropped: their place comes from the
+    shopper's own record, not from the boost. They count towards `c` ONLY when they are in the list of `n` that is
+    served (T-063): before, every own launched product with a finite score used up the cap, also the ones far below the
+    list (75% of them on known pages, 88% on new pages), and a shopper browsing launched products lost the launched
+    products the weights would have shown. Returns `s` itself when nothing has to go."""
     newp = getattr(S, "newp", None)
     if newp is None or c is None or c < 0: return s
     idx = np.flatnonzero((newp > 0) & np.isfinite(s))
     if len(idx) <= c: return s
     idx = idx[np.argsort(-s[idx], kind="stable")]
-    left = c - sum(1 for k in idx if S.ids[k] in own and S.ids[k] not in exclude)
-    drop = []
-    for k in idx:
-        p = S.ids[k]
-        if p in own: continue
-        if p in exclude: continue                      # cannot be served anyway: neither kept nor counted
-        if left > 0: left -= 1
-        else: drop.append(k)
-    if not drop: return s
-    s = s.copy(); s[drop] = -np.inf
-    return s
+    free = [k for k in idx if S.ids[k] not in own and S.ids[k] not in exclude]   # excluded: cannot be served, neither kept nor counted
+    ownk = {S.ids[k] for k in idx if S.ids[k] in own and S.ids[k] not in exclude}
+    budget = c if ownk else min(c, len(free))
+    out = s
+    while True:
+        # Fewer free launched products let lower products in, own ones among them, so the own count can only grow as the
+        # budget falls: the loop ends at the largest budget the served list itself respects (at most c + 1 rounds).
+        drop = free[budget:]
+        if drop: out = s.copy(); out[drop] = -np.inf
+        else: out = s
+        if not ownk or budget == 0: break
+        served = sum(1 for p in top_items(S, out, n, exclude) if p in ownk)
+        if c - served >= budget: break
+        budget = max(0, c - served)
+    return out
 
 
 class Snap:
@@ -693,7 +700,7 @@ class LiveFit:
                 c = cap.get(cap_key(req.get("is_new_user"), req.get("rv")))
                 if c is not None:
                     own = set(req.get("rv") or ()) | set(state[1]) | set(state[2])
-                    sc = cap_launched(S, s, int(c), exclude, own)
+                    sc = cap_launched(S, s, int(c), exclude, own, n)
                     out = top_items(S, sc, n, exclude)
                     if len(out) == n: s = sc
                     else: out = None
