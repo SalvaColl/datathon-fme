@@ -245,7 +245,9 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - `last 5 min`: `ALARM` si lo nuestro baja del 97% o si hay peticiones y menos de la mitad de feedback. La luz verde oficial solo exige más del 90%.
 
 Lo que esta herramienta NO ve: fallos de las consultas del propio writer. En el Mac, sin cargar la máquina:
-`grep -c "refresh failed\|new_products failed\|hot_products failed\|organic_counts failed" data/live_main.log` y `tail -3 data/live_main.log`.
+`grep -c "refresh failed\|refresh error\|new_products failed\|hot_products failed\|organic_counts failed" data/live_main.log` y `tail -3 data/live_main.log`.
+
+**Fallo parcial conocido (caracterizado, no corregido).** En `live.refresher` la lectura de `shop.events` va antes de publicar el catálogo: si esa consulta falla (`refresh error` en el log), el ciclo entero se pierde y `state` conserva el catálogo y los inactivos del último ciclo bueno. Las roturas de stock siguen entrando por `stock_refresher` (cada segundo, consulta aparte); los productos lanzados y las desactivaciones sin `out_of_stock` esperan a que la consulta de eventos vuelva. Los fallos de afinidad, atributos, lfm, vistas previas y feedback sí están aislados: solo dejan su línea `... failed`.
 
 **Alarmas operativas, no de conversión.** No volver atrás de política porque baje la conversión observada en la final: cambia la población y las compras realizadas son pocas. Una vuelta atrás de política no arregla un fallo de red.
 

@@ -5,7 +5,7 @@ feed, and health of our answers. Aggregate queries only; never starts a writer, 
     python tools/final_watch.py --watch 60      # every 60 s
 
 What it CANNOT see: whether the writer's own queries fail (a quiet stream and a failing reader look the same from
-here). For that, on the writer's machine: grep -c 'refresh failed\\|new_products failed\\|hot_products failed' data/live_main.log
+here). For that, on the writer's machine: grep -c 'refresh failed\\|refresh error\\|new_products failed\\|hot_products failed' data/live_main.log
 """
 from __future__ import annotations
 
