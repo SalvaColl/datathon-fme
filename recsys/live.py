@@ -96,6 +96,14 @@ def clean_state_window(raw):
 # T-021: tuning arms for lfm requests, read by the leaderboard per model_version ("v3-lfm-<tag>-k|-n|-kh|-nh"):
 #   {"variant": "lfm", "lfm_arms": [{"tag": "r1"}, {"tag": "r2", "file": "lfm_coef_r2.json"}, {"tag": "x1", "w": {"known": {"islast": 3.0}}}]}
 # An arm with only a tag is the committed weights (control). Users are split evenly by hash across 2-4 arms.
+def clean_newcap(c):
+    """T-061 arm key "newcap": {"known" | "new" | "home_known" | "home_new": 0..10}, the most launched products a list
+    of that segment may carry (lfm.cap_launched). A bare integer is the same cap for the four segments. Returns the
+    dict form ({} = no cap), or None if anything is off."""
+    if isinstance(c, int) and not isinstance(c, bool): c = {k: c for k in lfm.CAP_KEYS}
+    if not isinstance(c, dict) or not set(c) <= set(lfm.CAP_KEYS): return None
+    if not all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 10 for v in c.values()): return None
+    return {k: c[k] for k in lfm.CAP_KEYS if k in c}
 def clean_lfm_arms(raw):
     def spec(a):      # weights spec {"file": ..., "w": ...} -> cleaned dict, or None if anything is off
         if not isinstance(a, dict): return None
@@ -112,8 +120,9 @@ def clean_lfm_arms(raw):
         lqm = a.get('lq')                                      # T-028/T-034/T-047: "cold" | "cold_new" | "cold_known" = corrected quality for today's products
         xp = a.get('explore')                                  # T-039: true = exploration arm (last slot from ranks 11..60); "new" / "known" = only for that kind of shopper
         rc = a.get('recart')                                   # T-046: true = re-cart bonus (LiveFit.set_arms); anything else but absent rejects the list
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {})})
+        cap = clean_newcap(a['newcap']) if 'newcap' in a else None   # T-061: max launched products per list, by segment; a bad one rejects the list
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True) and ('newcap' not in a or cap is not None):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {}), **({'newcap': cap} if cap else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -204,7 +213,7 @@ def lfm_arm_weights(arms):
         for seg in ('known', 'new'):
             if not (np.all(np.isfinite(np.asarray(w[seg], dtype=float))) and math.isfinite(b[seg])):
                 raise PolicyRejected('non-finite coefficient in arm ' + tag)
-    return tmp.alt, tmp.alt_lq, tmp.alt_x
+    return tmp.alt, tmp.alt_lq, tmp.alt_x, tmp.alt_cap
 def check_policy(conf):
     """T-043: the whole candidate policy.json, validated BEFORE anything is published. Returns the new values of the
     keys that change ({} = nothing to do); raises PolicyRejected and touches nothing if any part is wrong. A key that
@@ -238,7 +247,7 @@ def check_policy(conf):
 def publish_policy(new):
     """Install a candidate that check_policy() accepted. Weights first (a request never sees an arm without its
     weights), then the routing keys in one dict update."""
-    if 'lfm_weights' in new: LF.alt, LF.alt_lq, LF.alt_x = new.pop('lfm_weights')
+    if 'lfm_weights' in new: LF.alt, LF.alt_lq, LF.alt_x, LF.alt_cap = new.pop('lfm_weights')
     if 'state_window' in new: LF.set_window(**(new['state_window'] or {}))
     POLICY.update(new)
     for k in ('variant', 'qrank_arms', 'lfm_arms', 'state_window'):
