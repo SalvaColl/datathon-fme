@@ -99,6 +99,8 @@ This revision updates HTML/SVG/notes only at the user's request. Earlier PDF/Pow
 
 ## Observations, rejections and version data
 
+Current slide two returns to attribute affinity, checked in own live feedback (I-092/E-093): known shoppers, products without prior relationship and outside recent_views, 0.6 purchases per 10,000 exposures at affinity <0.10 versus 89.7 at affinity 0.20–0.25. Feedback covers 21,691 requests, 14 Nov 11:09–13:05 UTC; only 36 purchases in the main segment. This is an observational exposed-product group comparison, not before/after or a causal policy conversion uplift. Current script: 335 words.
+
 Latest slide two supersedes the affinity example with the documented u1/u3k feedback-refit comparison: 1.988% -> 2.117%, shown as 1.99% -> 2.12%, N=10,800 per policy. It is the same temporal comparison detailed on slide four, not separate evidence and not a measured conversion effect of affinity alone. No metrics were fabricated.
 
 Current slide two uses one complete I-092/E-092 example: observe recurring preference for description attributes, add attribute affinity to ranking, check historical hit@1 0.472 -> 0.519 over 4,697 purchased sessions. The earlier purchase-exclusion card is now only supporting data in the appendix. This is ranking accuracy conditioned on purchase, not live conversion. Current script: 317 words.

@@ -9,7 +9,7 @@ Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomen
 
 ## 2. Observar. Cambiar. Comprobar. — 0:15–0:50
 
-Un ejemplo completo: nuestras recomendaciones generaban feedback propio sobre clics y compras. Lo usamos para reajustar los pesos del modelo. Al comprobar el resultado, la conversión esperada pasó del 1,99 al 2,12 %. También comparamos con la referencia de cada ventana: el margen mejoró unos 0,17 puntos. Son bloques temporales de práctica, no una prueba aleatorizada. La tabla siguiente detalla esa comparación.
+Observamos en el historial que los compradores repetían gustos por atributos de las descripciones. Añadimos afinidad para dar más puntuación a productos que encajaran con esos gustos. Comprobamos que la señal también aparecía en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. Son grupos de productos expuestos, no un antes y después del cambio. El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.
 
 ## 3. Una ronda no bastaba. — 0:50–1:25
 
@@ -29,7 +29,7 @@ Usamos Claude para programar y Codex para investigar señales y contrastar hipó
 
 ## Cómo contarlo
 
-Guion: 311 palabras. Plan completo: 180 segundos.
+Guion: 335 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

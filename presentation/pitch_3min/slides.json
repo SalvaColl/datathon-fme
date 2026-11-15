@@ -285,8 +285,8 @@
     "kicker": "Observaciones que cambiaron el modelo",
     "title": "Observar. Cambiar. Comprobar.",
     "seconds": 35,
-    "notes": "Un ejemplo completo: nuestras recomendaciones generaban feedback propio sobre clics y compras. Lo usamos para reajustar los pesos del modelo. Al comprobar el resultado, la conversi\u00f3n esperada pas\u00f3 del 1,99 al 2,12 %. Tambi\u00e9n comparamos con la referencia de cada ventana: el margen mejor\u00f3 unos 0,17 puntos. Son bloques temporales de pr\u00e1ctica, no una prueba aleatorizada. La tabla siguiente detalla esa comparaci\u00f3n.",
-    "source": "E-081/I-082: feedback del primer modelo, 14 nov 12:01\u201313:02 UTC, 0 compras en 1.118 exposiciones ya compradas. E-092: 4.697 sesiones hist\u00f3ricas con compra, hit@1 0,472 -> 0,519 al incorporar afinidad. Las dos m\u00e9tricas son distintas; ninguna es una comparaci\u00f3n causal de conversi\u00f3n del modelo final.",
+    "notes": "Observamos en el historial que los compradores repet\u00edan gustos por atributos de las descripciones. A\u00f1adimos afinidad para dar m\u00e1s puntuaci\u00f3n a productos que encajaran con esos gustos. Comprobamos que la se\u00f1al tambi\u00e9n aparec\u00eda en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. Son grupos de productos expuestos, no un antes y despu\u00e9s del cambio. El segmento ten\u00eda solo 36 compras: apoya la se\u00f1al, pero no demuestra el aumento de conversi\u00f3n de la pol\u00edtica.",
+    "source": "I-092/E-093: feedback 14 nov 11:09\u201313:05 UTC, 21.691 peticiones; conocidos, productos sin relaci\u00f3n previa y fuera de recent_views. Compras por 10.000 exposiciones: afinidad <0,10: 0,6; afinidad 0,20\u20130,25: 89,7. Solo 36 compras en el segmento principal; selecci\u00f3n de productos y posici\u00f3n limitan la comparaci\u00f3n. No es una estimaci\u00f3n causal del aumento de conversi\u00f3n tras a\u00f1adir afinidad.",
     "shapes": [
       {
         "kind": "rect",
@@ -362,7 +362,7 @@
         "w": 414,
         "h": 52.46,
         "lines": [
-          "Aprender del feedback"
+          "Los gustos se repiten"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -375,9 +375,9 @@
         "w": 414,
         "h": 101.25,
         "lines": [
-          "Vimos qu\u00e9 recomendaciones",
-          "recib\u00edan clics y cu\u00e1les terminaban",
-          "en compra."
+          "En el historial, las compras se",
+          "relacionaban con los atributos de",
+          "productos vistos antes."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -412,7 +412,7 @@
         "w": 414,
         "h": 52.46,
         "lines": [
-          "Reajustar el modelo"
+          "A\u00f1adimos afinidad"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -425,9 +425,9 @@
         "w": 414,
         "h": 101.25,
         "lines": [
-          "Actualizamos los pesos con nuestro",
-          "feedback para aprender de esos",
-          "resultados."
+          "Dimos m\u00e1s puntuaci\u00f3n a productos",
+          "cuyos atributos encajaban con esos",
+          "gustos."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -462,7 +462,7 @@
         "w": 414,
         "h": 52.46,
         "lines": [
-          "1,99% \u2192 2,12%"
+          "Compras en vivo"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -473,10 +473,11 @@
         "x": 1088,
         "y": 498,
         "w": 414,
-        "h": 71.5,
+        "h": 101.25,
         "lines": [
-          "Conversi\u00f3n esperada observada.",
-          "10.800 peticiones por versi\u00f3n."
+          "Por 10.000 exposiciones:",
+          "Afinidad baja: 0,6 compras",
+          "Afinidad alta: 89,7 compras"
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -489,11 +490,24 @@
         "w": 1460,
         "h": 47.699999999999996,
         "lines": [
-          "Margen frente a la referencia de cada ventana: +0,17 puntos"
+          "La se\u00f1al del historial tambi\u00e9n aparece en nuestro feedback real"
         ],
         "size": 30,
         "color": "61E4B1",
         "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 75,
+        "y": 794,
+        "w": 1460,
+        "h": 40.56,
+        "lines": [
+          "Comparaci\u00f3n entre afinidad baja y alta; no es un antes y despu\u00e9s del modelo."
+        ],
+        "size": 24,
+        "color": "A6B5C8",
+        "bold": false
       }
     ]
   },

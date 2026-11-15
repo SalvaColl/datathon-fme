@@ -134,11 +134,11 @@ ES_SOURCES = [
     "no se inventan funciones individuales ni versiones concretas de los agentes.",
 ]
 ES_NOTES[1] = (
-    "Un ejemplo completo: nuestras recomendaciones generaban feedback propio sobre clics y compras. "
-    "Lo usamos para reajustar los pesos del modelo. "
-    "Al comprobar el resultado, la conversión esperada pasó del 1,99 al 2,12 %. "
-    "También comparamos con la referencia de cada ventana: el margen mejoró unos 0,17 puntos. "
-    "Son bloques temporales de práctica, no una prueba aleatorizada. La tabla siguiente detalla esa comparación.")
+    "Observamos en el historial que los compradores repetían gustos por atributos de las descripciones. "
+    "Añadimos afinidad para dar más puntuación a productos que encajaran con esos gustos. "
+    "Comprobamos que la señal también aparecía en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. "
+    "Son grupos de productos expuestos, no un antes y después del cambio. "
+    "El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.")
 ES_NOTES[2] = (
     "También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. "
     "No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. "
@@ -150,9 +150,10 @@ ES_NOTES[3] = (
     "Son ocho bloques de práctica, no un A/B aleatorizado. "
     "Las tablas completas están disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.")
 ES_SOURCES[1] = (
-    "E-081/I-082: feedback del primer modelo, 14 nov 12:01–13:02 UTC, 0 compras en 1.118 exposiciones ya compradas. "
-    "E-092: 4.697 sesiones históricas con compra, hit@1 0,472 -> 0,519 al incorporar afinidad. "
-    "Las dos métricas son distintas; ninguna es una comparación causal de conversión del modelo final.")
+    "I-092/E-093: feedback 14 nov 11:09–13:05 UTC, 21.691 peticiones; conocidos, productos sin relación previa y fuera de recent_views. "
+    "Compras por 10.000 exposiciones: afinidad <0,10: 0,6; afinidad 0,20–0,25: 89,7. "
+    "Solo 36 compras en el segmento principal; selección de productos y posición limitan la comparación. "
+    "No es una estimación causal del aumento de conversión tras añadir afinidad.")
 ES_SOURCES[2] = (
     "E-271: conocidos/página, r3 1,57% (1.489) vs grafo 1,77% (1.521), 14 nov 17:50–18:20 UTC. "
     "E-272: r3 2,08% (1.539) vs grafo 1,67% (1.476), 18:25–18:55 UTC. "
@@ -234,13 +235,14 @@ text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
 
 s = slide("Observaciones que cambiaron el modelo", "Observar. Cambiar. Comprobar.", 35, "", "")
 text(s, 70, 143, "Observar. Cambiar.\nComprobar.", 78, bold=True)
-card(s, 70, 365, 470, 340, "01 · OBSERVAR", "Aprender del feedback",
-     "Vimos qué recomendaciones recibían clics y cuáles terminaban en compra.")
-card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Reajustar el modelo",
-     "Actualizamos los pesos con nuestro feedback para aprender de esos resultados.")
-card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "1,99% → 2,12%",
-     "Conversión esperada observada.\n10.800 peticiones por versión.")
-text(s, 75, 745, "Margen frente a la referencia de cada ventana: +0,17 puntos", 30, C["green"], True)
+card(s, 70, 365, 470, 340, "01 · OBSERVAR", "Los gustos se repiten",
+     "En el historial, las compras se relacionaban con los atributos de productos vistos antes.")
+card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
+     "Dimos más puntuación a productos cuyos atributos encajaban con esos gustos.")
+card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "Compras en vivo",
+     "Por 10.000 exposiciones:\nAfinidad baja: 0,6 compras\nAfinidad alta: 89,7 compras")
+text(s, 75, 745, "La señal del historial también aparece en nuestro feedback real", 30, C["green"], True)
+text(s, 75, 794, "Comparación entre afinidad baja y alta; no es un antes y después del modelo.", 24, C["muted"])
 
 s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
 text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
