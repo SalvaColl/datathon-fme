@@ -12,7 +12,7 @@ def fit():
 
 class PrevViews(unittest.TestCase):
     def test_feature_is_last_and_inert_in_committed_files(self):
-        self.assertEqual(lfm.FEATS[-3:], ["prv", "hcb", "hcc"])
+        self.assertEqual(lfm.FEATS[26:29], ["prv", "hcb", "hcc"])
         for f in lfm.HERE.glob("lfm_coef*.json"):
             c = json.loads(f.read_text())
             for seg in ("known", "new"):

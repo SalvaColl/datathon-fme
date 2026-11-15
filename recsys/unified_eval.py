@@ -125,7 +125,7 @@ def targets(grid=None, out=None, base="r3", horizon_min=30):
             b, lc, hcu, bt, mix, mfu = st
             page = r.page or "product"; seg = "new" if r.new_user else "known"
             a = LB.aff_asof(aff, r.user_id, r.rv, r.ts)
-            X = lfm.features(S, a, r.rv, page, hcu, lc, bought_today=bt, seg=lfm.in_segment(r.device, r.region), mix=mix, mfu=mfu)
+            X = lfm.features(S, a, r.rv, page, hcu, lc, bought_today=bt, seg=lfm.in_segment(r.device, r.region), mix=mix, mfu=mfu, grp=lfm.seg_key(r.device, r.region))
             dead = CV.dead_mask(S, st, r.user_id) | un
             coh = seg + ("/page" if (r.rv and page in lfm.LQ_PAGES) else "/home" if not r.rv else "/other")
             tg = [("org", S.row[i]) for i in r.org if i in S.row and not dead[S.row[i]]]
@@ -204,7 +204,7 @@ def check(files, n=4000, since="2026-11-14 17:00:00", out=None):
             page = r.page or "product"
             req = dict(user_id=r.user_id, rv=r.rv, page=page, is_new_user=bool(r.new_user), device=r.device, region=r.region)
             seg = ("new" if r.new_user else "known") + ("/page" if (r.rv and page in lfm.LQ_PAGES) else "/home" if not r.rv else "/other")
-            X = lfm.features(S, shim.affinity_all(r.user_id, r.rv), r.rv, page, st[2], st[1], bought_today=st[3], seg=lfm.in_segment(r.device, r.region), mix=st[4], mfu=st[5])
+            X = lfm.features(S, shim.affinity_all(r.user_id, r.rv), r.rv, page, st[2], st[1], bought_today=st[3], seg=lfm.in_segment(r.device, r.region), mix=st[4], mfu=st[5], grp=lfm.seg_key(r.device, r.region))
             last = S.row.get(r.rv[-1]) if r.rv else None
             outs = {}
             for f, arms in pol.items():
