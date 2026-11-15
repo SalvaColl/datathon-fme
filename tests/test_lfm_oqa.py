@@ -53,7 +53,7 @@ class AttrPriorTests(unittest.TestCase):
         self.assertFalse(lfm.LiveFit(COEF, HIST).wants_oqa())
         for f in Path(lfm.HERE).glob("policy*.json"):
             conf = json.loads(f.read_text())
-            if "ug" in f.name: continue                                           # the trial policies of this task
+            if ".rot_ug" in f.name: continue                                           # the trial policies of this task
             self.assertFalse(any(isinstance(x, dict) and "oqa" in x for x in conf.get("lfm_arms") or []), f.name)
 
     def test_products_with_history_are_identical(self):
