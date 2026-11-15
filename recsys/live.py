@@ -52,6 +52,20 @@ def urgent_age(raw=None, default=2.2):
     except (TypeError, ValueError): v = default
     return min(2.4, max(1.5, v))
 URGENT_AGE = urgent_age(os.environ.get('URGENT_AGE'))
+def connect_retry_age(raw=None, default=2.0):
+    """T-047: oldest request age (s) up to which a batch whose POST failed with ConnectTimeout gets its ONE retry.
+    0 disables the retry (CONNECT_RETRY_AGE=0). Clamped to 0-2.2: beyond that a normal POST (p99 0.52 s on 14 Nov)
+    plus the connect allowance no longer fits inside the 3 s deadline."""
+    try: v = float(raw) if raw not in (None, '') else default
+    except (TypeError, ValueError): v = default
+    return min(2.2, max(0.0, v)) if math.isfinite(v) else default
+CONNECT_RETRY_AGE = connect_retry_age(os.environ.get('CONNECT_RETRY_AGE'))
+def never_sent(exc):
+    """True only for requests' ConnectTimeout: the TCP/TLS connection was never established, so no byte of the request
+    left this process and the server cannot have accepted it (requests documents it as safe to retry). ReadTimeout,
+    the Timeout base class, ConnectionError (resets, refused, DNS, proxy, TLS errors: some of them can happen after the
+    body was written), HTTP errors and anything unknown stay ambiguous."""
+    return isinstance(exc, requests.exceptions.ConnectTimeout)
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand-r1"
 VERSION_Q = "v2-qrank-r1"
@@ -756,19 +770,38 @@ def send_answers(reqs, answers, journal, seen, dry=False):
     if not batch:
         return
     started = time.perf_counter()
-    remaining = min(3-age(r) for r in reqs if r['request_id'] in {a['request_id'] for a in batch})
+    ids = {a['request_id'] for a in batch}
+    oldest = lambda: max(age(r) for r in reqs if r['request_id'] in ids)
+    attempts, retry = 1, None
     try:
-        post_batch(batch, remaining)
+        post_batch(batch, 3-oldest())
     except Exception as exc:
-        journal.finish([a['request_id'] for a in batch], 'uncertain')
-        print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
-                              post_ms=round(1000*(time.perf_counter()-started), 1))), flush=True)
         # A timeout can mean accepted-but-acknowledgement-lost. Never blindly retry.
-        return
+        # T-047, the one exception: ConnectTimeout = the connection was never established, nothing was sent. The SAME
+        # claimed payload gets ONE more POST if the oldest request is still young enough, with the deadline budget
+        # measured again right now (the failed connect used up to 0.3 s). Whatever the second attempt raises,
+        # ConnectTimeout included, is final.
+        if never_sent(exc):
+            first_ms, seconds = round(1000*(time.perf_counter()-started), 1), oldest()
+            retry = 'ok' if 0 < CONNECT_RETRY_AGE and seconds <= CONNECT_RETRY_AGE else 'no_budget'
+            if retry == 'ok':
+                attempts = 2
+                print(json.dumps(dict(event='push_retry', n=len(batch), first_ms=first_ms, oldest_age_ms=round(1000*seconds, 1))), flush=True)
+                try:
+                    post_batch(batch, 3-seconds)
+                    exc = None
+                except Exception as second:
+                    exc = second
+        if exc is not None:
+            journal.finish([a['request_id'] for a in batch], 'uncertain')
+            print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
+                                  post_ms=round(1000*(time.perf_counter()-started), 1), attempts=attempts,
+                                  **({'retry': retry} if retry else {}))), flush=True)
+            return
     journal.finish([a['request_id'] for a in batch], 'acknowledged')
     print(json.dumps(dict(event='push_ack', n=len(batch),
         post_ms=round(1000*(time.perf_counter()-started), 1),
-        oldest_age_ms=round(1000*max(age(r) for r in reqs), 1))), flush=True)
+        oldest_age_ms=round(1000*max(age(r) for r in reqs), 1), **({'attempts': 2} if attempts == 2 else {}))), flush=True)
 
 
 STOP = threading.Event()          # set by SIGINT/SIGTERM: finish the current loop, release the lock, exit
