@@ -112,7 +112,11 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
             names = list(factors); X = [[1.0] + [float(r["variant"] in factors[f]) for f in names] + [float(r["burst"]), float(step_at is not None and r["t"] >= step_at)] for r in b]
             X = np.array(X); y = np.array([r[col] for r in b])
             X = X[:, [j for j in range(X.shape[1]) if j <= len(names) or X[:, j].min() != X[:, j].max()]]      # drop constant nuisance columns
-            if len(b) <= X.shape[1] + 1: fx[col] = dict(blocks=len(b)); continue
+            keep = []                                                                                      # drop nuisance columns collinear with the ones kept (burst = step in a short epoch)
+            for j in range(X.shape[1]):
+                if j <= len(names) or np.linalg.matrix_rank(X[:, keep + [j]]) > len(keep): keep.append(j)
+            X = X[:, keep]
+            if len(b) <= X.shape[1] + 1 or np.linalg.matrix_rank(X) < X.shape[1]: fx[col] = dict(blocks=len(b)); continue
             beta, *_ = np.linalg.lstsq(X, y, rcond=None); res_ = y - X @ beta
             s2 = float(res_ @ res_) / (len(b) - X.shape[1]); cov = np.linalg.inv(X.T @ X)
             fx[col] = dict(blocks=len(b), residual_sd=round(s2 ** 0.5, 3))
