@@ -359,3 +359,12 @@ Review/apply the fix commit on the deployment branch and run `python -m unittest
 - **En caliente (código de main 16e14c6):** `policy.unified_hot6.json` = u1 con `hot` 6 (conocidos), 3 (nuevos), 1 (home), tag `u1t`. Riesgo: usuarios sin contexto reciben 2,4–3,1 calientes sin evidencia de ganancia.
 - **Tras reinicio con este PR:** `policy.unified_hotc.json` = u1 + `hotc` 9, tag `u1c`: lista llena de calientes solo con contexto, el resto como u1; detector rápido activo para cualquier política con `hot` o `hotc`.
 - **Vuelta atrás:** `policy.unified.json` en caliente. Código antiguo rechaza `hotc` (lista inválida entera): no copiar `policy.unified_hotc.json` antes del reinicio.
+
+### D-630 — Final: un solo writer por procedimiento; relevo entre máquinas solo con promoción manual (T-063, 15 nov 07:35 UTC). Decide y ejecuta Javi
+- **Hecho:** el candado del writer es local (E-631). El writer del Mac no se reinicia antes de la final, así que no puede llevar el testigo remoto: hoy ningún código impide dos writers en máquinas distintas.
+- **Regla:** el relevo (`live.py --standby`) solo escribe tras un fichero `PROMOTE` puesto a mano, con el writer del Mac confirmado muerto o matado; el Mac no se vuelve a arrancar como writer mientras el relevo escriba. Procedimiento en `runbook.md`, "Vigilancia y relevo entre máquinas (final)".
+- **Red de seguridad del relevo:** no se promueve si alguien respondió las peticiones de los últimos 4–12 s, y cede solo si aparecen envíos que no son suyos. El Mac nunca cede por su cuenta (si los dos cedieran no escribiría nadie).
+- **No se migra por latencia:** p95 1,9–2,0 s y p99 2,3–2,5 s con < 0,1% de `missing` (E-630) no lo justifican.
+- **Testigo remoto (`WRITER_LEASE=1`):** implementado y apagado. No se activa en la final: exige que todos los writers lo lleven y añade una dependencia de `scratch` al camino de escritura.
+- **Alarma de conversión:** solo informativa por debajo de ~3.200 peticiones recientes; nunca decide una vuelta atrás con 5 minutos.
+- **Vuelta atrás:** `kill -INT` al relevo; sin `--standby` ni `WRITER_LEASE` el código de `live.py` no cambia de comportamiento.
