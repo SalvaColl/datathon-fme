@@ -832,13 +832,13 @@ def fallback_answers(reqs, version=None):
         out.append({"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"})
     return out
 
-GATE = None      # T-063: failover.Gate when started with --standby or WRITER_LEASE=1; None = behaviour unchanged
+GATE = None      # T-069: failover.Gate when started with --standby or WRITER_LEASE=1; None = behaviour unchanged
 def scratch_insert(row):
-    """Lease rows only (T-063). Never called unless WRITER_LEASE=1."""
+    """Lease rows only (T-069). Never called unless WRITER_LEASE=1."""
     r = session().post(f'{API}/v1/tables/scratch', params={'database': TEAM}, json=[row], timeout=5); r.raise_for_status()
 
 def make_gate(standby, lock_path, argv=None, env=None):
-    """--standby: load, score without sending, write only after a promote file (runbook, T-063). WRITER_LEASE=1: remote
+    """--standby: load, score without sending, write only after a promote file (runbook, T-069). WRITER_LEASE=1: remote
     fencing token in <team>.scratch. Neither given -> None."""
     env = os.environ if env is None else env
     lease_on = env.get('WRITER_LEASE') == '1'
@@ -868,7 +868,7 @@ def pull(seen):
 
 def post_batch(batch, remaining):
     """The ONE place that writes to submissions (tools/handoff_rehearsal.py swaps it for a recorder)."""
-    if GATE is not None: GATE.before_post(batch)      # T-063: standby / lease gate; None (the default) = no gate
+    if GATE is not None: GATE.before_post(batch)      # T-069: standby / lease gate; None (the default) = no gate
     response = session().post(f'{API}/v1/tables/submissions', params={'database': TEAM},
         json=batch, timeout=(min(0.3, remaining/2), max(0.05, remaining-0.3)))
     response.raise_for_status()
@@ -991,7 +991,7 @@ def main():
     # --takeover: load and warm up NEXT TO the running writer, then ask it to stop and start writing the moment the
     # OS hands the lock over. This process never writes without the lock, so there are never two writers.
     global GATE
-    standby = '--standby' in sys.argv and not DRY          # T-063: never writes until promoted by hand
+    standby = '--standby' in sys.argv and not DRY          # T-069: never writes until promoted by hand
     takeover = '--takeover' in sys.argv and not DRY and not standby
     old_pid = int(arg_value('--replace-pid', 0)) or None      # only for an old writer that left no pid file
     GATE = None if DRY else make_gate(standby, lock_path)
@@ -1042,7 +1042,7 @@ def main():
         while not STOP.is_set():
             started = time.perf_counter()
             try:
-                if GATE is not None:          # T-063; with no gate this block does not exist
+                if GATE is not None:          # T-069; with no gate this block does not exist
                     verdict = GATE.tick()
                     if verdict == 'stop': break
                     if verdict == 'promoted':

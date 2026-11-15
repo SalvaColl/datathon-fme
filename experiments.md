@@ -827,7 +827,7 @@ Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer s
 - Tope `newcap` (clave del brazo, por segmento `known` / `new` / `home_known` / `home_new`; ausente = sin tope): `lfm.cap_launched` deja a −inf todos los lanzados menos los `c` mejores antes de elegir la lista; los que el comprador ha visto en la sesión o tiene en un carrito no se quitan y cuentan para el tope. Con las dosis de u3nkh (1,0 / 0,5 / 0,8): sin tope 1,35 / 0,89 / 1,41 por lista y 17% / 6% / 16% de listas con 3 o más; tope 2: 0,99 / 0,78 / 1,14 y 0,3% (solo productos propios); tope 1: 0,58 / 0,56 / 0,69. Con el triple de dosis (deriva exagerada): sin tope 4,1 / 4,1 / 8,9 por lista; tope 2: 1,7 / 1,9 / 2,0. El resto de la lista conserva su orden en las 5.006 peticiones; +0,2 ms por lista; ninguna lista inválida.
 - No hay medida de conversión del tope: es un seguro contra el fallo conocido de inundar la lista (np2, 4,3 por lista), no una mejora medida. El tope 2 ya cambia hoy el 25% de las listas de páginas de conocidos y el 18% de las de home de nuevos respecto a la política probada en vivo; el tope 3 cambia el 10% de las de páginas de conocidos, el 2,5% de las de home de conocidos y el 7% de las de home de nuevos (1,21 / 0,86 / 1,32 por lista) y deja pasar más deriva.
 
-## E-630 — Vigilante de la final: valores normales y retraso del feedback (T-063, 15 nov 07:22 UTC)
+## E-630 — Vigilante de la final: valores normales y retraso del feedback (T-069, 15 nov 07:22 UTC)
 
 **LIVE FEEDBACK, solo lectura** (`team_26.feedback`; comando `python3 tools/watchdog.py --once`, 07:21:56 UTC, salida 0 = OK).
 
@@ -836,7 +836,7 @@ Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer s
 - Conversión (compras reales): últimos 30 min 129 / 5.400 = 2,39% (Wilson al 99%: 1,91–2,99) contra los 90 min anteriores 350 / 16.200 = 2,16% (1,89–2,47). Muestra mínima para poder avisar de una caída: 3.187 peticiones (caída relativa del 50%, z 2,576, potencia 80%) y 100 compras de referencia. Una ventana de 5 min tiene 900 peticiones y ~18 compras: no puede avisar (test `test_five_minutes_never_recommend_a_rollback_even_with_zero_purchases`).
 - **Límites:** los umbrales se eligieron sobre una mañana tranquila, no sobre una caída real; la alarma de guardia depende de pasar la etiqueta pública correcta. 21 tests sin red (`tests/test_watchdog.py`).
 
-## E-631 — Relevo entre máquinas: qué hace hoy el código y qué añade el modo de espera (T-063, 15 nov 07:30 UTC)
+## E-631 — Relevo entre máquinas: qué hace hoy el código y qué añade el modo de espera (T-069, 15 nov 07:30 UTC)
 
 **Leído en el código (main 2e9d1b9), no ensayado con dos máquinas.**
 
@@ -850,7 +850,7 @@ Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer s
 
 **Tests.** `tests/test_standby.py`, 26: no escribe antes de promover (ni con `post_batch` llamado a mano), fichero viejo / caducado / con otra palabra no promueve, la promoción toma el candado local, se rechaza si otro writer responde y ese fichero queda gastado (no hay promoción posterior por sí sola), 400 ciclos de silencio, fallos de consulta y testigo caído no promueven, cesión ante envíos ajenos, token viejo que vuelve tras 5 min se retira antes de escribir, y `live.main()` entero en espera con la red simulada. Total `python3 -m unittest discover -s tests`: 435 OK. **No ensayado:** `live.py --standby` real contra RawTree (este hilo solo puede lanzar `--dry-run`, que desactiva el modo), ni el testigo con dos writers reales.
 
-## E-632 — Frescura de los carritos: del evento al ranking (T-063, 15 nov 07:35 UTC)
+## E-632 — Frescura de los carritos: del evento al ranking (T-069, 15 nov 07:35 UTC)
 
 **OBSERVED DATA, solo lectura.**
 
@@ -859,3 +859,21 @@ Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer s
 - (iii) Uso en un ranking (leído en `lfm.py`): `LF.add` mete el carrito en `lcart` dentro del mismo bloqueo; la siguiente petición de ese comprador ya lo usa. Retraso añadido: 0.
 - **Ensayo en seco del `refresher` real** (contenedor de la nube, 08:00–08:07 UTC, `live.py` cargado con `--dry-run`, sin bucle de servicio, POST a `/v1/tables/` bloqueado; guion temporal fuera del repositorio que envuelve `apply_events`): carga 194,6 s (primer `refresh_events` 136 s); después el periodo entre lecturas de eventos es 21,3–22,2 s (20 s de espera + ~1,5 s de trabajo del ciclo; la consulta de eventos tarda 0,31–0,50 s y aplicar ~1.200 filas 50 ms). En 8 ciclos estables, 1.013 carritos: edad al aplicarse p50 12,1 s, p95 21,2 s, p99 22,6 s, máximo 23,2 s; los 1.013 estaban en `LF.lcart` nada más aplicarse. El primer ciclo tras la carga trae eventos de hasta 43 s. **Límite:** en este contenedor faltan los ficheros de afinidad y no hay carga de servicio, así que el ciclo del Mac puede ser más largo; no está medido desde aquí.
 - **Total del `ts` del carrito a poder usarse:** mediana ≈ 12 s, p95 ≈ 21 s con el periodo de 21,5 s medido en la nube; en el Mac será ese valor más lo que dure allí el trabajo de cada ciclo (catálogo, afinidad, `set_catalog`, pools), no medido desde aquí. Es cadencia de sondeo, no retraso de RawTree (≤ 1,6 s al p95).
+
+## E-633 — Guardia, reserva y latencia: el 3% de T-043 ya no ocurre (T-069, 15 nov 07:30 UTC)
+
+- **Pregunta:** ¿cuántas peticiones reciben hoy la lista de guardia o la reserva de la plataforma, y justifica eso mover el writer de máquina (A3)?
+- **Datos:** `team_26.feedback`, 15 nov 03:00–07:30 UTC, 46.821 peticiones. LIVE FEEDBACK. Consulta: `served_by`, `fallback_reason`, `latency_ms` y la etiqueta pública de la lista de guardia.
+
+| Ruta | Peticiones | % | Compras | p50 / p95 / p99 ms |
+|---|---|---|---|---|
+| Modelo | 46.730 | 99,81 | 1.009 (2,16%) | 1.219 / 1.954 / 2.347 |
+| Lista de guardia | 69 | 0,15 | 0 | 2.725 / 3.204 / 3.366 |
+| Reserva de la plataforma (`missing` 21, `invalid` 1) | 22 | 0,05 | 0 | — |
+
+- Por hora (UTC), reserva / guardia de 10.800: 22h 192 / 342; 23h 44 / 179; 00h 17 / 34; 01h 12 / 30; 02h 4 / 22; 03h 2 / 16; 04h 3 / 27; 05h 10 / 13; 06h 3 / 12. El 3% de T-043 fue 20:00–22:30 UTC del 14 nov (reinicios y umbral de 1,8 s); desde el umbral de 2,2 s no se repite.
+- El único `invalid` (05:55:10 UTC) tiene latencia 3.056 ms: es una respuesta tardía, no una lista inválida. 68 respuestas del modelo llegaron con 2,8 s o más.
+- **Escenario de recuperación (supuesto: esas peticiones convertirían como la media, 2,16%):** 91 peticiones × 2,16% = 2 compras en 4,5 h, es decir 0,004 puntos de conversión. Es una cota superior: las peticiones que caen en guardia son las que llegan tarde, no una muestra al azar.
+- **Lo que no se puede medir:** la reparación por stock (`repair_for`) conserva la etiqueta del modelo, así que no se distingue en el feedback. No documentado en ningún log accesible desde fuera del Mac.
+- **Episodio de las 08:02 UTC:** 46 `missing` y 6 de guardia en un minuto (dos paradas de ~3 s y ~12 s). Causa no verificada; avisado al dueño del writer.
+- **Conclusión:** A3 (mover el writer a una máquina cercana a la API) DESCARTADA con evidencia: no hay pérdida recuperable que la pague y un cambio de máquina antes de la final añade el riesgo de dos writers (E-631).

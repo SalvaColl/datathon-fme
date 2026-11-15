@@ -1,4 +1,4 @@
-"""T-063: watchdog thresholds are pure functions; no network here."""
+"""T-069: watchdog thresholds are pure functions; no network here."""
 import sys
 import unittest
 from pathlib import Path

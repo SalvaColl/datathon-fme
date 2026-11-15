@@ -1,4 +1,4 @@
-"""Read-only watchdog for the live writer (T-063). Never writes anything, never starts a recommender.
+"""Read-only watchdog for the live writer (T-069). Never writes anything, never starts a recommender.
 
 Reads `<TEAM_ID>.feedback` only (plus the server clock) and prints a verdict: OK / WARN / CRITICAL.
 

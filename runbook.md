@@ -208,7 +208,7 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Corte del lector de feedback (T-066): las lecturas siguientes parten de la última lectura buena menos 10 min (`FB_OVERLAP_S`), así que un corte de cualquier duración se relee entero al volver. `fb refresh failed` en el log = la marca no avanza. Una fila que llegue más de 10 min después de su `ts` solo se recupera al reiniciar.
 - Interruptor opcional, sin reinicio una vez cargado el código de T-036: `"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}` en `data/policy.json`. Con él, solo las compras desde `day_start` alimentan las features de "comprado hoy"; las compras siguen excluidas siempre. `"carts": "day"` además pasa los carritos anteriores a carritos de histórico (no los borra). **No recomendado sin lectura del leaderboard**: en datos reales cambia el 42% de los slates (48% con `carts: day`) y no hay evidencia de que ayude (E-360).
 - Vuelta atrás: quitar `state_window` de `policy.json` (el writer lo aplica en el siguiente ciclo y lo escribe en el log como `{"event": "policy", "state_window": null}`).
-- **Compras anteriores a la final (T-063, `prior_purchases`)**. Solo existe con el código de T-063 cargado; un writer anterior ignora la clave sin avisar. Clave de primer nivel de `data/policy.json`, recargable en caliente, junto a `variant` y `lfm_arms`:
+- **Compras anteriores a la final (T-069, `prior_purchases`)**. Solo existe con el código de T-063 cargado; un writer anterior ignora la clave sin avisar. Clave de primer nivel de `data/policy.json`, recargable en caliente, junto a `variant` y `lfm_arms`:
   - ausente o `null`: comportamiento de siempre, nada se cuenta (por defecto).
   - `"prior_purchases": {"boundary": "2026-11-15 09:00:00"}` (o `"mode": "exclude"`): mismas respuestas que sin la clave; solo activa el diagnóstico en sombra.
   - `"prior_purchases": {"boundary": "2026-11-15 09:00:00", "mode": "allow"}`: las compras en vivo (flujo orgánico desde `EVENTS_SINCE` y nuestras compras del carrusel) cuya última fecha es anterior a `boundary` (UTC) dejan de excluirse en `lfm.scores` y en la guarda de envío (`live.user_bought`, que usan `repair_for` y `fallback_answers`). Compiten con su puntuación normal.
@@ -234,7 +234,7 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Vuelta atrás: política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json`.
 
 
-## Watchdog y reserva en otra máquina (T-063) — 2026-11-15
+## Watchdog y reserva en otra máquina (T-069) — 2026-11-15
 
 Complementa la sección "Vigilancia y relevo durante la final" (PR 68, `tools/final_watch.py`: márgenes de las guardas de lanzados y de tendencias, retraso por tabla, orden manual del relevo). Aquí solo está lo que aquella no cubre: el veredicto OK / WARN / CRITICAL del watchdog y sus umbrales, cómo arrancar y promover un proceso de reserva, y cómo se prueba que el writer anterior ha parado. Si las dos secciones discrepan en el orden del relevo, manda la de PR 68.
 

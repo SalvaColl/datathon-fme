@@ -1,4 +1,4 @@
-"""Cross-machine failover helpers (T-063). No model or network imports: every side effect is injected.
+"""Cross-machine failover helpers (T-069). No model or network imports: every side effect is injected.
 
 serving.WriterLock is a flock in the local temp directory, so it excludes a second writer on ONE machine only.
 This module adds what can be added without touching a writer that is already running:

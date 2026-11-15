@@ -1,4 +1,4 @@
-"""T-063: standby with manual promote, foreign-writer yield and the remote lease. No network, no real submissions."""
+"""T-069: standby with manual promote, foreign-writer yield and the remote lease. No network, no real submissions."""
 import os
 import tempfile
 import time
