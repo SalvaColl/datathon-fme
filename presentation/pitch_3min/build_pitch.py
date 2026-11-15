@@ -276,8 +276,12 @@ text(s, 1155, 500, "Los 10 mejores", 35, bold=True)
 for i in range(10):
     x=1155+(i%5)*68
     y=570+(i//5)*55
-    rect(s, x, y, 55, 42, C["green"] if i<3 else C["line"], 9)
-    text(s, x+17 if i<9 else x+11, y+7, str(i+1), 21, C["bg"] if i<3 else C["white"], True)
+    rect(s, x, y, 55, 42, C["line"], 9)
+    fill = 55*(9-i)/9
+    if fill:
+        rect(s, x, y, fill, 42, C["green"], min(9, fill/2))
+    rect(s, x+13, y+7, 29, 28, C["bg"], 6)
+    text(s, x+21 if i<9 else x+15, y+9, str(i+1), 18, C["white"], True)
 text(s, 1155, 690, "Activos y sin compras previas", 23, C["muted"])
 text(s, 75, 795, "Entrenamiento: compras ×3 · En la final: pesos fijos, señales actualizadas", 29, C["green"], True)
 
