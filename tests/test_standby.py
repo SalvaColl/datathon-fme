@@ -126,11 +126,13 @@ class Standby(Base):
         g = self.gate()
         self.rt.active = [dict(request_id=f'r{i}', c=1) for i in range(24)]
         self.clock.tick(5); self.write_promote()
-        for _ in range(5):
-            self.assertEqual(self.tick(g), 'idle')
-        self.assertEqual(self.locks, [])
+        self.assertEqual(self.tick(g), 'idle')
         self.assertTrue(g.refused.startswith('another_writer_is_answering'))
-        self.rt.active = []                                   # the old writer is confirmed dead: same file now promotes
+        self.rt.active = []                                   # the other writer goes quiet later (e.g. it lost its network)
+        for _ in range(5):
+            self.assertEqual(self.tick(g), 'idle')            # the refused file is spent: NO promotion on its own
+        self.assertEqual(self.locks, [])
+        self.clock.tick(2); self.write_promote()              # a person decides again
         self.assertEqual(self.tick(g), 'promoted')
 
     def test_promote_refused_when_the_check_cannot_run_or_the_local_lock_is_held(self):
@@ -139,10 +141,14 @@ class Standby(Base):
         self.clock.tick(5); self.write_promote()
         self.assertEqual(self.tick(g), 'idle')
         self.rt.fail = False
+        self.assertEqual(self.tick(g), 'idle')                # spent
         other = WriterLock(self.lock_path)
+        self.clock.tick(2); self.write_promote()
         self.assertEqual(self.tick(g), 'idle')
         self.assertEqual(g.refused, 'local_lock_held')
         other.close()
+        self.assertEqual(self.tick(g), 'idle')                # spent again
+        self.clock.tick(2); self.write_promote()
         self.assertEqual(self.tick(g), 'promoted')
 
     def test_force_skips_the_remote_check_and_the_automatic_yield(self):
@@ -174,6 +180,16 @@ class Standby(Base):
         self.assertEqual(self.tick(g), 'idle')                # the OLD promote file does not re-promote
         self.clock.tick(3); self.write_promote()
         self.assertEqual(self.tick(g), 'promoted')            # a fresh one does
+
+    def test_nothing_but_a_promote_file_ever_promotes(self):
+        """Silence of the other writer, time passing, failing queries, a superseded or missing lease: none of them opens the gate."""
+        g = self.gate(lease=self.lease('cloud'))
+        self.rt.active = []
+        for step in range(400):
+            self.rt.fail = step % 7 == 0
+            self.assertEqual(self.tick(g, 1.5), 'idle')
+            self.assertIsNone(g.check_once())
+        self.assertEqual((self.locks, self.rt.scratch, g.state), ([], [], failover.STANDBY))
 
     def test_foreign_count(self):
         rows = [dict(request_id='a', c=1), dict(request_id='b', c=2), dict(request_id='x', c=1)]

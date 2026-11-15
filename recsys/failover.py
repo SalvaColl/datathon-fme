@@ -16,7 +16,13 @@ This module adds what can be added without touching a writer that is already run
       confirm its token recently (laptop sleep, network cut) must re-read it BEFORE writing again. Both writers have
       to run with the lease for it to fence anything.
 
-Promotion is never automatic: without a fresh promote file nothing here ever opens the gate.
+Promotion is never automatic: without a fresh promote file nothing here ever opens the gate, each file is one
+attempt (a refused file is spent), and no heartbeat, timeout or lease expiry promotes anything.
+
+What the remote checks can and cannot prove: "nobody answered the last seconds of requests" shows that no writer is
+answering NOW. It does NOT prove the old writer has stopped for good: a writer that only lost its network is silent
+and will write again when it reconnects. Only the operator can establish that (process killed, or machine off and
+kept off); see the runbook.
 """
 import json
 import os
@@ -172,9 +178,10 @@ class Gate:
         return True
 
     def _refuse(self, why):
-        if why != self.refused:
-            self.log(json.dumps(dict(event='promote_refused', reason=why)), flush=True)
-        self.refused = why
+        # One promote file = one attempt at the moment a person wrote it. A refused file is spent: nothing is retried
+        # later on its own (that would be an automatic promotion the day the other writer goes quiet).
+        self.log(json.dumps(dict(event='promote_refused', reason=why, next='write a NEW promote file to try again')), flush=True)
+        self.refused, self.armed_at = why, self.wall()
         return False
 
     def step_down(self, reason):
@@ -185,7 +192,7 @@ class Gate:
             except Exception:
                 pass
             self.lock = None
-        self.state, self.reason, self.armed_at, self.refused = (STANDBY if self.standby else STOPPED), reason, self.wall(), None
+        self.state, self.reason, self.armed_at = (STANDBY if self.standby else STOPPED), reason, self.wall()
         self.log(json.dumps(dict(event='stepped_down', reason=reason, to=self.state)), flush=True)
 
     # ---- called by the serving loop ----
