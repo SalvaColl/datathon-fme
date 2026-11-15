@@ -25,7 +25,7 @@ def slate(lf, aff, model, rv=(), new=True, page='home'):
 
 class NewphTests(unittest.TestCase):
     def test_feature_is_last_and_weightless_by_default(self):
-        self.assertEqual(K, len(lfm.FEATS) - 1); self.assertEqual(K, 29)
+        self.assertEqual(K, 29); self.assertEqual(lfm.FEATS[29], "newph")
         lf, _ = build()
         self.assertEqual(float(lf.w["known"][K]), 0.0); self.assertEqual(float(lf.w["new"][K]), 0.0)
 
