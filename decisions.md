@@ -337,3 +337,11 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
 - **Prioridad para la final:** primero la prueba limpia de `cold_new` (D-420, fase A): protege a los compradores nuevos, que es la población de la final. `cold_known` solo si no la desplaza. Un control estable y como mucho un retador activo.
 - **Regla para `cold_known`, fijada antes de ver datos:** misma que D-420 fase B: cohorte conocidos en producto/categoría con vistas, `v3-lfm-<control>-k` contra `v3-lfm-ck1p-k` en la misma ventana, con `reference` de esa ventana; descubrimiento y confirmación en un bloque posterior sin tocar pesos ni cota; promover solo si es positivo en los dos bloques, el conjunto supera 2 errores típicos, cold no cae y `on_time` ≥ 99,5%. Si no es concluyente, no se promueve. Comprobar en el log las etiquetas servidas.
 - **Vuelta atrás:** política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `9fd2425`.
+
+## D-500 — Bot único (T-050, 15 nov 00:35 UTC)
+
+- **Política:** `recsys/policy.unified.json`, un solo brazo `u1` = fichero r3 con: conocidos en página, pesos de cs2r + `lq` 0, `orate` 1,6, `mf` 0,3, `bsub` 0,3, `hot` 1,5; nuevos en página `lq` 0, `orate` 1,8, `opop` 0,4, `hot` 1,5; home (conocidos y nuevos) r3 con `lq` 0, `orate` 1,0, `opop` 0,6. Base cs2r por decisión de Javi (00:24 UTC, la ve mejor en cold en vivo).
+- **Alternativa:** `policy.unified_nocarts.json` (`u1n`, las mismas piezas con los carritos de r3). **Vuelta atrás en caliente:** `policy.rot_cs2r.json` (base actual) o `policy.unified_rollback.json` (r3).
+- **Necesita reinicio con relevo** desde esta rama (features `orate`/`opop`, conteos solo orgánicos, reintento de ConnectTimeout). Con código anterior `policy.json` con `orate` se rechaza entero y sigue la política anterior (PR #42).
+- **Lectura sugerida:** equipo − referencia en los primeros bloques de 15 minutos contra los últimos bloques de cs2r; volver a cs2r si cae con claridad (dos bloques seguidos peores que el peor de cs2r) o si a tiempo baja de 97%.
+- **Evidencia:** E-500 (offline; ninguna pieza tiene A/B propio). Confianza: calidad orgánica alta para ser offline (dos métodos independientes, E-490 y E-500); carritos de cs2r media; tendencias baja pero barata.

@@ -222,8 +222,15 @@ def organic_quality(ids, oq, hist=None):
             c = g(i)
             if c is None: continue
             v[k] = max(float(c[0]), 0.0); p[k] = max(float(c[1]), 0.0); has[k] = hist is None or i in hist
-        if not np.isfinite(v).all() or not np.isfinite(p).all() or has.sum() < 50: return None, None
+        if not np.isfinite(v).all() or not np.isfinite(p).all(): return None, None
         r = np.log((p + OQ_PRIOR_P) / (v + OQ_PRIOR_V)); pop = np.log(v + OQ_POP0)
+        if has.sum() < 50:
+            # T-050: (almost) no product of this catalogue has a 60-day history, e.g. a final round served on a new catalogue.
+            # The purchase rate of the stream is still comparable between products, so orate stays on (centred on the whole
+            # catalogue; the centre does not change any ranking) and opop, which needs the history, is neutral for everybody.
+            # Without this an arm that gives `lq` weight 0 would be left with no product quality at all.
+            if int((v > 0).sum()) < 50: return None, None            # too little stream to compare products
+            return np.clip(r - np.median(r), -OQ_CLIP, OQ_CLIP), np.zeros(len(ids))
         orate = np.clip(r - np.median(r[has]), -OQ_CLIP, OQ_CLIP)
         opop = np.where(has, np.clip(pop - np.median(pop[has]), -OQ_CLIP, OQ_CLIP), 0.0)
         return orate, opop
