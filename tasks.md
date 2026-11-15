@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-08 | P1 | Clear challenge wording, historical-test explanation, lighter RawTree diagram and opening hook | Codex / codex/pitch-3min | DONE: six renders reviewed; generic recommendation wording, explicit historical metric, no block-count line or RawTree point subtexts; nonnumeric opening hook | Presentation only; temporal-comparison limitations retained in notes/data |
 | T-PITCH-07 | P1 | Remove bottom controls and timer; retain keyboard navigation | Codex / codex/pitch-3min | DONE: generated HTML checked for absent toolbar/timer and retained keyboard navigation | Presentation only |
 | T-PITCH-06 | P1 | Remove slide footers; simplify standalone slide explanations; Claude coding / Codex research credits | Codex / codex/pitch-3min | DONE: all six renders reviewed; no footer text; 307-word script/180-second plan; data appendix retained | Presentation only; retain evidence in data panel |
 | T-PITCH-05 | P1 | Evidence-led HTML pitch: observations -> model decisions, rejected ideas, comparable version metrics and optional detailed data | Codex / codex/pitch-3min | DONE: six slides, 308 words/180-second plan; six supporting tables behind D; changed slides visually reviewed; UTF-8, notes, local links and block arithmetic checked | HTML/SVG/notes only; offline metrics and temporal comparisons labeled; no isolated ur2/final result claimed; no serving changes |

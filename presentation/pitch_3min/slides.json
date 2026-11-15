@@ -1,9 +1,9 @@
 [
   {
     "kicker": "La decisi\u00f3n detr\u00e1s del sistema",
-    "title": "Diez productos. Tres segundos. Un comprador.",
+    "title": "Diez productos. Tres segundos. Sin bola de cristal.",
     "seconds": 15,
-    "notes": "Diez productos. Tres segundos. Un comprador. Somos el equipo 26. Lo dif\u00edcil no era a\u00f1adir otro modelo, sino decidir qu\u00e9 se\u00f1ales creer y llegar a tiempo.",
+    "notes": "Diez productos. Tres segundos. Y sin bola de cristal. Somos el equipo 26. Lo dif\u00edcil no era a\u00f1adir otro modelo, sino decidir qu\u00e9 se\u00f1ales creer y llegar a tiempo.",
     "source": "Contrato oficial y handoff final del equipo: message (4).txt. El diagrama explica el flujo y su plazo global de 3 segundos, no tiempos medidos por etapa. RawTree se identifica como producto de Tinybird en https://rawtree.com/.",
     "shapes": [
       {
@@ -46,7 +46,7 @@
         "lines": [
           "Diez productos.",
           "Tres segundos.",
-          "Un comprador."
+          "Sin bola de cristal."
         ],
         "size": 100,
         "color": "F5F7FA",
@@ -59,8 +59,8 @@
         "w": 1460,
         "h": 85.78,
         "lines": [
-          "Reto de Tinybird.",
-          "Decisiones en tiempo real con RawTree."
+          "Elegir qu\u00e9 ense\u00f1ar a cada comprador.",
+          "Reto de Tinybird \u00b7 RawTree."
         ],
         "size": 31,
         "color": "A6B5C8",
@@ -127,12 +127,12 @@
         "kind": "text",
         "x": 1073,
         "y": 288,
-        "w": 400,
-        "h": 45.32,
+        "w": 410,
+        "h": 40.56,
         "lines": [
           "Petici\u00f3n de un cliente"
         ],
-        "size": 28,
+        "size": 24,
         "color": "F5F7FA",
         "bold": true
       },
@@ -188,12 +188,12 @@
         "kind": "text",
         "x": 1073,
         "y": 418,
-        "w": 400,
-        "h": 45.32,
+        "w": 410,
+        "h": 40.56,
         "lines": [
           "Puntuar y validar"
         ],
-        "size": 28,
+        "size": 24,
         "color": "F5F7FA",
         "bold": true
       },
@@ -239,7 +239,7 @@
         "w": 462,
         "h": 31.04,
         "lines": [
-          "ESCRIBIR EN RAWTREE"
+          "ENVIAR LA RESPUESTA"
         ],
         "size": 16,
         "color": "A6B5C8",
@@ -249,12 +249,12 @@
         "kind": "text",
         "x": 1073,
         "y": 548,
-        "w": 400,
-        "h": 45.32,
+        "w": 410,
+        "h": 40.56,
         "lines": [
-          "10 IDs \u00fanicos y v\u00e1lidos"
+          "Las 10 mejores recomendaciones"
         ],
-        "size": 28,
+        "size": 24,
         "color": "F5F7FA",
         "bold": true
       },
@@ -411,7 +411,7 @@
         "w": 705,
         "h": 35.8,
         "lines": [
-          "PRUEBA HIST\u00d3RICA / OFFLINE"
+          "HISTORIAL: SIN AFINIDAD \u2192 CON AFINIDAD"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -435,9 +435,10 @@
         "x": 830,
         "y": 535,
         "w": 670,
-        "h": 41.75,
+        "h": 71.5,
         "lines": [
-          "acierto en primer puesto \u00b7 4.697 sesiones con compra"
+          "Aciertos al poner primero el producto comprado.",
+          "Prueba con 4.697 sesiones del historial."
         ],
         "size": 25,
         "color": "F5F7FA",
@@ -1084,24 +1085,11 @@
         "size": 28,
         "color": "F5F7FA",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 760,
-        "w": 1460,
-        "h": 41.75,
-        "lines": [
-          "Pr\u00e1ctica \u00b7 8 bloques temporales, no un A/B aleatorizado"
-        ],
-        "size": 25,
-        "color": "A6B5C8",
-        "bold": false
       }
     ]
   },
   {
-    "kicker": "C\u00f3mo usamos RawTree, creado por Tinybird",
+    "kicker": "C\u00f3mo usamos RawTree",
     "title": "RawTree: del dato a la acci\u00f3n.",
     "seconds": 35,
     "notes": "RawTree, creado por Tinybird, es la base de nuestro circuito. Leemos peticiones, eventos y cambios del cat\u00e1logo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos m\u00e9tricas en scratch. As\u00ed podemos explicar cada decisi\u00f3n y detectar fallos. En pr\u00e1ctica, el 99,96 % de las respuestas lleg\u00f3 a tiempo.",
@@ -1132,7 +1120,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "C\u00d3MO USAMOS RAWTREE, CREADO POR TINYBIRD"
+          "C\u00d3MO USAMOS RAWTREE"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -1236,19 +1224,6 @@
         "bold": true
       },
       {
-        "kind": "text",
-        "x": 947,
-        "y": 309,
-        "w": 550,
-        "h": 33.42,
-        "lines": [
-          "shop.requests \u00b7 shop.events \u00b7 shop.catalog_updates"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
         "kind": "rect",
         "x": 925,
         "y": 367,
@@ -1269,19 +1244,6 @@
         "size": 28,
         "color": "F5F7FA",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 947,
-        "y": 400,
-        "w": 550,
-        "h": 33.42,
-        "lines": [
-          "Conteos por producto \u00b7 ventanas temporales"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
       },
       {
         "kind": "rect",
@@ -1306,19 +1268,6 @@
         "bold": true
       },
       {
-        "kind": "text",
-        "x": 947,
-        "y": 491,
-        "w": 550,
-        "h": 33.42,
-        "lines": [
-          "team_26.submissions \u2192 team_26.feedback"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
         "kind": "rect",
         "x": 925,
         "y": 549,
@@ -1339,19 +1288,6 @@
         "size": 28,
         "color": "F5F7FA",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 947,
-        "y": 582,
-        "w": 550,
-        "h": 33.42,
-        "lines": [
-          "team_26.scratch \u00b7 144 registros de m\u00e9tricas"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
       },
       {
         "kind": "text",

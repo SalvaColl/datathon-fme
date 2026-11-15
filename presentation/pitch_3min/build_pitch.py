@@ -18,9 +18,9 @@ DECK_STEM = "Team26_3min_ES"
 ES_TEXT = {
     "TEAM 26  /  RAWTREE × DATATHON FME 2026": "EQUIPO 26  /  RAWTREE × DATATHON FME 2026",
     "The decision behind the system": "La decisión detrás del sistema",
-    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Un comprador.",
-    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nUn comprador.",
-    "A changing store.\nA different decision for every shopper.": "Reto de Tinybird.\nDecisiones en tiempo real con RawTree.",
+    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Sin bola de cristal.",
+    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nSin bola de cristal.",
+    "A changing store.\nA different decision for every shopper.": "Elegir qué enseñar a cada comprador.\nReto de Tinybird · RawTree.",
     "THE DECISION WINDOW": "EL PLAZO PARA RESPONDER",
     "seconds": "segundos",
     "Why this model / how we trained it": "Por qué este modelo / cómo lo entrenamos",
@@ -63,7 +63,7 @@ ES_TEXT = {
     "A green test is only as good as its assumptions.": "Buscar casos que los tests no estaban cubriendo.",
     "8 blocks · 10,800 requests per policy": "8 bloques · 10.800 peticiones por política",
     "PRACTICE / 15 NOV 03:20–05:20 CET · TIME BLOCKS, NOT RANDOMIZED A/B": "PRÁCTICA / 15 NOV 03:20–05:20 CET · BLOQUES TEMPORALES, NO A/B ALEATORIZADO",
-    "Why it is fast / how RawTree supports it": "Cómo usamos RawTree, creado por Tinybird",
+    "Why it is fast / how RawTree supports it": "Cómo usamos RawTree",
     "Precompute. Validate. Batch.": "RawTree: del dato a la acción.",
     "Precompute.\nValidate. Batch.": "RawTree:\ndel dato a la acción.",
     "99.96%": "99,96%",
@@ -90,7 +90,7 @@ def tr(value):
     return ES_TEXT.get(value, ES_UPPER.get(value, value))
 
 ES_NOTES = [
-    "Diez productos. Tres segundos. Un comprador. Somos el equipo 26. "
+    "Diez productos. Tres segundos. Y sin bola de cristal. Somos el equipo 26. "
     "Lo difícil no era añadir otro modelo, sino decidir qué señales creer y llegar a tiempo.",
     "Probamos modelos más complejos, pero no mejoraron los resultados con datos apartados. "
     "Elegimos un modelo lineal: rápido e interpretable. En el entrenamiento base usamos solo productos mostrados. "
@@ -218,12 +218,12 @@ text(s, 1005, 193, "DE LA PETICIÓN A LA RESPUESTA", 20, C["green"], True)
 for y, step, label, description in [
     (245, "01", "LEER DE RAWTREE", "Petición de un cliente"),
     (375, "02", "MODELO LOCAL", "Puntuar y validar"),
-    (505, "03", "ESCRIBIR EN RAWTREE", "10 IDs únicos y válidos"),
+    (505, "03", "ENVIAR LA RESPUESTA", "Las 10 mejores recomendaciones"),
 ]:
     rect(s, 1005, y, 490, 97, C["bg"], 14)
     text(s, 1026, y+17, step, 21, C["green"], True)
     text(s, 1073, y+13, label, 16, C["muted"], True)
-    text(s, 1073, y+43, description, 28, bold=True, width=400)
+    text(s, 1073, y+43, description, 24, bold=True, width=410)
     if step != "03":
         text(s, 1230, y+98, "↓", 28, C["green"])
 rect(s, 1005, 638, 490, 59, C["green"], 13)
@@ -239,9 +239,9 @@ text(s, 100, 453, "0 compras", 62, C["orange"], True)
 text(s, 100, 535, "en 1.118 exposiciones de productos ya comprados", 25, width=650)
 text(s, 100, 618, "No volver a recomendar lo comprado", 26, C["green"], True)
 rect(s, 800, 380, 730, 310, C["card"], 22)
-text(s, 830, 407, "PRUEBA HISTÓRICA / OFFLINE", 20, C["green"], True)
+text(s, 830, 407, "HISTORIAL: SIN AFINIDAD → CON AFINIDAD", 20, C["green"], True)
 text(s, 830, 453, "47,2% → 51,9%", 54, C["green"], True)
-text(s, 830, 535, "acierto en primer puesto · 4.697 sesiones con compra", 25, width=670)
+text(s, 830, 535, "Aciertos al poner primero el producto comprado.\nPrueba con 4.697 sesiones del historial.", 25, width=670)
 text(s, 830, 618, "Aprender gustos a partir de atributos", 26, C["green"], True)
 text(s, 75, 735, "Observación → hipótesis → cambio medido", 30, bold=True)
 
@@ -280,7 +280,6 @@ for y, vals, col in [
     for x,value in zip(columns,vals):
         text(s, x, y, value, 29 if x<1310 else 27, col, True)
 text(s, 75, 715, "Margen = conversión − referencia", 28, bold=True)
-text(s, 75, 760, "Práctica · 8 bloques temporales, no un A/B aleatorizado", 25, C["muted"])
 
 s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 35,
     "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "
@@ -305,7 +304,6 @@ for j, (label, detail) in enumerate([
     y = 269+j*91
     rect(s, 925, y+7, 5, 29, C["green"] if j%2==0 else C["orange"], 2)
     text(s, 947, y, label, 28, bold=True, width=550)
-    text(s, 947, y+40, detail, 18, C["muted"], width=550)
 text(s, 925, 652, "Trazabilidad: de la petición a su feedback.", 21, C["green"])
 
 s = slide("How we worked / AI-assisted development", "Agents accelerated. Evidence decided.", 25,
