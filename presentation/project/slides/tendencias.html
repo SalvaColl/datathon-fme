@@ -1,21 +1,21 @@
 <section id="tendencias" data-transition="fade">
-<p class="eyebrow">HALLAZGO 4 · TENDENCIAS EN VIVO</p>
-<h2>Las modas llegan de golpe y por subcategoría</h2>
+<p class="eyebrow">APRENDER DEL STREAM · 2</p>
+<h2>Las modas duran 45 minutos y el sistema las sigue</h2>
 <div class="main">
 <div class="col grow">
-<p class="small">Vistas cada 5 minutos, antes y durante la ráfaga</p>
+<p class="small">Conversión de la lista según cuántos productos de la subcategoría de moda lleva (clientes que ya miraban esa categoría)</p>
 <div class="bars">
-<div class="row"><p class="lab">Acuarios, antes</p><div class="bar" style="width:38px"></div><p class="val">45</p></div>
-<div class="row"><p class="lab">Acuarios, 09:30–10:15 UTC</p><div class="bar hot" style="width:160px"></div><p class="val">190</p></div>
-<div class="row"><p class="lab">Hervidores, antes</p><div class="bar" style="width:135px"></div><p class="val">160</p></div>
-<div class="row"><p class="lab">Hervidores, 11:30–12:15 UTC</p><div class="bar hot" style="width:640px"></div><p class="val">760</p></div>
+<div class="row"><p class="lab">Ninguno</p><div class="bar" style="width:60px"></div><p class="val">0,72 %</p></div>
+<div class="row"><p class="lab">Uno</p><div class="bar good" style="width:251px"></div><p class="val">3,04 %</p></div>
+<div class="row"><p class="lab">Dos</p><div class="bar good" style="width:400px"></div><p class="val">4,83 %</p></div>
+<div class="row"><p class="lab">Tres o cuatro</p><div class="bar good" style="width:474px"></div><p class="val">5,73 %</p></div>
 </div>
 </div>
-<div class="col" style="width:440px">
-<div class="card"><p class="mid">5 min</p><p class="cap">tarda nuestro detector en avisar; quedan unos 40 de ráfaga</p></div>
-<p class="body">Sube toda la subcategoría a la vez, y también la compra por vista. Pendiente de probar en vivo.</p>
+<div class="col" style="width:480px">
+<div class="card"><p class="mid">15 min frente a 3 h</p><p class="cap">el detector compara vistas por subcategoría en el stream y sube esos productos mientras dura</p></div>
+<p class="body">Una subcategoría entera multiplica sus vistas por 4 de golpe. Vimos 7 episodios el 14 nov.</p>
 </div>
 </div>
-<p class="source">Eventos orgánicos en vivo, 14 nov 09:00–12:35 UTC (873.000 eventos). Solo 2 episodios observados; valores aproximados leídos por tramos de 5 minutos.</p>
-<aside>Cuarto hallazgo: las tendencias. Esperábamos productos de moda y lo que encontramos son escalones: una subcategoría entera, primero acuarios y luego hervidores, multiplica sus vistas por cuatro de golpe, se mantiene unos 45 minutos y se apaga igual de golpe. Durante la ráfaga también sube la compra por vista. Nuestro detector compara los últimos 15 minutos con las 3 horas anteriores y avisa a los cinco minutos de empezar, así que quedan unos cuarenta para aprovecharla. Honestidad: son solo dos episodios y el efecto sobre el carrusel está sin medir; está implementado como variante apagada, lista para probar durante una ráfaga activa.</aside>
+<p class="source">Feedback propio de las 7 ráfagas del 14 nov (E-530): 3.600, 691, 331 y 227 listas. Compras reales, y qué listas llevaban esos productos lo decidió el modelo: indica dirección, no es un experimento.</p>
+<aside>Lo segundo que se aprende del stream: las tendencias. No son productos sueltos: una subcategoría entera multiplica sus vistas por cuatro de golpe, dura 45 minutos y se apaga igual. Ayer vimos siete. Al principio lo descartamos: lo probamos en la página de inicio sin ninguna moda activa y no dio nada. Al volver a mirar con más datos, el efecto existe y está concentrado en quien ya está mirando esa categoría: con un producto de moda en la lista la conversión pasa de 0,7 a 3 por ciento, y con tres o cuatro a 5,7. Cuidado, esto es feedback con compras reales y fue el modelo quien eligió a quién enseñárselos, así que marca la dirección y no el tamaño. El detector compara las vistas de los últimos quince minutos con las tres horas anteriores, directamente sobre los eventos de RawTree, y mientras dura la moda esos productos suben en la lista. Está en vivo desde esta madrugada dentro de la política única.</aside>
 </section>

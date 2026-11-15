@@ -1,9 +1,9 @@
 <section id="afinidad" data-transition="fade">
 <p class="eyebrow">HALLAZGO 2 · QUÉ SÍ SE COMPRA</p>
-<h2>El gusto por 20 frases es nuestra mejor señal</h2>
+<h2>El gusto del cliente se lee en 20 frases</h2>
 <div class="main">
 <div class="col">
-<p class="small">Compras por cada 100 vistas de un producto que el cliente nunca había tocado</p>
+<p class="small">Compras por cada 100 vistas de un producto que el cliente nunca había tocado (histórico, no es carrusel)</p>
 <div class="colchart">
 <div class="vcol"><p class="vval">1,6</p><div class="vbar" style="height:25px"></div></div>
 <div class="vcol"><p class="vval">3,3</p><div class="vbar" style="height:51px"></div></div>
@@ -16,10 +16,10 @@
 <div class="axis"><p class="small">Afinidad baja (menos de 0,10)</p><p class="small">Afinidad alta (más de 0,25)</p></div>
 </div>
 <div class="col grow">
-<p class="body">Cada descripción lleva 2 frases de una lista fija de 20, como «great value for money». La afinidad es qué parte de lo que el cliente miró antes compartía esas frases.</p>
-<div class="card"><p class="mid">0,6 → 89,7</p><p class="cap">compras por 10.000 impresiones en nuestro carrusel en vivo, de afinidad baja a alta</p></div>
+<p class="small">Cada descripción lleva 2 frases de una lista fija de 20. La afinidad es qué parte de lo que el cliente miró antes compartía esas frases.</p>
+<div class="card" style="padding:28px"><p class="mid">20 señales</p><p class="small">por petición, en un modelo lineal con pesos por tipo de cliente y de página.</p></div>
 </div>
 </div>
-<p class="source">Gráfico: eventos orgánicos, afinidad calculada antes del 15 oct y compras después (3,9 M de pares cliente-producto, 167.527 compras). En vivo: 84.388 impresiones, 36 compras.</p>
-<aside>Segundo hallazgo. Leyendo las descripciones vimos que todas están hechas igual: marca, subcategoría y exactamente dos frases de una lista fija de veinte, cosas como "great value for money" u "organic ingredients". Y cada cliente tiene gustos estables sobre esas frases. Llamamos afinidad a qué parte de lo que miró antes compartía frases con el producto candidato. El gráfico usa solo navegación orgánica, con la afinidad calculada antes del 15 de octubre y las compras después, para no hacer trampa: de 1,6 a 23,4 compras por cada cien vistas. En nuestro carrusel en vivo aparece la misma pendiente, de 0,6 a casi 90 compras por diez mil impresiones. Ojo, en vivo son 36 compras, así que es una confirmación de la forma, no una cifra fina. Offline, añadirla sube el acierto en la primera posición de 0,472 a 0,519 sobre 4.697 sesiones con compra.</aside>
+<p class="source">Gráfico: eventos orgánicos del histórico, afinidad calculada antes del 15 oct y compras después (3,9 M de pares cliente-producto, 167.527 compras; I-092, E-093). Medida offline con corte temporal.</p>
+<aside>Segundo hallazgo: qué sí se compra. Todas las descripciones están hechas igual: marca, subcategoría y dos frases de una lista fija de veinte. Y cada cliente tiene gustos estables sobre esas frases. El gráfico usa solo navegación orgánica del histórico, con la afinidad calculada antes del 15 de octubre y las compras después: de 1,6 a 23,4 compras por cada cien vistas. Es una medida offline. Con esto y otras señales parecidas, el carrito pendiente, las categorías favoritas del cliente, lo último que ha visto, montamos el modelo que sirve hoy: unas veinte señales por petición y un modelo lineal, con pesos distintos para clientes conocidos y nuevos y para páginas con y sin vistas. Lineal a propósito: probamos uno no lineal sobre las mismas señales y predecía peor.</aside>
 </section>

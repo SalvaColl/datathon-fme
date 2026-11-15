@@ -826,3 +826,45 @@ Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer s
 - Cada tanda aporta más o menos lo mismo y la edad no la apaga (aportes por tanda con newp 1,0: 0,33 / 0,24 / 0,28 / 0,08 / 0,41), así que la exposición de una dosis fija crece con el número de tandas: x1,2 con 6 y x1,4 con 7 (extrapolación lineal, conjetura).
 - Tope `newcap` (clave del brazo, por segmento `known` / `new` / `home_known` / `home_new`; ausente = sin tope): `lfm.cap_launched` deja a −inf todos los lanzados menos los `c` mejores antes de elegir la lista; los que el comprador ha visto en la sesión o tiene en un carrito no se quitan y cuentan para el tope. Con las dosis de u3nkh (1,0 / 0,5 / 0,8): sin tope 1,35 / 0,89 / 1,41 por lista y 17% / 6% / 16% de listas con 3 o más; tope 2: 0,99 / 0,78 / 1,14 y 0,3% (solo productos propios); tope 1: 0,58 / 0,56 / 0,69. Con el triple de dosis (deriva exagerada): sin tope 4,1 / 4,1 / 8,9 por lista; tope 2: 1,7 / 1,9 / 2,0. El resto de la lista conserva su orden en las 5.006 peticiones; +0,2 ms por lista; ninguna lista inválida.
 - No hay medida de conversión del tope: es un seguro contra el fallo conocido de inundar la lista (np2, 4,3 por lista), no una mejora medida. El tope 2 ya cambia hoy el 25% de las listas de páginas de conocidos y el 18% de las de home de nuevos respecto a la política probada en vivo; el tope 3 cambia el 10% de las de páginas de conocidos, el 2,5% de las de home de conocidos y el 7% de las de home de nuevos (1,21 / 0,86 / 1,32 por lista) y deja pasar más deriva.
+
+## E-650 — La final (15 nov 09:00–11:00 UTC): servicio, segmentos y distancia a la referencia (T-065)
+
+Writer: un proceso en el Mac, código `e8a1f18`, una sola política (ur2), sin rotador (dato del hilo de despliegue; no se jugó con `f782509`). Nada de esta entrada es una prueba controlada.
+
+**Servicio (LIVE FEEDBACK, `team_26.feedback`, N = 21.600).** Modelo 21.476 (99,43%), lista de guardia 31, sin respuesta 93 (`missing`), inválidas 0. Latencia de lo servido p50 1,38 s, p95 2,18 s, p99 2,65 s. Compras reales 431, clics 1.427. 82 de las 93 perdidas son un corte de conexión del Mac con la API de unos 30 s (68 en el minuto 10:33 y 14 en el 10:34 UTC); el resto de la final, 11.
+
+| Segmento (feedback unido a `shop.requests`) | Peticiones | Servidas | Compras reales | Clics | p50 / p95 ms |
+|---|---|---|---|---|---|
+| Conocidos, página (-k) | 12.128 | 12.075 | 259 (2,14%) | 901 | 1.391 / 2.192 |
+| Nuevos, página (-n) | 5.155 | 5.144 | 143 (2,77%) | 376 | 1.396 / 2.175 |
+| Conocidos, home (-kh) | 3.032 | 3.011 | 16 (0,53%) | 112 | 1.361 / 2.142 |
+| Nuevos, home (-nh) | 1.285 | 1.277 | 13 (1,01%) | 40 | 1.405 / 2.194 |
+
+**Marcador de la final (HIDDEN MODEL, `api/state`, N = 21.600 por fila).** team_26 2,110% (cold 2,434%, a tiempo 99,57%): quinto en conversión y sexto en la nota del stream (53,67 de 100; team_37 53,68). team_33 2,252; team_06 2,238; team_03 2,189; team_17 2,142. Referencia 2,141 (cold 2,199); punto de partida 0,750.
+
+| Fila del marcador | Última hora de práctica vista (06:19–07:19 UTC) | Final |
+|---|---|---|
+| Punto de partida | 0,564 | 0,750 |
+| Referencia | 1,946 (cold 1,817) | 2,141 (cold 2,199) |
+| team_26 | 2,194 (cold 2,675) | 2,110 (cold 2,434) |
+| team_06 | 2,236 | 2,238 |
+| team_03 | 2,235 | 2,189 |
+| team_26 − referencia | +0,25 (05:00–07:00: +0,27) | −0,03 |
+| team_06 − referencia | +0,29 | +0,10 |
+| team_03 − referencia | +0,29 | +0,05 |
+
+Por versión nuestra (conversión esperada del modelo oculto): conocidos en página 2,208 en la final (12.057 peticiones) frente a 2,22 en la última hora de práctica (6.017, tres políticas en rotación); nuevos en página 3,09 (5.132) frente a 3,41 (2.614); conocidos en home 0,59 (3.012) frente a 0,40–0,75; nuevos en home 0,97 (1.275) frente a 0,99.
+
+**Qué está medido.**
+- La distancia a la referencia cae 0,28–0,30 puntos. De esos, unos 0,20–0,27 son la referencia subiendo (1,87–1,95 → 2,14) y unos 0,08 nuestra cifra absoluta bajando (2,19 → 2,11).
+- Nuestra bajada absoluta está en nuevos en página: −0,32 puntos en el 24% del tráfico, unos −0,08 en el total. Los otros tres segmentos no se mueven.
+- El punto de partida sube un 33% (0,56 → 0,75) y la referencia sube sobre todo en cold (1,82 → 2,20). Los dos equipos que iban por delante pierden 0,19 y 0,24 frente a la referencia.
+- El corte de las 10:33 explica como mucho 0,008 puntos (82 peticiones a la media).
+
+**Qué no se sabe.**
+- Por qué las listas genéricas rinden tanto más en la final: el comportamiento del simulador no es observable.
+- Cuánto de la bajada en nuevos en página es la política (cambió de uf1/uf1n a ur2 a las 08:36 UTC, con código nuevo) y cuánto la población (la final trae compradores nuevos). Son horas distintas, sin bloques alternos: no hay comparación limpia. En modo final la API ya no devuelve ventanas anteriores, así que las cifras de práctica son las anotadas antes de las 09:00 UTC.
+
+**Evidencia independiente de un compañero (d4xn, 15 nov; no reproducida aquí).** 0 de 32.374 respuestas del equipo (04:30–07:30 UTC) enseñaron un producto ya comprado. 5.350 impresiones de productos comprados durante el evento: 1 compra y 10 clics. En orgánico es al revés: el 6,33% de los pares comprados en el histórico se recompra en el evento (carrito sin compra 3,58%, visto una vez 0,26%). El 84% de las peticiones viene de usuarios con alguna compra del evento: es alcance, no pérdida medida. Incidentes del 14 nov (20:20 y 21:46 UTC): paradas de proceso alrededor de reinicios, 1.541 y 879 peticiones sin respuesta.
+
+**Preparado y NO desplegado en la final.** Arreglo de `newcap` (los lanzados propios gastaban el tope; PR 66), prior de atributos para lanzados (PR 60), interruptor `prior_purchases` (PR 62; la organización confirmó continuidad, así que se queda apagado), modo de reserva `--standby` (PR 69). Las cotas de exposición del fallo de `newcap` (por ejemplo, 37,6% de las páginas de nuevos con algún lanzado propio) no son una medida de conversión.

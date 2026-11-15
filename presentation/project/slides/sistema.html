@@ -1,24 +1,22 @@
 <section id="sistema" data-transition="fade">
-<p class="eyebrow">EL SISTEMA</p>
-<h2>Un solo proceso responde; la receta se cambia en caliente</h2>
+<p class="eyebrow">EL SISTEMA · USO DE RAWTREE</p>
+<h2>RawTree como entrada, datos de entrenamiento y vigilancia</h2>
 <div class="stack">
 <div class="flow">
-<div class="step"><h3>Leer</h3><p class="small">Peticiones, eventos y stock de RawTree, de forma incremental</p></div>
+<div class="step"><h3>Leer</h3><p class="small">Peticiones, eventos y stock de RawTree por SQL, de forma incremental</p></div>
 <x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step"><h3>Candidatos</h3><p class="small">Lo visto, lo mejor de su categoría, lo nuevo</p></div>
+<div class="step key"><h3>Ordenar</h3><p class="small">Unas 20 señales por petición; los pesos están en un fichero que se relee cada 20 s</p></div>
 <x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step key"><h3>Ordenar</h3><p class="small">La variante activa se elige en un fichero que se relee cada 20 s</p></div>
+<div class="step"><h3>Guardas</h3><p class="small">10 distintos, en stock, nada ya comprado, dentro de plazo</p></div>
 <x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step"><h3>Guardas</h3><p class="small">10 distintos, en stock, dentro de plazo</p></div>
-<x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step"><h3>Escribir</h3><p class="small">Una respuesta por petición, nunca dos</p></div>
+<div class="step"><h3>Aprender</h3><p class="small">El feedback de cada lista vuelve por RawTree y reajusta los pesos</p></div>
 </div>
 <div class="cards">
-<div class="card"><p class="mid">99,5 %</p><p class="cap">a tiempo en una hora normal (7.977 de 8.016)</p></div>
-<div class="card"><p class="mid">1,35 s</p><p class="cap">de latencia típica; el 95 % por debajo de 2,1 s</p></div>
-<div class="card"><p class="mid">37 %</p><p class="cap">de clientes alcanzados cuando escribían dos procesos a la vez: por eso solo uno</p></div>
+<div class="card"><p class="mid">12 segundos</p><p class="cap">tarda un carrito en llegar al modelo; en RawTree se consulta en menos de 1 s</p></div>
+<div class="card"><p class="mid">Solo lectura</p><p class="cap">una consulta por minuto vigiló la final desde otra máquina; 0 respuestas inválidas en 21.600</p></div>
+<div class="card"><p class="mid">144 filas</p><p class="cap">de métricas por bloque de 15 minutos en nuestra tabla scratch de RawTree</p></div>
 </div>
 </div>
-<p class="source">Feedback propio, 14 nov 12:00–13:00 UTC. Dos procesos: 13:00–13:08 CET, 531 de 1.437 peticiones respondidas por ambos mostraron nuestra lista.</p>
-<aside>El sistema. Un único proceso lee de RawTree las peticiones, los eventos orgánicos y los cambios de stock de forma incremental, junta entre 150 y 300 candidatos por cliente, los ordena, pasa las guardas y escribe. Tres decisiones de diseño. Una: un solo proceso escribe. Lo aprendimos por las malas: con dos procesos a la vez, nuestra lista solo llegaba al 37 por ciento de los clientes. Dos: la forma de ordenar es una variante que se elige en un fichero que el proceso relee cada veinte segundos; cambiar de receta o volver atrás no requiere reiniciar nada, y si una variante falla en una petición, esa petición sigue por el camino anterior. Tres: las guardas van antes que el modelo: si una petición ya lleva 1,8 segundos, se contesta al instante con una lista segura en vez de llegar tarde. En una hora normal, 99,5 por ciento a tiempo.</aside>
+<p class="source">Carrito: mediana 12 s y 21 s en el peor 5 %, con refresco cada 20 s (ensayo sin escritura). Final, 09:00–11:00 UTC: 21.476 respondidas por el modelo, 31 con lista segura, 93 sin respuesta. Scratch: 24 bloques, 01:15–07:15 UTC.</p>
+<aside>El sistema, y cómo usamos RawTree. Un único proceso lee de RawTree, por SQL y de forma incremental, las peticiones, los eventos y el stock; calcula unas veinte señales, pasa las guardas y escribe. Los pesos viven en un fichero que se relee cada veinte segundos, y así rotamos políticas sin reiniciar. Pero RawTree no fue solo la tubería. Uno: fue nuestros datos de entrenamiento. Nos devuelve qué se compró de cada lista nuestra, y con eso reajustamos los pesos. Dos: las modas y la calidad de cada producto se calculan sobre los eventos del stream, no sobre el histórico. Tres: medimos el retraso de nuestros propios datos; un carrito se puede consultar en menos de un segundo y llega al modelo a los doce. Cuatro: fue nuestro diagnóstico; comparando lo enviado con lo mostrado descubrimos que con dos procesos solo llegábamos al 37 por ciento de los clientes. Cinco: durante la final vigilamos con una consulta por minuto desde otra máquina, solo leyendo, para detectar una caída sin provocarla. Y seis: guardamos un resumen por bloque de quince minutos en nuestra tabla, y tenemos una consulta que sigue una petición de principio a fin, que podemos enseñar. No usamos embeddings: las descripciones son frases de una lista fija y contarlas bastaba.</aside>
 </section>
