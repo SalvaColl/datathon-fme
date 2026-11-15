@@ -9,27 +9,27 @@ Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomen
 
 ## 2. Observar. Cambiar. Comprobar. — 0:15–0:50
 
-Observamos en el historial que los compradores repetían gustos por atributos de las descripciones. Añadimos afinidad para dar más puntuación a productos que encajaran con esos gustos. Comprobamos que la señal también aparecía en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. Son grupos de productos expuestos, no un antes y después del cambio. El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.
+Nuestro método fue observar, cambiar y comprobar. Por ejemplo: descubrimos que los compradores repetían gustos por ciertos atributos de las descripciones. Añadimos afinidad para priorizar productos que encajaran con esos gustos. Después buscamos esa misma señal en nuestro feedback: por cada diez mil exposiciones, vimos 0,6 compras con afinidad baja y 89,7 con afinidad alta. No es un antes y después del modelo: es una comprobación de que la señal también aparecía en las compras reales.
 
 ## 3. El cementerio de ideas. — 0:50–1:25
 
-Este es nuestro cementerio de ideas. Los modelos más complejos y las interacciones probadas no mejoraron la validación. Una variante con grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 al repetirla. El orden de las visitas tampoco añadió una mejora confirmada. No bastaba con que una idea sonara bien: tenía que resistir las pruebas.
+Pero muchas ideas acabaron aquí. Probamos gradient boosting e interacciones: más complejidad, sin mejores resultados. También relacionamos productos vistos en la misma sesión. Parecía evidente que ayudaría, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aportó una mejora confirmada. La intuición proponía; los datos decidían.
 
 ## 4. Cada señal suma. Cada comprador cuenta. — 1:25–2:00
 
-Nuestro modelo combina cuatro familias de señales: gustos del comprador, actividad de la sesión, calidad del producto y tendencias. Un modelo lineal las pondera para puntuar cada producto. Entrenamos con clics y compras, dando triple peso a las compras. Ordenamos y elegimos diez productos activos que no haya comprado antes. En la final mantenemos los pesos fijos, pero actualizamos las señales con lo que ocurre en la tienda.
+Nos quedamos con un modelo lineal que combina gustos, actividad de la sesión, calidad del producto y tendencias. Aprendió los pesos con clics y compras, dando más importancia a las compras. Así puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las señales: el modelo es estable; la información está viva.
 
 ## 5. RawTree: del dato a la acción. — 2:00–2:35
 
-RawTree, creado por Tinybird, es la base de nuestro circuito. Leemos peticiones, eventos y cambios del catálogo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos métricas en scratch. Así podemos explicar cada decisión y detectar fallos. En práctica, el 99,96 % de las respuestas llegó a tiempo.
+RawTree nos permitió cerrar todo ese circuito en una misma plataforma: leer la tienda, agregar actividad con SQL, enviar recomendaciones y recuperar su feedback. Lo más útil fue poder pasar del dato a una decisión medible sin montar toda esa infraestructura nosotros. Y tenía que funcionar en tiempo real: en la ventana de práctica documentada, respondimos a tiempo al 99,96 % de las peticiones.
 
 ## 6. Los agentes aceleran. Nosotros decidimos. — 2:35–3:00
 
-Usamos Claude para programar y Codex para investigar señales y contrastar hipótesis. El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. Nos quedamos con una idea: construir rápido y comprobar con rigor.
+Usamos Claude para programar e integrar mejoras, y Codex para investigar señales y contrastar hipótesis. El proceso era este: plantear una hipótesis, implementar la idea, probarla y decidir. Los agentes nos permitieron explorar más; nosotros mantuvimos el control de las pruebas y del despliegue. Los agentes aceleran. Nosotros decidimos.
 
 ## Cómo contarlo
 
-Guion: 348 palabras. Plan completo: 180 segundos.
+Guion: 337 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

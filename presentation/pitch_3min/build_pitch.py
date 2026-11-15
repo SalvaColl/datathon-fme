@@ -89,32 +89,7 @@ ES_UPPER = {k.upper(): v.upper() for k, v in ES_TEXT.items()}
 def tr(value):
     return ES_TEXT.get(value, ES_UPPER.get(value, value))
 
-ES_NOTES = [
-    "Buenas… [Pausa de tres segundos.] "
-    "Este es el tiempo que teníamos para recomendar los diez mejores productos a cada comprador. "
-    "Y así es como lo hemos hecho.",
-    "Probamos modelos más complejos, pero no mejoraron los resultados con datos apartados. "
-    "Elegimos un modelo lineal: rápido e interpretable. En el entrenamiento base usamos solo productos mostrados. "
-    "Aprendemos de los clics, dando triple peso a las compras, e incluimos la posición. "
-    "Entrenamos con peticiones anteriores y validamos después. Los ajustes finales se eligieron por segmento, con pruebas adicionales.",
-    "Congelamos los pesos, no la tienda. Seguimos actualizando memoria, calidad, stock y precios. "
-    "Separamos nuestras recomendaciones de la actividad orgánica para no inflar la calidad de un producto. "
-    "Detectamos tendencias comparando eventos recientes con su nivel habitual. "
-    "Así nos adaptamos sin reajustar el modelo con unas pocas compras ruidosas. "
-    "Y mantenemos todas las exclusiones de compras anteriores.",
-    "El histórico refleja lo que otros modelos eligieron mostrar. Por eso el offline solo filtra ideas. "
-    "En vivo comparamos con la referencia de la misma ventana: una hora favorable no debía parecer un modelo mejor. "
-    "En ocho bloques, el reajuste mostró 0,17 puntos más, con 10.800 peticiones por política. "
-    "No fue un A/B aleatorizado. También buscamos fallos que los tests no estaban cubriendo.",
-    "RawTree, creado por Tinybird, es la base de nuestro circuito. "
-    "Leemos peticiones, eventos y cambios del catálogo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. "
-    "Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos métricas en scratch. "
-    "Así podemos explicar cada decisión y detectar fallos. En práctica, el 99,96 % de las respuestas llegó a tiempo.",
-    "Usamos Claude para programar y Codex para investigar señales y contrastar hipótesis. "
-    "El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. "
-    "Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. "
-    "Nos quedamos con una idea: construir rápido y comprobar con rigor.",
-]
+ES_NOTES = ['Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomendar los diez mejores productos a cada comprador. Y así es como lo hemos hecho.', 'Nuestro método fue observar, cambiar y comprobar. Por ejemplo: descubrimos que los compradores repetían gustos por ciertos atributos de las descripciones. Añadimos afinidad para priorizar productos que encajaran con esos gustos. Después buscamos esa misma señal en nuestro feedback: por cada diez mil exposiciones, vimos 0,6 compras con afinidad baja y 89,7 con afinidad alta. No es un antes y después del modelo: es una comprobación de que la señal también aparecía en las compras reales.', 'Pero muchas ideas acabaron aquí. Probamos gradient boosting e interacciones: más complejidad, sin mejores resultados. También relacionamos productos vistos en la misma sesión. Parecía evidente que ayudaría, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aportó una mejora confirmada. La intuición proponía; los datos decidían.', 'Nos quedamos con un modelo lineal que combina gustos, actividad de la sesión, calidad del producto y tendencias. Aprendió los pesos con clics y compras, dando más importancia a las compras. Así puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las señales: el modelo es estable; la información está viva.', 'RawTree nos permitió cerrar todo ese circuito en una misma plataforma: leer la tienda, agregar actividad con SQL, enviar recomendaciones y recuperar su feedback. Lo más útil fue poder pasar del dato a una decisión medible sin montar toda esa infraestructura nosotros. Y tenía que funcionar en tiempo real: en la ventana de práctica documentada, respondimos a tiempo al 99,96 % de las peticiones.', 'Usamos Claude para programar e integrar mejoras, y Codex para investigar señales y contrastar hipótesis. El proceso era este: plantear una hipótesis, implementar la idea, probarla y decidir. Los agentes nos permitieron explorar más; nosotros mantuvimos el control de las pruebas y del despliegue. Los agentes aceleran. Nosotros decidimos.']
 ES_SOURCES = [
     "Contrato oficial y handoff final del equipo: message (4).txt. "
     "El diagrama explica el flujo y su plazo global de 3 segundos, no tiempos medidos por etapa. "
@@ -133,22 +108,6 @@ ES_SOURCES = [
     "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; "
     "no se inventan funciones individuales ni versiones concretas de los agentes.",
 ]
-ES_NOTES[1] = (
-    "Observamos en el historial que los compradores repetían gustos por atributos de las descripciones. "
-    "Añadimos afinidad para dar más puntuación a productos que encajaran con esos gustos. "
-    "Comprobamos que la señal también aparecía en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. "
-    "Son grupos de productos expuestos, no un antes y después del cambio. "
-    "El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.")
-ES_NOTES[2] = (
-    "Este es nuestro cementerio de ideas. Los modelos más complejos y las interacciones probadas no mejoraron la validación. "
-    "Una variante con grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 al repetirla. "
-    "El orden de las visitas tampoco añadió una mejora confirmada. "
-    "No bastaba con que una idea sonara bien: tenía que resistir las pruebas.")
-ES_NOTES[3] = (
-    "Nuestro modelo combina cuatro familias de señales: gustos del comprador, actividad de la sesión, calidad del producto y tendencias. "
-    "Un modelo lineal las pondera para puntuar cada producto. Entrenamos con clics y compras, dando triple peso a las compras. "
-    "Ordenamos y elegimos diez productos activos que no haya comprado antes. "
-    "En la final mantenemos los pesos fijos, pero actualizamos las señales con lo que ocurre en la tienda.")
 ES_SOURCES[1] = (
     "I-092/E-093: feedback 14 nov 11:09–13:05 UTC, 21.691 peticiones; conocidos, productos sin relación previa y fuera de recent_views. "
     "Compras por 10.000 exposiciones: afinidad <0,10: 0,6; afinidad 0,20–0,25: 89,7. "

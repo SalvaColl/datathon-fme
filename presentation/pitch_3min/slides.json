@@ -285,7 +285,7 @@
     "kicker": "Observaciones que cambiaron el modelo",
     "title": "Observar. Cambiar. Comprobar.",
     "seconds": 35,
-    "notes": "Observamos en el historial que los compradores repet\u00edan gustos por atributos de las descripciones. A\u00f1adimos afinidad para dar m\u00e1s puntuaci\u00f3n a productos que encajaran con esos gustos. Comprobamos que la se\u00f1al tambi\u00e9n aparec\u00eda en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. Son grupos de productos expuestos, no un antes y despu\u00e9s del cambio. El segmento ten\u00eda solo 36 compras: apoya la se\u00f1al, pero no demuestra el aumento de conversi\u00f3n de la pol\u00edtica.",
+    "notes": "Nuestro m\u00e9todo fue observar, cambiar y comprobar. Por ejemplo: descubrimos que los compradores repet\u00edan gustos por ciertos atributos de las descripciones. A\u00f1adimos afinidad para priorizar productos que encajaran con esos gustos. Despu\u00e9s buscamos esa misma se\u00f1al en nuestro feedback: por cada diez mil exposiciones, vimos 0,6 compras con afinidad baja y 89,7 con afinidad alta. No es un antes y despu\u00e9s del modelo: es una comprobaci\u00f3n de que la se\u00f1al tambi\u00e9n aparec\u00eda en las compras reales.",
     "source": "I-092/E-093: feedback 14 nov 11:09\u201313:05 UTC, 21.691 peticiones; conocidos, productos sin relaci\u00f3n previa y fuera de recent_views. Compras por 10.000 exposiciones: afinidad <0,10: 0,6; afinidad 0,20\u20130,25: 89,7. Solo 36 compras en el segmento principal; selecci\u00f3n de productos y posici\u00f3n limitan la comparaci\u00f3n. No es una estimaci\u00f3n causal del aumento de conversi\u00f3n tras a\u00f1adir afinidad.",
     "shapes": [
       {
@@ -489,7 +489,7 @@
     "kicker": "Ideas descartadas",
     "title": "El cementerio de ideas.",
     "seconds": 35,
-    "notes": "Este es nuestro cementerio de ideas. Los modelos m\u00e1s complejos y las interacciones probadas no mejoraron la validaci\u00f3n. Una variante con grafo gan\u00f3 0,20 puntos en una ronda, pero perdi\u00f3 0,41 al repetirla. El orden de las visitas tampoco a\u00f1adi\u00f3 una mejora confirmada. No bastaba con que una idea sonara bien: ten\u00eda que resistir las pruebas.",
+    "notes": "Pero muchas ideas acabaron aqu\u00ed. Probamos gradient boosting e interacciones: m\u00e1s complejidad, sin mejores resultados. Tambi\u00e9n relacionamos productos vistos en la misma sesi\u00f3n. Parec\u00eda evidente que ayudar\u00eda, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aport\u00f3 una mejora confirmada. La intuici\u00f3n propon\u00eda; los datos decid\u00edan.",
     "source": "E-271: conocidos/p\u00e1gina, r3 1,57% (1.489) vs grafo 1,77% (1.521), 14 nov 17:50\u201318:20 UTC. E-272: r3 2,08% (1.539) vs grafo 1,67% (1.476), 18:25\u201318:55 UTC. Los brazos difieren en home, pero mantienen los mismos pesos del grafo en p\u00e1ginas. R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.",
     "shapes": [
       {
@@ -702,7 +702,7 @@
     "kicker": "Nuestro modelo",
     "title": "Cada se\u00f1al suma. Cada comprador cuenta.",
     "seconds": 35,
-    "notes": "Nuestro modelo combina cuatro familias de se\u00f1ales: gustos del comprador, actividad de la sesi\u00f3n, calidad del producto y tendencias. Un modelo lineal las pondera para puntuar cada producto. Entrenamos con clics y compras, dando triple peso a las compras. Ordenamos y elegimos diez productos activos que no haya comprado antes. En la final mantenemos los pesos fijos, pero actualizamos las se\u00f1ales con lo que ocurre en la tienda.",
+    "notes": "Nos quedamos con un modelo lineal que combina gustos, actividad de la sesi\u00f3n, calidad del producto y tendencias. Aprendi\u00f3 los pesos con clics y compras, dando m\u00e1s importancia a las compras. As\u00ed puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las se\u00f1ales: el modelo es estable; la informaci\u00f3n est\u00e1 viva.",
     "source": "presentation/HOW_AND_WHY.md y recsys/lfm_build.py: entrenamiento base con clics, compras con peso 3 y modelos lineales por segmento. recsys/lfm.py y handoff final: afinidad, sesi\u00f3n, calidad org\u00e1nica, tendencias, exclusiones de compras e inactivos. El diagrama resume familias de se\u00f1ales y el ranking; los pesos finales incluyen reajustes y overrides. Los diez bloques numerados son posiciones, no puntuaciones medidas. Pesos congelados, se\u00f1ales actualizadas.",
     "shapes": [
       {
@@ -1383,7 +1383,7 @@
     "kicker": "C\u00f3mo usamos RawTree",
     "title": "RawTree: del dato a la acci\u00f3n.",
     "seconds": 35,
-    "notes": "RawTree, creado por Tinybird, es la base de nuestro circuito. Leemos peticiones, eventos y cambios del cat\u00e1logo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos m\u00e9tricas en scratch. As\u00ed podemos explicar cada decisi\u00f3n y detectar fallos. En pr\u00e1ctica, el 99,96 % de las respuestas lleg\u00f3 a tiempo.",
+    "notes": "RawTree nos permiti\u00f3 cerrar todo ese circuito en una misma plataforma: leer la tienda, agregar actividad con SQL, enviar recomendaciones y recuperar su feedback. Lo m\u00e1s \u00fatil fue poder pasar del dato a una decisi\u00f3n medible sin montar toda esa infraestructura nosotros. Y ten\u00eda que funcionar en tiempo real: en la ventana de pr\u00e1ctica documentada, respondimos a tiempo al 99,96 % de las peticiones.",
     "source": "presentation/cifras.md: pr\u00e1ctica del 15 nov 04:00\u201308:00 CET; 43.182/43.200 respuestas a tiempo; p99 2,35 s. 144 registros de m\u00e9tricas. No es una cifra de la final. SQL agrega eventos; el c\u00f3digo local calcula las puntuaciones y los indicadores. Uso de team_26.scratch seg\u00fan el handoff y presentation/cifras.md. RawTree es un producto de Tinybird: https://rawtree.com/.",
     "shapes": [
       {
@@ -1599,7 +1599,7 @@
     "kicker": "C\u00f3mo trabajamos / agentes de programaci\u00f3n",
     "title": "Los agentes aceleran. Nosotros decidimos.",
     "seconds": 25,
-    "notes": "Usamos Claude para programar y Codex para investigar se\u00f1ales y contrastar hip\u00f3tesis. El equipo control\u00f3 las pruebas y el despliegue. Cubrimos modelos, nuevas se\u00f1ales, evaluaci\u00f3n y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidi\u00f3 qu\u00e9 conservar. Nos quedamos con una idea: construir r\u00e1pido y comprobar con rigor.",
+    "notes": "Usamos Claude para programar e integrar mejoras, y Codex para investigar se\u00f1ales y contrastar hip\u00f3tesis. El proceso era este: plantear una hip\u00f3tesis, implementar la idea, probarla y decidir. Los agentes nos permitieron explorar m\u00e1s; nosotros mantuvimos el control de las pruebas y del despliegue. Los agentes aceleran. Nosotros decidimos.",
     "source": "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; no se inventan funciones individuales ni versiones concretas de los agentes.",
     "shapes": [
       {
