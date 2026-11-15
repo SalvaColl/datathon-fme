@@ -41,7 +41,11 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          "mf",
          # T-039: product launched during the event (no 60-day history). Our own carousel sold these ~10 times more often
          # than lfm expected for returning shoppers (16 buys vs 1.6 expected, E-390); weight 0 in every committed file
-         "newp"]
+         "newp",
+         # T-044: product of a subcategory that is in a live burst right now (trends.py). In the two bursts our carousel
+         # could measure (14 Nov, Bike Helmets and Game Consoles) these products sold 6.6 times more per impression than
+         # outside the burst (15 buys vs 2.3 expected, E-440); weight 0 in every committed file
+         "hot"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -70,6 +74,15 @@ LQ_PAGES = ("product", "category")   # ...only on these pages and only with rece
 def lq_target(mode, is_new_user, page, rv) -> bool:
     """Does a request get the corrected quality under arm mode `mode`? The single rule for scoring and for routing."""
     return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
+
+
+RC = "@recart"                     # arm key "recart": true (T-046). Marker entry of LiveFit.alt, see set_arms()
+
+
+def recart_target(is_new_user, page, rv) -> bool:
+    """Does a request get the re-cart bonus of an arm with "recart": true? Returning shoppers on product/category pages
+    with recent views. New shoppers and home keep their behaviour."""
+    return not is_new_user and bool(rv) and page in LQ_PAGES
 
 
 def x_target(mode, is_new_user, page, rv) -> bool:
@@ -111,6 +124,7 @@ class Snap:
         self.g = None                         # product-to-product graph: row -> (neighbour rows, weights), see LiveFit._graph_catalog
         self.mf = None                        # (product factors, their rows, the matching rows of this snapshot), see LiveFit._mf_catalog
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
+        self.hot = None                       # T-044: 1.0 for products of a subcategory in a live burst (LiveFit.set_catalog)
 
     def stale(self, u):
         """Boolean mask: products this user viewed in the history and never carted (dead in the live carousel)."""
@@ -175,6 +189,7 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         sc = Q @ mfu; sd = float(sc.std())
         if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
     if getattr(S, "newp", None) is not None and rv and page in LQ_PAGES: X[:, 21] = S.newp      # never on home or without views
+    if getattr(S, "hot", None) is not None: X[:, 22] = S.hot                                    # every page: a burst reaches every shopper
     return X if idx is None else X[idx]
 
 
@@ -221,7 +236,14 @@ class LiveFit:
         without w is the committed weights (control). Replaces the previous arms in one step; raises on bad input.
         Fused arms: an optional "home": {"file": ..., "w": ...} (same shape; {} = committed weights) gives the weights
         used on home requests (no recent views), so one arm can serve one weight set on product/category pages and
-        another on home."""
+        another on home.
+        Re-cart arms (T-046): "recart": true keeps, for a product carted in the 60-day history AND again today (never
+        bought), the larger of its two cart contributions: the score gets max(0, w_chn * log1p(history carts) - w_cl) on
+        top. Without it a history cart worth w_chn * log1p(n) is REPLACED by w_cl the moment the shopper carts the
+        product again (features() zeroes chn for today's carts), so under cx3 a once-carted product loses 1.45 points by
+        being carted again. Returning shoppers on product/category pages with views only (recart_target); off by default.
+        The flag travels as one more entry of `alt` ("<tag>@recart", the arm's own weights) rather than in a new
+        attribute, so whatever installs `alt` installs the flag with it, atomically."""
         def build(a):
             if a.get("file"):
                 c = json.loads((HERE / a["file"]).read_text())
@@ -236,6 +258,7 @@ class LiveFit:
         for a in arms:
             alt[a["tag"]] = build(a)
             if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
+            if a.get("recart") is True: alt[a["tag"] + RC] = alt[a["tag"]]
         self.alt = alt
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
         self.alt_x = {a["tag"]: a["explore"] for a in arms if a.get("explore") is True or a.get("explore") in X_MODES}   # T-039, see slate()
@@ -273,10 +296,12 @@ class LiveFit:
                 d = self.lcart_t.setdefault(u, {})
                 if ta > d.get(i, ""): d[i] = ta
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None):
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None):
+        """hot (T-044): products of the subcategories in a live burst, or None / empty (the feature stays 0)."""
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
         S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold, newp)
+        if hot: S.hot = np.isin(np.array(ids, dtype=object), list(hot)).astype(np.float64)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
@@ -345,6 +370,12 @@ class LiveFit:
             if c[1] >= 0: sv[c[1]] += n
         return cv, sv
 
+    def wants_hot(self) -> bool:
+        """Does any weight set in use (committed or arm) give the burst feature a weight? If not, nobody asks for trends."""
+        k = FEATS.index("hot")
+        sets = [self.w] + [w for w, _ in list(self.alt.values())]
+        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
+
     @property
     def ok(self): return self.snap is not None
 
@@ -378,6 +409,16 @@ class LiveFit:
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
         s = X @ w[seg] + b0[seg]
+        if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
+            # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc
+            h = self.hcart.get(req["user_id"])
+            if h:
+                wk = w[seg]; chn, cl = wk[FEATS.index("chn")], wk[FEATS.index("cl")]
+                for p in lc:
+                    n = h.get(p); k = S.row.get(p) if n else None
+                    if k is not None:
+                        gain = chn * math.log1p(n) - cl
+                        if gain > 0: s[k] += gain
         dead = ~S.ok
         st = S.stale(req["user_id"])
         if st is not None:

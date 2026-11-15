@@ -213,6 +213,16 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Qué no sabemos:** si la final usa los mismos compradores que la práctica. Si son nuevos, el estado del sábado no molesta (nadie lo consulta). Si son los mismos, conservarlo es lo correcto.
 - **Rollback:** quitar `state_window` de `policy.json`; sin esa clave el código nuevo devuelve exactamente el estado anterior (test `test_without_a_window_nothing_changes`).
 
+### D-430 — `policy.json` se valida entero antes de publicarse; una actualización inválida no cambia nada (T-043, propuesta)
+
+Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño del writer. No es una palanca de conversión.
+
+- **Antes:** cada clave se aplicaba por separado. Una lista `lfm_arms` con un error (o un fichero de pesos ausente o incompleto) dejaba al writer **sin brazos** (pesos base, etiquetas `v3-lfm-r1-*`) y la variante podía cambiar aunque el resto del fichero fuera inválido. Un fichero de pesos con `NaN` se cargaba sin aviso.
+- **Ahora:** se valida todo el candidato (variante, `qrank_arms`, `lfm_arms` con sus ficheros de pesos ya leídos y comprobados como finitos, `state_window`) y solo entonces se publica, pesos primero. Si algo falla, **no cambia nada**: siguen la variante, los brazos y los pesos activos. El log lo dice una vez por fichero distinto: `{"event": "policy_rejected", "reason": ..., "kept": {...}}`, y `{"event": "policy_recovered"}` cuando vuelve a entrar un fichero válido. El mismo fichero se reintenta en cada ciclo, así que copiar después el fichero de pesos que faltaba lo arregla solo.
+- **Lo que no cambia:** una clave ausente, `null` o vacía sigue significando lo de siempre (sin `lfm_arms` = pesos publicados; sin `state_window` = sin ventana; sin `variant` = la misma). Las vueltas atrás documentadas (`{"variant": "v1"}`, quitar `lfm_arms`, `cp policy.champion.json data/policy.json`) funcionan igual. Si `policy.json` no existe no se toca nada, como antes.
+- **Ojo operativo:** una variante desconocida o un `qrank_arms` con un solo brazo antes se ignoraban en silencio y el resto del fichero se aplicaba; ahora rechazan el fichero entero. Los 15 ficheros de política del repo y de `javi/night-og1b` (incluidos los de la noche con og1 y cx3) pasan la validación nueva (E-430).
+- **Etiquetas:** un slate al que el guard le cambia un producto comprado sale como `<VERSION>-guard`, igual que cualquier otra reparación (regla existente de `send_answers`). En 1.500 peticiones reales no ocurrió ninguna vez (E-430): lfm ya excluye lo comprado al puntuar, el guard solo cubre la carrera entre ranking y envío.
+
 ### D-280 — cold_lq se prueba como brazo de lfm, no por bloques de tiempo (T-028)
 
 - **Decisión:** la calidad de productos nuevos de `cold_lq` (T-CS01) se sirve por brazo: `{"tag": "c1", "file": "<pesos del ganador>", "lq": "cold"}` contra el ganador de r3/r5, 30 minutos, lectura por `-k` y `-n` en `api/state?by=model&from=`. `"cold_new"` la aplica solo a usuarios nuevos. Máximo dos brazos a la vez. `data/coldlq.json` no se usa.
@@ -308,3 +318,16 @@ Official sources: https://datathon.rawtree.dev/ ; https://github.com/rawtreedb/d
 - **Aviso honesto:** estos umbrales reducen los falsos positivos de mirar cada hora, no los eliminan. Con 3 retadores y 8 lecturas, alguna señal de z ≈ 2 aparecerá por azar.
 - **Añadido 23:45 UTC (antes de leer nada):** para órdenes que no fijan la fase (ABBA o pares aleatorizados, como la rotación r3 / cs2r prevista tras el reinicio) cada bloque del retador se empareja con el bloque o bloques de r3 más cercanos, a no más de 2 bloques y en su mismo estado de ráfaga. Con la secuencia r3, cx3, r3, og1 el resultado es el mismo que antes. Cada cambio de plan o de código del control es una época nueva: sus bloques no se suman a los anteriores.
 - **Añadido 23:50 UTC (antes de leer nada):** con 3 o 4 bloques el error típico empírico es poco fiable (una prueba con etiquetas falsas sobre la tarde del 14 nov dio z = −2,6 con 3 bloques sin que hubiera ningún efecto). El error típico que se usa es el mayor entre el empírico y 0,10/√bloques pt (0,10 = desviación de una diferencia emparejada, a partir de 0,08 pt por bloque de 15 minutos en calma).
+
+### D-440 — Brazo `t15` (peso para productos de una subcategoría en ráfaga). Lo activa y revierte Javi
+- **Fecha / propone:** 2026-11-14 23:45 UTC · Javi (agente, T-044). Evidencia I-440, E-440.
+- **Qué:** tras un reinicio con relevo que cargue `lfm.py` y `live.py` de esta rama (inerte: peso 0), durante una ráfaga: `{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "t15", "file": "lfm_coef_r3.json", "w": {"known": {"hot": 1.5}, "new": {"hot": 1.5}}}]}`. Fuera de ráfaga los dos brazos sirven listas idénticas.
+- **Lectura:** las ráfagas empiezan a y media de las horas impares UTC y duran 45 minutos. Ventana de 30 minutos desde 10 minutos después del inicio; comparar las filas de cada brazo por tramo. Efecto esperado grande (>0,2 pp) o nulo. Versión prudente si pierde fuera de contexto: peso 0,8.
+- **Se quita si:** por debajo de r3 en la ventana, o envíos inválidos. Rollback sin reinicio: quitar el brazo.
+- **Para la final:** si la cadencia sigue, hay una ráfaga a las 09:30 UTC (10:30 CET).
+### D-460 — Brazo de re-carritos `cx3rc`: preparado, sin desplegar (T-046, 14 nov 23:55 UTC)
+
+- **Qué:** opción `"recart": true` en un brazo de `lfm_arms` (E-460). Necesita un reinicio con relevo para cargar `lfm.py` y `live.py`; entra en el relevo planificado, no se pide uno para esto. Con el código viejo, `clean_lfm_arms` ignora la clave y el brazo serviría como su control, sin error: no lanzar `policy.rot_cx3rc.json` antes del relevo.
+- **Cómo se prueba:** como un nombre más de la rotación, en época nueva: `cx3rc` contra `cx3` con r3 entre medias (por ejemplo `r3,cx3,r3,cx3rc`), cada bloque menos la referencia en la misma ventana. Sin `lq`.
+- **Se quita si:** envíos inválidos o `on_time` bajo el umbral del rotador. Rollback sin reinicio: quitar el nombre del plan, o la clave `recart` del brazo.
+- **No se hace:** subir `cl` a todos los carritos de hoy (los carritos solo de hoy venden menos que los solo históricos, E-460).

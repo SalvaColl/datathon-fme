@@ -425,6 +425,33 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - **Exposición en B:** c1 conocidos 6,4% de impresiones nuevas (139 peticiones), c1 nuevos 1,9% (42); r3 0,2–0,5%; home de c1 0,0% (44 peticiones). 300 productos corregidos, 29 en el límite.
 - **Límite:** medido lejos del Mac; la latencia real hay que mirarla en el writer tras activar.
 
+### E-430 — Guard de compras completo y validación de `policy.json` (T-043): coste y ensayo en seco, 14 nov 23:10 UTC, contenedor en la nube
+
+Correcciones funcionales. **No se les atribuye uplift de conversión** y no hay lectura de leaderboard: nada de esto se ha desplegado. Etiqueta: OFFLINE ESTIMATE (coste) y OBSERVED DATA (ensayo en seco con peticiones reales, sin escribir).
+
+**Coste del guard** (`python tools/bench_guard.py`, catálogo sintético de 20.000 productos, mediana de 7 rondas, µs por llamada a `repair_for`):
+
+| Compras por fuente | Caso | Antes (µs) | Ahora (µs) |
+|---:|---|---:|---:|
+| 0 | lista válida sin comprados (camino habitual) | 1,65 | 1,11 |
+| 30 | lista válida sin comprados (camino habitual) | 0,85 | 2,24 |
+| 300 | lista válida sin comprados (camino habitual) | 0,88 | 2,29 |
+| 30 | lista válida con 1 comprado (antes se enviaba tal cual) | 0,86 | 5,13 |
+| 300 | lista válida con 1 comprado (antes se enviaba tal cual) | 0,87 | 18,67 |
+| 30 | lista corta, hay que rellenar | 553,77 | 3,15 |
+| 300 | lista corta, hay que rellenar | 633,17 | 16,52 |
+
+El camino habitual cuesta unos 1,4 µs más por petición (30 pruebas de pertenencia, sin copiar conjuntos ni tomar el lock). El relleno es más barato que antes porque ya no filtra la lista entera de los más vendidos. `read_policy` (hilo de refresco, un ciclo cada ~20 s): 41 µs con el fichero sin cambios, ~0,5 ms un cambio válido de 4 brazos, 84 µs un candidato rechazado.
+
+**Ensayo en seco** (`python tools/guard_policy_dryrun.py`, código real del writer con `--dry-run`, modelos, catálogo y eventos reales, política `policy.night_1114_x2.json`, 1.500 peticiones registradas 22:59–23:07 UTC, 1.379 de usuarios con alguna compra):
+
+- Peticiones tal como llegaron: 1.500 slates intactos, 0 reparados, 0 inválidos, 0 con un comprado. El código anterior tampoco enviaba ninguno aquí: lfm ya excluye lo comprado al puntuar. `repair_for` con estado real: p50 2,4 → 5,2 µs, p99 27,7 → 14,8 µs.
+- Compra que llega entre el ranking y el envío (se marca como comprado el tercer producto de cada slate, solo en memoria): el código anterior lo enviaba en 1.496 de 1.496; el nuevo en 0, con 10 productos válidos y el orden del resto conservado en los 1.496.
+- Cinco actualizaciones malas escritas en `policy.json` con el hilo de refresco real en marcha (fichero de pesos ausente, JSON cortado, peso `NaN`, variante desconocida, `cold_new` sin control): las cinco rechazadas, con política, pesos (los mismos objetos) y etiquetas servidas sin cambios. Después un fichero correcto de 2 brazos entra en el siguiente ciclo.
+- Los 15 ficheros de política del repo y de `javi/night-og1b` (incluidos `policy.night_1114_og1b.json` y `policy.night_1114_cx3.json` con el fichero de pesos de og1) pasan la validación nueva con los mismos brazos que acepta el código actual.
+
+Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer desde la nube (se ha validado su copia en `javi/night-og1b`). No mide conversión. El caso de menos de diez alternativas sin comprar solo está cubierto por test unitario (no ocurrió con datos reales).
+
 ### E-340 — replay a fecha de cada petición del modo `cold_new` (T-034). Solo diagnóstico, no conversión
 
 - **Qué:** `python cold_lq_replay.py --pull --mode cold_new --n 6000` (solo lectura). 6.534 peticiones respondidas entre 14:00 y 18:50 UTC del 14 nov, pesos r3, control contra `"lq": "cold_new"`, estado a fecha de cada petición (como E-281). 59 snapshots, hasta 300 productos corregidos, 29–30 en el límite, ninguno rechazado.
@@ -556,3 +583,65 @@ Datos comunes: `team_26.feedback` 11:09–14:38 UTC unido a `shop.requests` y `s
 - Etiquetas internas servidas, como se esperaba: en la fase A `v3-lfm-r3p-k/-kh/-n/-nh` y `v3-lfm-cn1p-n` (el resto del tráfico del brazo `cn1p` sale como control); en la fase B las cuatro de `r3p` y las cuatro de `np1p`. Con una sal de prueba cada una recibió su código nuevo.
 - Un `stock refresh failed ReadTimeout` aislado en la segunda ejecución (consulta a RawTree), sin efecto en las respuestas.
 - **Límite:** el p99 de la nube no es el del Mac. No mide conversión.
+### E-430 — Variantes de carritos de un solo brazo para la rotación (T-043), 14 nov 23:40 UTC, contenedor en la nube
+
+`OFFLINE ESTIMATE` + diagnóstico. `recsys/cart_variants.py` (`fit`, `replay`, `check`). Datos de solo lectura hasta las 23:03 UTC. Nada desplegado.
+
+- **Tabla de base (feedback propio, conocidos en páginas con vistas, 11:09–23:03 UTC, 1.140 compras), compras por 10.000 impresiones por tipo de producto y puesto (1 / 2–3 / 4–5 / 6–7 / 8–10):** carrito de la categoría de la sesión 158 / 63 / 34 / 23 / 17; carrito de otra categoría 53 / 30 / 19 / 9 / 11; misma subcategoría 30 / 20 / 11 / 11 / 4; misma categoría 30 / 14 / 11 / 9 / 7; categoría propia del usuario 29 / 13 / 9 / 5 / 3; relleno (otra categoría) 4 / 3 / 2 / 1 / 1. Entre usuarios con 15 o más carritos pendientes, el carrito de otra categoría NO vende más que un producto de la categoría de la sesión (58 / 35 / 22 frente a 62 / 44 / 17). El relleno ocupa 167.500 de 800.000 impresiones y da 30 compras.
+- **Lectura:** lo que falta no es "más carritos" sino (a) los carritos de la categoría de la sesión arriba (r3 pone 0,57 en los tres primeros puestos) y (b) quitar el relleno. Subir solo `chn` (cx3) deja además los carritos de HOY (`cl` 0,63) por debajo de los del histórico.
+- **Repetición a fecha de cada petición (9.352 peticiones desde las 17:00 UTC, 5.309 de conocidos en páginas; catálogo, stock y estado anteriores a cada petición).** Contra r3, conocidos en páginas:
+
+| variante | listas que cambian | puesto 1 cambia | productos sustituidos | carritos por lista | carritos de sesión en top 3 | relleno | estimación estratificada | modelo paramétrico |
+|---|---|---|---|---|---|---|---|---|
+| r3 | 0 | 0 | 0 | 3,08 | 0,57 | 16,3% | 0 | 0 |
+| cx3 (en rotación) | 90,4% | 48,5% | 2,71 | 5,51 | 0,84 | 10,3% | +0,30 pp | −0,19 pp |
+| og1 (en rotación) | 100% | 53,3% | 3,95 | 5,08 | 0,71 | 10,9% | +0,16 pp | −0,16 pp |
+| **cs2r** | 99,6% | 53,5% | 4,65 | 4,54 | 1,17 | 0,1% | +0,62 pp | −0,11 pp |
+| **ogsr** | 100% | 58,7% | 4,87 | 5,52 | 1,11 | 0,7% | +0,57 pp | −0,15 pp |
+| **cs4r** | 99,9% | 50,0% | 3,64 | 5,28 | 1,02 | 1,5% | +0,48 pp | −0,09 pp |
+| **cx6l** | 95,6% | 62,1% | 4,26 | 7,10 | 0,89 | 6,8% | +0,41 pp | −0,22 pp |
+| **fsr** | 91,7% | 40,3% | 4,07 | 2,36 | 0,72 | 1,0% | +0,31 pp | −0,10 pp |
+| cx3l | 92,4% | 47,6% | 2,92 | 5,91 | 0,86 | 9,4% | +0,34 pp | −0,07 pp |
+
+  Usuarios nuevos y home: 0 listas cambiadas en todas (comprobado). Sobre todo el tráfico cambian el 52–57% de las listas.
+- **Los dos estimadores no coinciden en el signo y ninguno es conversión.** "Estratificada" = tasas por (carritos pendientes del usuario × tipo × puesto) de la tabla de arriba aplicadas a la lista nueva; supone que el quinto producto de un tipo vende como los que r3 eligió (optimista). "Modelo" = logística sobre las mismas impresiones con rasgos del usuario; el puesto y la puntuación de r3 son casi colineales, así que penaliza cualquier lista que no sea la de r3 (pesimista: en el hold-out de 20:00–23:03 predice 328 compras frente a 291 y sobrevalora los carritos de otra categoría, 81 frente a 57). Sirven para ordenar las variantes entre sí; el veredicto es equipo − referencia en el leaderboard.
+- **Intentado y descartado:** pesos ajustados solo a compras del feedback propio (con o sin rasgos del usuario) ordenan peor el hold-out que r3 (MRR 0,41–0,54 frente a 0,55): el puesto absorbe la señal. Ordenar carritos con un modelo propio no cabe en `policy.json` (los pesos son comunes a carritos y no carritos; solo `chn` y `cl` son propios del carrito): necesita código y reinicio.
+- **Ensayo con el camino del writer (`check`: `clean_lfm_arms` → `set_arms` → `LiveFit.slate`, 1.590 peticiones desde las 21:00 UTC por política):** las 6 políticas aceptadas enteras, 100% de listas válidas (10 distintas, en stock, no compradas), mismo resultado que el camino rápido de `replay` (0 diferencias). Latencia de `slate` en el contenedor: p50 1,3 ms, p95 2,5 ms, p99 3,5–3,7 ms, igual que r3 (1,35 / 2,73 / 3,98).
+- **Brazo `nc2` del hilo de auditoría (`w.new.cl` 2,2), mismo replay:** en usuarios nuevos en páginas cambia el 42,3% de las listas (puesto 1 el 20,0%), carritos por lista 0,58 → 0,94, peticiones con carritos y ninguno mostrado 27,4% → 14,1%. Tal como está escrito también cambia el 40,8% de las listas de home de usuarios nuevos; con `"home": {"file": "lfm_coef_r3.json"}` se queda en páginas.
+- **Tests:** `tests/test_cart_variants.py` (2): el writer acepta cada política entera, un solo brazo, sin `lq` ni exploración, y usuarios nuevos y home puntúan exactamente como r3.
+- **Salida:** `/mnt/project-files/variantes-carritos/replay_e430.json`.
+
+### E-440 — Feature `hot` de lfm (producto de una subcategoría en ráfaga) — 2026-11-14 23:45 UTC, Javi (agente, T-044)
+- **Medición (LIVE FEEDBACK, 115.240 peticiones servidas por el equipo, 14 nov):** ver I-440. Promociones de categoría (−20%, 2 h): en contexto ×1,77 (64 compras frente a 36 esperadas), fuera de contexto ×1,05; no se añade señal.
+- **Detector (`trends.py`, sin cambios) repetido sobre los eventos del día en pasos de 5 min:** detecta las 6 ráfagas, entre 5 y 15 minutos después del inicio, sigue marcando unos 10 minutos tras el final, 0 falsos positivos.
+- **Código:** `lfm.FEATS` gana `hot` (índice 22, peso 0 en todos los ficheros); `LiveFit.set_catalog(..., hot=)`; `live.hot_products()` consulta `trends.snapshot` en el hilo de refresco solo si algún brazo da peso a `hot` (`LiveFit.wants_hot`), y devuelve None si no hay ráfaga, si falla o si el conjunto supera el 10% del catálogo.
+- **Tests:** 6 nuevos en `tests/test_lfm_hot.py`, 256 en total.
+- **Ensayo en seco (nube, 1.200 peticiones reales, ráfaga simulada en Game Consoles, 46 productos):** 0 listas inválidas en r3 y t15; latencia por lista p50 0,9 ms / p95 1,5 ms en ambos. Productos calientes por lista r3 → t15: conocidos en páginas 0,05 → 1,34, nuevos en páginas 0,03 → 1,27, home 0,02–0,09 → 1,2–1,3, usuarios en contexto 0,5–0,7 → 3,9–5,3. Primer puesto cambia en el 14% de las listas fuera de contexto. Con el detector real y sin ráfaga: 1,05 s por ciclo de refresco, conjunto vacío, listas idénticas. Con r3 solo no hay consulta.
+- **No es conversión.** Solo se puede medir en el leaderboard durante una ráfaga.
+### E-460 — Re-carritos: un producto carrito del histórico pierde puntos al volver a carritarse hoy (T-046, 14 nov 23:55 UTC)
+
+- **La interacción:** `lfm.features` pone `chn` a 0 en los productos del carrito de hoy. Un carrito del histórico vale `w_chn × log1p(n)` y, al volver a carritarse hoy, pasa a valer `w_cl`. Con cx3 (chn 3,0, cl 0,63) un producto carritado una vez baja de 2,08 a 0,63 puntos (−1,45). Con r3 (chn 0,73) solo afecta a los carritados 2 veces o más (−0,17 con 2).
+- **Candidato:** opción de brazo `"recart": true` (apagada por defecto): suma `max(0, w_chn × log1p(n) − w_cl)` a esos productos, es decir, conserva el mayor de los dos aportes. Solo conocidos en producto/categoría con vistas. El contador sale de `LiveFit.hcart`. Ni `features()` ni `user_state()` cambian. Políticas: `policy.rot_cx3rc.json` (cx3 + opción) y `policy.rot_r3rc.json`.
+- **Replay con el código del writer** (`recsys/recart_replay.py`: `clean_lfm_arms` → `set_arms` → `LiveFit.slate`, catálogo, stock y estado a fecha de cada petición; 12.459 peticiones del 14 nov 12:00–23:32 UTC). El 17,2% de las peticiones de conocidos en páginas tiene algún re-carrito servible (1,53 de media).
+
+| pareja | cohorte | listas que cambian | slot 1 cambia | top 3 cambia | productos sustituidos | re-carritos en lista (control → candidato) | re-carrito en slot 1 | peticiones que muestran alguno |
+|---|---|---|---|---|---|---|---|---|
+| cx3 → cx3rc | conocidos en páginas | 12,9% | 3,5% | 7,7% | 0,11 | 0,055 → 0,162 | 0,24% → 3,78% | 5,1% → 13,2% |
+| cx3 → cx3rc | ídem, con re-carritos (1.201) | 75,3% | 20,6% | 44,6% | 0,62 | 0,32 → 0,94 | 1,4% → 22,0% | 29,8% → 76,9% |
+| r3 → r3rc | conocidos en páginas | 2,1% | 0,4% | 0,9% | 0,004 | 0,119 → 0,124 | 3,1% → 3,5% | 10,1% → 10,4% |
+| r3 → r3rc | ídem, con re-carritos | 12,3% | 2,3% | 5,4% | 0,025 | 0,69 → 0,72 | 18,2% → 20,4% | 58,7% → 60,2% |
+
+  Home de conocidos (1.790), nuevos en páginas (2.983) y nuevos en home (702): 0 listas cambiadas en las dos parejas. Validez 100% en los cuatro brazos (10 productos distintos, en stock, no comprados). Latencia de `slate`: cx3 p50 1,03 / p99 3,29 ms, cx3rc 1,02 / 3,27 ms.
+- **Dato lateral:** cx3 enseña MENOS re-carritos que r3 (en el 30% de las peticiones que los tienen, frente al 59% de r3), porque sube los carritos solo históricos por encima.
+- **Lo que vendió nuestro carrusel** (69.933 peticiones de conocidos en páginas, 14 nov 12:00–23:32 UTC, listas elegidas por los brazos en vivo: observado y seleccionado, no causal). Compras por 10.000 impresiones:
+
+| tipo de producto mostrado | slot 1 | slots 2–3 | slots 4–10 | impresiones | compras |
+|---|---|---|---|---|---|
+| re-carrito (histórico y hoy) | 199,5 | 73,3 | 34,0 | 6.696 | 56 |
+| carrito solo histórico | 99,1 | 41,4 | 17,0 | 151.451 | 567 |
+| carrito solo de hoy | 54,2 | 38,4 | 10,9 | 17.510 | 44 |
+| sin carrito | 27,6 | 11,4 | 5,3 | 480.345 | 377 |
+
+  A igual slot el re-carrito vende el doble que el carrito solo histórico. Son 56 compras y el usuario que re-carrita es distinto del que no, así que no demuestra el efecto del cambio de orden.
+- **No es conversión.** Es una hipótesis de política. Se decide en el leaderboard: cx3rc contra cx3 (su control) y la referencia en ventanas idénticas, sin sustituir a cx3 a mitad de su serie.
+- **Tests:** 10 en `tests/test_lfm_recart.py` (260 en total): contadores 1/2/5, nunca baja una puntuación, comprados por historia / eventos de hoy / feedback del carrusel, stock, cohortes fuera del objetivo idénticas, opción apagada idéntica al control, estado y features sin cambios, ventana de día, y la opción sobrevive a la instalación de `alt` que hace la recarga validada del PR #42.

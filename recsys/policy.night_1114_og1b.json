@@ -1,0 +1,1 @@
+{"variant": "lfm", "lfm_arms": [{"tag": "r3", "file": "lfm_coef_r3.json"}, {"tag": "og1", "file": "lfm_coef_og1.json", "home": {"file": "lfm_coef_r3.json"}, "explore": "new"}, {"tag": "np2", "file": "lfm_coef_r3.json", "w": {"known": {"newp": 2.0}}}, {"tag": "cn1", "file": "lfm_coef_r3.json", "lq": "cold_new"}]}

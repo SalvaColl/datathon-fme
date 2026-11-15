@@ -24,7 +24,7 @@ def slate(lf, aff, model, rv=('A30',), new=False, page='product'):
 
 class NewpTests(unittest.TestCase):
     def test_feature_is_last_and_absent_from_committed_weights(self):
-        self.assertEqual(lfm.FEATS[-1], "newp"); self.assertEqual(lfm.FEATS.index("newp"), 21)
+        self.assertEqual(lfm.FEATS.index("newp"), 21)
         lf, _ = build()
         self.assertEqual(float(lf.w["known"][21]), 0.0); self.assertEqual(float(lf.w["new"][21]), 0.0)
 

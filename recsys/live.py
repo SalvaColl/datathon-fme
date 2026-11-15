@@ -7,15 +7,15 @@
 pull -> predict -> push like the starter. Falls back to in-stock best sellers on any per-request error.
 """
 from __future__ import annotations
-import os, sys, time, json, threading, traceback, zlib, collections, gc, signal
+import os, sys, time, json, threading, traceback, zlib, collections, gc, signal, copy, math
 from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends
     from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends
     from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -42,6 +42,16 @@ def session():
     return transport.http
 # --dry-run or RAWTREE_DRY_RUN=1: compute everything, never write (enforced by ReadOnlySession, not only by flags).
 DRY = "--dry-run" in sys.argv or os.environ.get('RAWTREE_DRY_RUN') == '1'
+def urgent_age(raw=None, default=2.2):
+    """Age (s) from which a request gets the generic guard list instead of the model (T-043). It was 1.8 s, set when
+    inference took hundreds of ms; lfm takes ~5 ms, and since 14 Nov 20:30 UTC the POST is ~75 ms slower, so 3% of the
+    requests were crossing 1.8 s and getting the guard list (0.7% conversion against ~1.9%). 2.2 s still leaves room
+    for a slow inference (0.3 s) plus a p95 POST (0.47 s) inside the 3 s deadline. URGENT_AGE overrides; clamped to
+    1.5-2.4 so a typo can neither starve the model nor push answers past serving.py's max_age (2.5 s)."""
+    try: v = float(raw) if raw not in (None, '') else default
+    except (TypeError, ValueError): v = default
+    return min(2.4, max(1.5, v))
+URGENT_AGE = urgent_age(os.environ.get('URGENT_AGE'))
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand-r1"
 VERSION_Q = "v2-qrank-r1"
@@ -87,8 +97,9 @@ def clean_lfm_arms(raw):
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
         lqm = a.get('lq')                                      # T-028/T-034: "cold" | "cold_new" = corrected quality for today's products
         xp = a.get('explore')                                  # T-039: true = exploration arm (last slot from ranks 11..60); "new" / "known" = only for that kind of shopper
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {})})
+        rc = a.get('recart')                                   # T-046: true = re-cart bonus (LiveFit.set_arms); anything else but absent rejects the list
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -166,22 +177,69 @@ def use_attr(r):
     if ATP is None or not r.get('rv') or v not in ('attr', 'attr_aff', 'ab_attr', 'ab_attr_aff'): return None
     if v.startswith('ab_') and not treated(r['user_id']): return None
     return VERSION_TA if v.endswith('_aff') else VERSION_T
+class PolicyRejected(ValueError): pass
+POLICY_REJECTED = {'sig': None, 'n': 0}      # last rejected candidate (logged once per distinct content and reason)
+def lfm_arm_weights(arms):
+    """Weights of `arms` built on a scratch copy of LF (nothing is published), checked: every weight file present and
+    complete, every coefficient a finite number. Returns what publish_policy() installs. Raises on any problem."""
+    tmp = copy.copy(LF); tmp.set_arms(arms)
+    for tag, (w, b) in tmp.alt.items():
+        for seg in ('known', 'new'):
+            if not (np.all(np.isfinite(np.asarray(w[seg], dtype=float))) and math.isfinite(b[seg])):
+                raise PolicyRejected('non-finite coefficient in arm ' + tag)
+    return tmp.alt, tmp.alt_lq, tmp.alt_x
+def check_policy(conf):
+    """T-043: the whole candidate policy.json, validated BEFORE anything is published. Returns the new values of the
+    keys that change ({} = nothing to do); raises PolicyRejected and touches nothing if any part is wrong. A key that
+    is absent, null or empty keeps its old meaning (no arms, no window, same variant): that is the documented rollback.
+    A key that is present and wrong rejects the update as a whole, so a typo or a missing weight file can no longer
+    erase the arms or switch the variant half-way."""
+    if not isinstance(conf, dict): raise PolicyRejected('not an object')
+    new = {}
+    v = conf.get('variant')
+    if v is not None and v not in VARIANTS: raise PolicyRejected('unknown variant')
+    if v is not None and v != POLICY['variant']: new['variant'] = v
+    raw = conf.get('qrank_arms')
+    try: arms = clean_arms(raw) if raw else []
+    except Exception: arms = None
+    if arms is None or (raw and not arms): raise PolicyRejected('invalid qrank_arms')
+    if arms != POLICY['qrank_arms']: new['qrank_arms'] = arms
+    raw = conf.get('lfm_arms')
+    try: arms = clean_lfm_arms(raw) if raw else []
+    except Exception: arms = None
+    if arms is None or (raw and not arms): raise PolicyRejected('invalid lfm_arms')
+    if arms != POLICY['lfm_arms'] and LF is not None:
+        try: new['lfm_weights'] = lfm_arm_weights(arms)
+        except PolicyRejected: raise
+        except Exception as e: raise PolicyRejected('lfm weights: ' + type(e).__name__ + ' ' + str(e)[:120])
+        new['lfm_arms'] = arms
+    raw = conf.get('state_window')
+    win = clean_state_window(raw) if raw is not None else None
+    if raw is not None and win is None: raise PolicyRejected('invalid state_window')
+    if win != POLICY['state_window'] and LF is not None: new['state_window'] = win
+    return new
+def publish_policy(new):
+    """Install a candidate that check_policy() accepted. Weights first (a request never sees an arm without its
+    weights), then the routing keys in one dict update."""
+    if 'lfm_weights' in new: LF.alt, LF.alt_lq, LF.alt_x = new.pop('lfm_weights')
+    if 'state_window' in new: LF.set_window(**(new['state_window'] or {}))
+    POLICY.update(new)
+    for k in ('variant', 'qrank_arms', 'lfm_arms', 'state_window'):
+        if k in new: print(json.dumps({'event': 'policy', k: new[k]}), flush=True)
 def read_policy():
     try:
-        conf = json.loads((DATA / 'policy.json').read_text()); v = conf.get('variant')
-        if v in VARIANTS and v != POLICY['variant']:
-            POLICY['variant'] = v; print(json.dumps(dict(event='policy', variant=v)), flush=True)
-        arms = clean_arms(conf.get('qrank_arms'))
-        if arms != POLICY['qrank_arms']:
-            POLICY['qrank_arms'] = arms; print(json.dumps(dict(event='policy', qrank_arms=arms)), flush=True)
-        arms = clean_lfm_arms(conf.get('lfm_arms'))
-        if arms != POLICY['lfm_arms'] and LF is not None:
-            try: LF.set_arms(arms)                 # weights first: a request never sees an arm without its weights
-            except Exception as e: print('lfm_arms ignored', type(e).__name__, e, flush=True); arms = []; LF.set_arms([])
-            POLICY['lfm_arms'] = arms; print(json.dumps(dict(event='policy', lfm_arms=arms)), flush=True)
-        win = clean_state_window(conf.get('state_window'))
-        if win != POLICY['state_window'] and LF is not None:
-            LF.set_window(**(win or {})); POLICY['state_window'] = win; print(json.dumps(dict(event='policy', state_window=win)), flush=True)
+        text = (DATA / 'policy.json').read_text()
+        try: new = check_policy(json.loads(text))
+        except Exception as e:                    # truncated JSON, wrong config, missing / incomplete / non-finite weights
+            sig = (text, type(e).__name__, str(e))
+            if sig != POLICY_REJECTED['sig']:
+                POLICY_REJECTED.update(sig=sig, n=POLICY_REJECTED['n'] + 1)
+                print(json.dumps(dict(event='policy_rejected', error=type(e).__name__, reason=str(e)[:200],
+                                      kept=dict(variant=POLICY['variant'], lfm_arms=[a['tag'] for a in POLICY['lfm_arms']]))), flush=True)
+        else:
+            if POLICY_REJECTED['sig'] is not None:
+                POLICY_REJECTED['sig'] = None; print(json.dumps(dict(event='policy_recovered')), flush=True)
+            if new: publish_policy(new)
     except FileNotFoundError: pass
     except Exception as e: print('policy.json ignored', type(e).__name__, flush=True)
     read_labels()
@@ -372,6 +430,23 @@ def new_products(cat, max_share=0.25):
     except Exception as e:
         print('new_products failed', type(e).__name__, e, flush=True); return None
 
+HOT_LOG = {}
+def hot_products(cat, max_share=0.10):
+    """T-044: products of the subcategories in a live burst (trends.py: share of views of the last 15 minutes at least twice
+    the usual one), for lfm arms that weight the feature `hot`. None (the feature stays 0, every arm serves as before) when
+    no arm asks, when nothing is hot, when the set looks wrong (over 10% of the catalogue) or on any error. Refresher thread
+    only; one aggregate query per cycle, and only while an arm asks."""
+    try:
+        if LF is None or not LF.wants_hot(): return None
+        snap = trends.snapshot(query, cat["sub"].to_dict())
+        if snap.hot != HOT_LOG.get('hot'):
+            HOT_LOG['hot'] = list(snap.hot); print(json.dumps(dict(event='hot', subcategories=snap.hot)), flush=True)
+        if not snap.hot: return None
+        hs = set(snap.hot); out = set(cat.index[cat["sub"].isin(hs)])
+        return out if 0 < len(out) <= max_share * len(cat) else None
+    except Exception as e:
+        print('hot_products failed', type(e).__name__, e, flush=True); return None
+
 COLD_LOG = {}
 def cold_lq_for_arms(cat, T):
     """T-028: {product: corrected lq} for lfm arms with "lq": "cold"; None when no arm asks, when the corrector is not
@@ -405,7 +480,7 @@ def refresher():
                 try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
-                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat))
+                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat))
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:
@@ -555,16 +630,39 @@ def user_bought(u):
         except Exception: break
     return set()
 
+def bought_in(u, items):
+    """Does `items` hold something the shopper already bought (same three sources as user_bought)? Membership tests
+    only: nothing is copied and no shared set is iterated, so it is lock-free and costs well under a microsecond per
+    product. Any doubt answers True: the caller then decides with user_bought()."""
+    try:
+        lf = LF
+        sets = [s for s in (BOUGHT.get(u), lf.hbought.get(u) if lf is not None else None, lf.lbought.get(u) if lf is not None else None) if s]
+        return bool(sets) and any(p in s for s in sets for p in items)
+    except Exception: return True
+
+GUARD_SHORT = [0]                 # slates sent with an already-bought product because fewer than ten others were left
 def repair_for(u, items, best, active):
-    """serving.repair, but the filler products skip what the shopper already bought (the guard list used to show
-    them: 78 slots in 102 returning-user requests, 14 Nov). Falls back to the plain repair if that leaves < 10."""
-    if isinstance(items, list) and len(items) == 10 and len(set(items)) == 10 and all(isinstance(p, str) and p in active for p in items):
-        return items
+    """serving.repair that also keeps already-bought products out of the answer, the ranked ones included (T-043; the
+    quick return of a valid slate used to skip the check, so a purchase known after the ranking was still sent).
+    Returns `items` itself when it is valid and holds nothing bought. Otherwise: the ranked products that are still
+    eligible and not bought, in their order, then `best` (active, unique, not bought). Ten valid products come first:
+    when fewer than ten unbought ones exist, the slate is completed with bought ones and the exception is logged."""
+    try: valid = isinstance(items, list) and len(items) == 10 and len(set(items)) == 10 and all(isinstance(p, str) and p in active for p in items)
+    except TypeError: valid = False
+    if valid and not bought_in(u, items): return items
     bought = user_bought(u)
-    if bought:
-        try: return repair(items, [p for p in best if p not in bought], active)
-        except ValueError: pass
-    return repair(items, best, active)
+    if not bought: return items if valid else repair(items, best, active)
+    out, seen = [], set()
+    for src in (items or (), best):
+        for p in src:
+            if isinstance(p, str) and p in active and p not in seen and p not in bought:
+                seen.add(p); out.append(p)
+                if len(out) == 10: return out
+    full = repair(out + list(items or []), best, active)      # raises, as before, if there are not even ten active products
+    GUARD_SHORT[0] += 1
+    if GUARD_SHORT[0] <= 20 or GUARD_SHORT[0] % 100 == 0:
+        print(json.dumps(dict(event='guard_bought_short', n=GUARD_SHORT[0], unbought=len(out), bought_sent=10 - len(out))), flush=True)
+    return full
 
 def fallback_answers(reqs, version=None):
     _, unavail, _, _, best = snapshot()
@@ -733,7 +831,7 @@ def main():
                     reqs = [r for r in reqs if not journal.contains(r['request_id'])]
                 expired_ids = {r['request_id'] for r in reqs if age(r) > 2.5}
                 seen.update(expired_ids)
-                expired = serve(reqs, score, fallback_answers, deliver)
+                expired = serve(reqs, score, fallback_answers, deliver, urgent_age=URGENT_AGE)
                 if reqs:
                     print(json.dumps(dict(event='loop', n=len(reqs), expired=expired,
                         loop_ms=round(1000*(time.perf_counter()-started), 1),

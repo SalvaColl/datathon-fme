@@ -1,0 +1,1 @@
+{"variant": "lfm", "lfm_arms": [{"tag": "fsr", "file": "lfm_coef_r3.json", "w": {"known": {"ssub2": 2.5, "scat2": 2.5, "ucat": 6.0, "islast": 3.2, "oinrv": 3.5}}, "home": {"file": "lfm_coef_r3.json"}}]}
