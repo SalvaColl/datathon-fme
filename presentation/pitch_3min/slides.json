@@ -578,7 +578,7 @@
         "w": 1330,
         "h": 51.269999999999996,
         "lines": [
-          "Un modelo m\u00e1s complicado"
+          "Modelos m\u00e1s complejos"
         ],
         "size": 33,
         "color": "F5F7FA",
@@ -591,8 +591,8 @@
         "w": 650,
         "h": 78.64,
         "lines": [
-          "M\u00e1s complejidad, pero no m\u00e1s aciertos",
-          "en las pruebas."
+          "Gradient boosting e interacciones:",
+          "no mejoraron las pruebas."
         ],
         "size": 28,
         "color": "A6B5C8",
@@ -627,7 +627,7 @@
         "w": 1330,
         "h": 51.269999999999996,
         "lines": [
-          "Productos que otros ven juntos"
+          "Productos vistos en la misma sesi\u00f3n"
         ],
         "size": 33,
         "color": "F5F7FA",
@@ -640,8 +640,8 @@
         "w": 650,
         "h": 78.64,
         "lines": [
-          "Parec\u00eda mejorar las compras.",
-          "Al repetir la prueba, empeor\u00f3."
+          "Parec\u00eda l\u00f3gico recomendarlos juntos.",
+          "Las pruebas no confirmaron una mejora."
         ],
         "size": 28,
         "color": "A6B5C8",

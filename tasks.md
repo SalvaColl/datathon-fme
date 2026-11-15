@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-23 | P1 | Name tested complex approaches and clarify session co-view idea | Codex / codex/pitch-3min | DONE: gradient boosting/interactions named; co-view described as products seen in same session, no consistent improvement confirmed; artifacts regenerated | Presentation only |
 | T-PITCH-22 | P1 | Descending fill for ten ranked recommendation tiles | Codex / codex/pitch-3min | DONE: 100% to 0% fill in ten steps, readable number badges; HTML/SVG/preview regenerated | Presentation only; illustrative ranking |
 | T-PITCH-21 | P1 | Compact observation cards and plain-language rejected ideas | Codex / codex/pitch-3min | DONE: observation cards reduced from 340 to 265px; discarded ideas described in plain language; layouts rendered | Presentation only |
 | T-PITCH-20 | P1 | Rejected-ideas graveyard and visual model explanation | Codex / codex/pitch-3min | DONE: third slide has only three measured rejections; fourth shows signals -> weighted scoring -> valid ten; both rendered and visually reviewed | Presentation only; documented rejected variants |

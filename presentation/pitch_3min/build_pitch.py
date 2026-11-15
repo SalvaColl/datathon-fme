@@ -247,8 +247,8 @@ s = slide("Ideas descartadas", "El cementerio de ideas.", 35, "", "")
 text(s, 70, 140, "El cementerio de ideas.", 83, bold=True)
 text(s, 75, 258, "Una idea prometedora tenía que sobrevivir a los datos.", 31, C["muted"])
 for y, num, idea, result in [
-    (365, "01", "Un modelo más complicado", "Más complejidad, pero no más aciertos\nen las pruebas."),
-    (515, "02", "Productos que otros ven juntos", "Parecía mejorar las compras.\nAl repetir la prueba, empeoró."),
+    (365, "01", "Modelos más complejos", "Gradient boosting e interacciones:\nno mejoraron las pruebas."),
+    (515, "02", "Productos vistos en la misma sesión", "Parecía lógico recomendarlos juntos.\nLas pruebas no confirmaron una mejora."),
     (665, "03", "Usar el orden de las visitas", "Saber qué miró primero y qué después\nno mejoró las recomendaciones."),
 ]:
     rect(s, 70, y, 1460, 2, C["line"])
