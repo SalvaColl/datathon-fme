@@ -11,13 +11,13 @@ Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomen
 
 Observamos en el historial que los compradores repetían gustos por atributos de las descripciones. Añadimos afinidad para dar más puntuación a productos que encajaran con esos gustos. Comprobamos que la señal también aparecía en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. Son grupos de productos expuestos, no un antes y después del cambio. El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.
 
-## 3. Menos complejidad. Más evidencia. — 0:50–1:25
+## 3. El cementerio de ideas. — 0:50–1:25
 
-También aprendimos descartando. Los modelos más complejos y las interacciones probadas no mejoraron la validación. El grafo no repitió su ventaja, y el orden de las visitas no añadió una mejora confirmada. Nos quedamos con un modelo lineal, rápido y fácil de inspeccionar. Lo entrenamos con clics y compras, dando triple peso a las compras. Combina gustos, actividad de la sesión, calidad y tendencias. En la final fijamos los pesos, mientras los datos de la tienda siguen actualizándose.
+Este es nuestro cementerio de ideas. Los modelos más complejos y las interacciones probadas no mejoraron la validación. Una variante con grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 al repetirla. El orden de las visitas tampoco añadió una mejora confirmada. No bastaba con que una idea sonara bien: tenía que resistir las pruebas.
 
-## 4. De perseguir la referencia a superarla. — 1:25–2:00
+## 4. Cada señal suma. Cada comprador cuenta. — 1:25–2:00
 
-De menos del uno por ciento a superar la referencia. Las marcas naranjas son la referencia de cada ventana. Esto es práctica, no el resultado de la final.
+Nuestro modelo combina cuatro familias de señales: gustos del comprador, actividad de la sesión, calidad del producto y tendencias. Un modelo lineal las pondera para puntuar cada producto. Entrenamos con clics y compras, dando triple peso a las compras. Ordenamos y elegimos diez productos activos que no haya comprado antes. En la final mantenemos los pesos fijos, pero actualizamos las señales con lo que ocurre en la tienda.
 
 ## 5. RawTree: del dato a la acción. — 2:00–2:35
 
@@ -29,7 +29,7 @@ Usamos Claude para programar y Codex para investigar señales y contrastar hipó
 
 ## Cómo contarlo
 
-Guion: 330 palabras. Plan completo: 180 segundos.
+Guion: 348 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

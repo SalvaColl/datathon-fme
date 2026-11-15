@@ -140,16 +140,15 @@ ES_NOTES[1] = (
     "Son grupos de productos expuestos, no un antes y después del cambio. "
     "El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.")
 ES_NOTES[2] = (
-    "También aprendimos descartando. Los modelos más complejos y las interacciones probadas no mejoraron la validación. "
-    "El grafo no repitió su ventaja, y el orden de las visitas no añadió una mejora confirmada. "
-    "Nos quedamos con un modelo lineal, rápido y fácil de inspeccionar. "
-    "Lo entrenamos con clics y compras, dando triple peso a las compras. "
-    "Combina gustos, actividad de la sesión, calidad y tendencias. "
-    "En la final fijamos los pesos, mientras los datos de la tienda siguen actualizándose.")
+    "Este es nuestro cementerio de ideas. Los modelos más complejos y las interacciones probadas no mejoraron la validación. "
+    "Una variante con grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 al repetirla. "
+    "El orden de las visitas tampoco añadió una mejora confirmada. "
+    "No bastaba con que una idea sonara bien: tenía que resistir las pruebas.")
 ES_NOTES[3] = (
-    "De menos del uno por ciento a superar la referencia. "
-    "Las marcas naranjas son la referencia de cada ventana. "
-    "Esto es práctica, no el resultado de la final.")
+    "Nuestro modelo combina cuatro familias de señales: gustos del comprador, actividad de la sesión, calidad del producto y tendencias. "
+    "Un modelo lineal las pondera para puntuar cada producto. Entrenamos con clics y compras, dando triple peso a las compras. "
+    "Ordenamos y elegimos diez productos activos que no haya comprado antes. "
+    "En la final mantenemos los pesos fijos, pero actualizamos las señales con lo que ocurre en la tienda.")
 ES_SOURCES[1] = (
     "I-092/E-093: feedback 14 nov 11:09–13:05 UTC, 21.691 peticiones; conocidos, productos sin relación previa y fuera de recent_views. "
     "Compras por 10.000 exposiciones: afinidad <0,10: 0,6; afinidad 0,20–0,25: 89,7. "
@@ -161,11 +160,10 @@ ES_SOURCES[2] = (
     "Los brazos difieren en home, pero mantienen los mismos pesos del grafo en páginas. "
     "R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.")
 ES_SOURCES[3] = (
-    "Inicio: presentation/guion.md, marcador api/state del 14 nov 13:50 UTC, equipo 0,91%, referencia 2,03%, N=10.785. "
-    "Media mixta de versiones y caída, no resultado aislado del primer modelo. "
-    "presentation/cifras.md, javi/jury-final: 8 bloques, 4 por política, 10.800 peticiones por política. "
-    "Medias de conversiones documentadas: u1 1,98825 y referencia 1,94425; u3k 2,117 y referencia 1,9055. "
-    "Margen documentado +0,044 frente a +0,212 pp. Valores mostrados redondeados; comparación temporal, no aleatorizada.")
+    "presentation/HOW_AND_WHY.md y recsys/lfm_build.py: entrenamiento base con clics, compras con peso 3 y modelos lineales por segmento. "
+    "recsys/lfm.py y handoff final: afinidad, sesión, calidad orgánica, tendencias, exclusiones de compras e inactivos. "
+    "El diagrama resume familias de señales y el ranking; los pesos finales incluyen reajustes y overrides. "
+    "Los diez bloques numerados son posiciones, no puntuaciones medidas. Pesos congelados, señales actualizadas.")
 
 def slide(kicker, title, seconds, notes, source):
     n = len(slides)
@@ -245,46 +243,43 @@ card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
 card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "Compras en vivo",
      "Por 10.000 exposiciones:\nAfinidad baja: 0,6 compras\nAfinidad alta: 89,7 compras")
 
-s = slide("Qué descartamos / con qué nos quedamos", "Menos complejidad. Más evidencia.", 35, "", "")
-text(s, 70, 143, "Menos complejidad.\nMás evidencia.", 78, bold=True)
-rect(s, 70, 365, 650, 415, C["card"], 22)
-text(s, 100, 395, "DESCARTAMOS", 21, C["orange"], True)
-for y, label, reason in [
-    (450, "Más complejidad e interacciones", "No mejoraron la validación."),
-    (555, "La variante con grafo", "Su ventaja no se repitió."),
-    (660, "El orden de las visitas", "Sin mejora adicional confirmada."),
+s = slide("Ideas descartadas", "El cementerio de ideas.", 35, "", "")
+text(s, 70, 140, "El cementerio de ideas.", 83, bold=True)
+text(s, 75, 258, "Una idea prometedora tenía que sobrevivir a los datos.", 31, C["muted"])
+for y, num, idea, result in [
+    (365, "01", "Modelos más complejos", "Gradient boosting e interacciones:\nno mejoraron la validación."),
+    (515, "02", "Una señal, dos rondas", "Grafo: +0,20 puntos en una ronda;\n−0,41 en la siguiente. No se confirmó."),
+    (665, "03", "El orden de las visitas", "Las señales probadas no añadieron\nuna mejora confirmada."),
 ]:
-    text(s, 100, y, label, 29, bold=True)
-    text(s, 100, y+42, reason, 25, C["muted"])
-rect(s, 745, 365, 785, 415, C["card"], 22)
-text(s, 780, 395, "NUESTRO ENFOQUE FINAL", 21, C["green"], True)
-text(s, 780, 449, "Un modelo lineal, rápido y explicable", 34, bold=True)
-text(s, 780, 515, "Aprende de clics y compras\nLas compras pesan ×3 en el entrenamiento.", 27, width=710)
-text(s, 780, 610, "Combina gustos, sesión, calidad y tendencias", 27, width=710)
-text(s, 780, 705, "Pesos fijos. Datos de la tienda actualizados.", 28, C["green"], True)
+    rect(s, 70, y, 1460, 2, C["line"])
+    text(s, 85, y+32, num, 55, C["orange"])
+    text(s, 205, y+36, idea, 37, bold=True)
+    text(s, 850, y+29, result, 28, C["muted"], width=650)
 
-s = slide("Nuestra evolución / conversión", "De perseguir la referencia a superarla.", 35, "", "")
-text(s, 70, 138, "De perseguir la referencia\na superarla.", 72, bold=True)
-rect(s, 1010, 93, 22, 22, C["green"], 5)
-text(s, 1046, 89, "Equipo", 23)
-rect(s, 1160, 102, 35, 5, C["orange"])
-text(s, 1210, 89, "Referencia de la ventana", 23)
-bottom, scale = 745, 175
-for v in [0, 1, 2]:
-    y=bottom-v*scale
-    rect(s, 165, y, 1270, 2, C["line"])
-    text(s, 82, y-15, f"{v}%", 23, C["muted"])
-for x, value, reference, label, period in [
-    (280, .91, 2.03, "Inicio", "14 nov · media del equipo"),
-    (740, 1.98825, 1.94425, "u1", "15 nov · práctica"),
-    (1200, 2.117, 1.9055, "u3k", "15 nov · reajuste"),
-]:
-    height=value*scale
-    rect(s, x, bottom-height, 170, height, C["green"], 16)
-    text(s, x-5, bottom-height-65, f"{value:.2f}%".replace(".",","), 47, C["green"], True)
-    rect(s, x-35, bottom-reference*scale, 240, 6, C["orange"], 3)
-    text(s, x+40, 770, label, 30, bold=True)
-    text(s, x-50, 815, period, 21, C["muted"])
+s = slide("Nuestro modelo", "Cada señal suma. Cada comprador cuenta.", 35, "", "")
+text(s, 70, 140, "Cada señal suma.\nCada comprador cuenta.", 74, bold=True)
+text(s, 75, 330, "Un modelo lineal: combina señales y ordena los productos para cada persona.", 28, C["muted"])
+rect(s, 70, 415, 425, 325, C["card"], 22)
+text(s, 100, 443, "01 · SEÑALES", 21, C["green"], True)
+for y, label in [(500,"Gustos del comprador"),(555,"Actividad de la sesión"),(610,"Calidad del producto"),(665,"Tendencias de la tienda")]:
+    text(s, 100, y, label, 29, bold=True)
+text(s, 515, 555, "→", 58, C["green"], True)
+rect(s, 595, 415, 430, 325, C["card"], 22)
+text(s, 625, 443, "02 · PUNTUACIÓN", 21, C["green"], True)
+text(s, 625, 505, "Señales × pesos", 39, bold=True)
+text(s, 625, 580, "Aprendidos con clics\ny compras reales.", 28, C["muted"])
+text(s, 625, 680, "Una puntuación por producto", 24, C["green"])
+text(s, 1045, 555, "→", 58, C["green"], True)
+rect(s, 1125, 415, 405, 325, C["card"], 22)
+text(s, 1155, 443, "03 · RECOMENDACIÓN", 21, C["green"], True)
+text(s, 1155, 500, "Los 10 mejores", 35, bold=True)
+for i in range(10):
+    x=1155+(i%5)*68
+    y=570+(i//5)*55
+    rect(s, x, y, 55, 42, C["green"] if i<3 else C["line"], 9)
+    text(s, x+17 if i<9 else x+11, y+7, str(i+1), 21, C["bg"] if i<3 else C["white"], True)
+text(s, 1155, 690, "Activos y sin compras previas", 23, C["muted"])
+text(s, 75, 795, "Entrenamiento: compras ×3 · En la final: pesos fijos, señales actualizadas", 29, C["green"], True)
 
 s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 35,
     "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "
