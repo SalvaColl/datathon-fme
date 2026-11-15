@@ -15,6 +15,10 @@ POLICIES = {
                             {"new": 2, "home_known": 2, "home_new": 2}),
     "policy.rot_uf1n.json": ("uf1n", {"known": ("newp", "hot", "orate"), "new": ("orate", "hot")}, {"known": ("newph",), "new": ("newph",)},
                              {"known": 2, "new": 2, "home_known": 2, "home_new": 2}),
+    "policy.rot_uf2.json": ("uf2", {"known": ("hot", "orate", "mf", "ucat"), "new": ("orate", "hot", "ucat", "prv")}, {"known": ("newph", "orate"), "new": ("newph", "orate")},
+                            {"home_known": 2, "home_new": 2}),
+    "policy.rot_uf2n.json": ("uf2n", {"known": ("newp", "hot", "orate"), "new": ("orate", "hot", "prv")}, {"known": ("newph",), "new": ("newph",)},
+                             {"known": 4, "home_known": 2, "home_new": 2}),
     "policy.rot_uf0.json": ("uf0", {"known": ("hot", "orate", "mf"), "new": ("orate", "hot")}, {"known": ("newph",), "new": ("newph",)},
                             {"new": 2, "home_known": 2, "home_new": 2}),
     "policy.rot_u3k.json": ("u3k", {"known": ("hot", "orate", "mf"), "new": ("orate", "hot")}, {"known": ("orate", "opop"), "new": ("orate", "opop")}, None),
@@ -23,7 +27,6 @@ POLICIES = {
     "policy.unified_rollback.json": ("r3", {"known": ("lq", "ucat"), "new": ("lq", "ucat")}, None, None),
 }
 CHAIN = ("policy.rot_uf1.json", "policy.rot_uf0.json", "policy.rot_u3k.json", "policy.unified.json", "policy.rot_cs2r.json", "policy.unified_rollback.json")
-UF2 = Path("/mnt/project-files/nuevos-prv/") / "policy.rot_uf2.json"      # candidate outside the repo (uf1 + prv 0.8, new shoppers on pages)
 K = lfm.FEATS.index
 
 
@@ -146,18 +149,16 @@ class FinalPolicyTests(unittest.TestCase):
         self.assertEqual(len([e for e in ev if e.get("event") == "policy_rejected"]), 2)
         self.assertEqual([a["tag"] for a in live.POLICY["lfm_arms"]], ["uf1"])
 
-    @unittest.skipUnless(UF2.exists(), "candidate uf2 not on this machine")
-    def test_candidate_uf2_outside_the_repo(self):
-        """uf2 = uf1 + prv 0.8 for new shoppers on pages. Validated where it lives; not copied into the repo by this test."""
-        text = UF2.read_text()
-        uf1 = json.loads((HERE / "policy.rot_uf1.json").read_text())["lfm_arms"][0]; uf2 = json.loads(text)["lfm_arms"][0]
-        uf1["tag"] = "uf2"; uf1["w"]["new"]["prv"] = 0.8
-        self.assertEqual(uf2, uf1)                                                         # the ONLY difference with uf1
-        self.check(text, "uf2", {"known": ("hot", "orate"), "new": ("prv", "ucat")}, {"known": ("newph",), "new": ("newph",)},
-                   {"new": 2, "home_known": 2, "home_new": 2})
+    def test_uf2_is_uf1_plus_prv_without_the_new_page_cap(self):
+        """uf2 on main (ee2955c) = uf1 + prv 0.8 for new shoppers on pages, and no launched cap on new-shopper pages
+        (the cap also counted the shopper's own launched products, bug-audit thread). Nothing else differs."""
+        uf1 = json.loads((HERE / "policy.rot_uf1.json").read_text())["lfm_arms"][0]
+        uf2 = json.loads((HERE / "policy.rot_uf2.json").read_text())["lfm_arms"][0]
+        uf1["tag"] = "uf2"; uf1["w"]["new"]["prv"] = 0.8; del uf1["newcap"]["new"]
+        self.assertEqual(uf2, uf1)
+        self.check((HERE / "policy.rot_uf2.json").read_text(), *POLICIES["policy.rot_uf2.json"])
         self.assertTrue(live.LF.wants_prv())                                               # the refresher must feed earlier requests
         self.assertEqual(live.LF.alt["uf2"][0]["known"][K("prv")], 0.0); self.assertEqual(live.LF.alt["uf2@home"][0]["new"][K("prv")], 0.0)
-
 
 if __name__ == "__main__":
     unittest.main()
