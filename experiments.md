@@ -839,3 +839,18 @@ Tamaño de la señal de segmento: dentro de una lista su desviación típica es 
 Por qué no hay palanca grande aquí: lo que mueve la compra en el carrusel son señales de varios logits entre el usuario y el producto concreto (carrito, vista de la sesión, vista de peticiones anteriores, compra en el carrusel histórico). Precio, descuento, segmento, hora y página son de segundo orden en el simulador (décimas de logit) y solo cambian el orden entre casi empates.
 
 Código: features `gsub` / `gbrand` / `gphr` (peso 0 = inertes), `lfm_seg_build.py` → `lfm_seg.json` (30 segmentos), `policy.unified_seg.json` (u1g = u1 + gsub 0,6 / gbrand 0,3 solo en páginas de nuevos; opcional, no justifica un reinicio por sí sola).
+
+## E-571 — Señales usuario × producto precalculadas (T-057, 15 nov 03:40 UTC) — OFFLINE, mismo método que E-570
+
+Todas contra la puntuación de u1 dentro de la petición, con puesto, ajuste antes de las 19:00 UTC y verosimilitud después. Páginas de conocidos (1.297 compras), compradores fuertes (carritos por vista ≥ 12%, 1.122), home de conocidos (88) y nuevos en páginas (996).
+
+| Señal | Coeficiente (compras, páginas de conocidos) | Fuera de muestra | Veredicto |
+|---|---|---|---|
+| Compra conjunta producto a producto con lo que el usuario compró en 60 días (PMI medio; en el histórico los pares tienen estructura más allá de la subcategoría, correlación entre mitades 0,44) | +0,09 ± 0,10 (residuo sobre subcategoría +0,17 ± 0,11; otro usuario −0,05 ± 0,07) | −0,2 [−2,0, +2,2] | nada |
+| Lo que compran quienes tuvieron en carrito lo mismo que él | −0,02 ± 0,08 | −0,2 [−1,8, +1,7] | nada |
+| Fidelidad de marca dentro de la categoría (compras / carritos / vistas) | +0,06 ± 0,05 / +0,07 ± 0,06 / 0,00 ± 0,08 | +0,2 [−1,4, +2,1] | nada |
+| Sustituto de un carrito pendiente (misma subcategoría y marca / solo subcategoría) | −0,11 ± 0,17 / +0,10 ± 0,12 (nuevos +0,39 ± 0,18 / +0,29 ± 0,14) | −3,7 [−7,3, +0,1] (nuevos −0,9 [−6,7, +5,8]) | nada |
+| Sustituto de la última vista (misma marca, precio a ±15%, más barato) | −0,01 ± 0,26, −0,51 ± 0,27, −0,21 ± 0,19 | incluido arriba | nada |
+| Vistas históricas del producto en carrito | +0,37 ± 0,29 | −8,1 [−14,6, −2,3] | nada |
+
+Compradores fuertes y home dan lo mismo. Coincide con E-311 (factores latentes usuario × producto no añaden: el simulador es de atributos, sin identidad de producto) y explica qué sí funcionó: carrito, vista de la sesión, vista de peticiones anteriores y compra en el carrusel histórico son registros del propio usuario con ese producto exacto, no inferencias desde otros usuarios o desde productos parecidos. No quedan registros directos sin usar en los datos (vistas orgánicas sin carrito están muertas, compras excluidas, impresiones previas sin efecto).
