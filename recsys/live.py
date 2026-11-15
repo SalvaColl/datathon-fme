@@ -299,6 +299,11 @@ def initialize():
         if LF is not None and (DATA / 'prev_views.parquet').exists():
             print('prev views history:', LF.load_prev_hist(pd.read_parquet(DATA / 'prev_views.parquet')), 'users', flush=True)
     except Exception as e: print('prev views history not loaded:', type(e).__name__, e, flush=True)
+    # T-055: products bought / clicked in the history carousel (download_prev_views.py). Absent file = features stay 0.
+    try:
+        if LF is not None and (DATA / 'hist_carousel.parquet').exists():
+            print('history carousel:', LF.load_hist_carousel(pd.read_parquet(DATA / 'hist_carousel.parquet')), 'users', flush=True)
+    except Exception as e: print('history carousel not loaded:', type(e).__name__, e, flush=True)
     # T-025 hook (home_arms): inert unless data/home_arms.json lists arms; only swaps slates of requests without recent_views.
     try: home_arms.install(globals())
     except Exception as e: print('home_arms not installed, serving unchanged:', type(e).__name__, e, flush=True)

@@ -62,7 +62,15 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # flat across slots); live 14 Nov: returning shoppers x2.1 (40 buys vs 19 expected), new shoppers x5.6 (13 vs 2.3)
          # (E-540). Value = log1p(earlier requests of the last 30 days + PRV_TODAY x earlier requests since the event
          # started), 0 for pending carts; home has its own weight block; weight 0 in every committed file
-         "prv"]
+         "prv",
+         # T-055: the shopper BOUGHT (hcb) or only CLICKED (hcc) this product in the carousel of the 60-day history
+         # (shop.history_sessions.purchased / .clicked). Carousel purchases never reach the organic events, so the model
+         # saw these products as plain pending carts or untouched products. Live 14 Nov after 16:00 UTC, returning shoppers,
+         # per impression with slot, cart, cart count, session context and category share: hcb +1.61 +- 0.14 on purchases
+         # (109 buys), +1.46 +- 0.09 on clicks; inside the same request x2 against another pending cart at the same slot
+         # and x3-5 against a non-cart product; hcc +0.40 +- 0.15 (E-550). 0 for products bought organically (those stay
+         # excluded); weight 0 in every committed file
+         "hcb", "hcc"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -161,7 +169,7 @@ class Snap:
 PRV_TODAY, PRV_CAP = 2.0, 8.0      # T-054: weight of a view in an earlier request of the event; cap on the total count
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None, mfu=None, prev=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None, mfu=None, prev=None, hcar=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -224,6 +232,10 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         if lc: X[lc, 26] = 0.0                          # pending carts keep their own order (live: x1.15, no evidence)
         hk = [k for k in (r(p) for p in hist_cart) if k is not None]
         if hk: X[hk, 26] = 0.0
+    if hcar:                                            # T-055: (products bought, products only clicked) in the history carousel
+        for col, items in ((27, hcar[0]), (28, hcar[1])):
+            hk = [k for k in (r(p) for p in items) if k is not None]
+            if hk: X[hk, col] = 1.0
     return X if idx is None else X[idx]
 
 
@@ -303,6 +315,7 @@ class LiveFit:
         self.prv_hist = {}                                      # user -> (products, counts): history_sessions, last 30 days
         self.prv_day = {}                                       # user -> {product: requests of the event that had it in view}
         self.prv_last = {}                                      # user -> (request_id, products) of the newest request added
+        self.hcar = {}                                          # T-055: user -> (products bought, products only clicked) in the history carousel
         self.NC, self.NS = 16, 160                              # fixed widths, so codes stay valid when the catalog grows
         self.graph = None                                       # {product: [[neighbour, weight], ...]}, read once from GRAPH
         self.mf_u, self.mf_P, self.mf_Q, self.mf_items = None, None, None, None    # factorisation, read once from MF
@@ -494,6 +507,16 @@ class LiveFit:
                 if n > 0: out[p] = out.get(p, 0.0) + PRV_TODAY * n
         return out
 
+    def load_hist_carousel(self, frame) -> int:
+        """T-055. frame: columns u, i, b (1 = bought in the history carousel, 0 = only clicked)."""
+        out = {}
+        for u, i, b in zip(frame.u.values, frame.i.values, frame.b.values):
+            e = out.get(u)
+            if e is None: e = out[u] = ([], [])
+            e[0 if b else 1].append(sys.intern(str(i)))
+        self.hcar = {u: (tuple(e[0]), tuple(e[1])) for u, e in out.items()}
+        return len(self.hcar)
+
     def wants_prv(self) -> bool:
         k = FEATS.index("prv")
         sets = [self.w] + [w for w, _ in list(self.alt.values())]
@@ -544,7 +567,7 @@ class LiveFit:
         prev = self.prev_views(req["user_id"], req.get("request_id")) if w[seg][FEATS.index("prv")] != 0.0 else None
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None,
-                     prev=prev)
+                     prev=prev, hcar=self.hcar.get(req["user_id"]))
         s = X @ w[seg] + b0[seg]
         if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
             # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc

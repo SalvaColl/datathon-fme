@@ -22,7 +22,17 @@ def day(d):
     return c
 
 
+def carousel():
+    """T-055: data/hist_carousel.parquet (u, i, b): b = 1 bought in the history carousel, 0 = only clicked. 60 days."""
+    f = q("""SELECT user_id::String u, if(purchased::String != '', purchased::String, clicked::String) i, max(purchased::String != '') b
+             FROM shop.history_sessions WHERE purchased::String != '' OR clicked::String != '' GROUP BY u, i""")
+    f["b"] = f.b.astype(int)
+    f.to_parquet("data/hist_carousel.parquet")
+    print(len(f), "carousel pairs", int(f.b.sum()), "bought")
+
+
 def main():
+    carousel()
     days = pd.date_range(end=END, periods=DAYS).strftime("%Y-%m-%d")
     tot = Counter()
     with ThreadPoolExecutor(4) as ex:

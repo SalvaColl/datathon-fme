@@ -805,3 +805,15 @@ Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cu
 **Corrección (01:45 UTC), con control de afinidad:** la mayor parte del múltiplo en bruto es afinidad de categoría. Logística por impresión con puesto, cuota de categoría del usuario, contexto de sesión: conocidos +0,22 ± 0,16 a +0,36 ± 0,19 en compras y +0,37 ± 0,09 en clics por producto visto en el histórico; nuevos +1,0 ± 0,5 a +1,65 ± 0,7 en compras y +0,74 a +0,94 ± 0,25 en clics por producto visto en una petición anterior del día. El hilo de nuevos obtiene +0,77 ± 0,23 (nuevos) con las señales de u1. En el histórico aleatorizado, dentro de cada tramo de cuota de categoría, x2,3–x3,2. Dosis: nuevos 0,8, conocidos 0 (`policy.unified_prv_cold.json`, u1v) o 0,5 (`policy.unified_prv.json`, u1p). Los pesos 3,0–4,5 iniciales no tienen apoyo y se retiran.
 
 **Limitación:** el efecto en vivo está medido sobre lo que el modelo ya decidía mostrar. Vuelta atrás en caliente: `policy.unified_hotc.json`.
+
+## E-550 — Compras y clics del carrusel histórico (T-055, 15 nov 02:05 UTC)
+
+**LIVE FEEDBACK, con controles.** `shop.history_sessions.purchased` (18.587 pares usuario-producto en 60 días) no está en los eventos orgánicos: el modelo veía esos productos como carritos pendientes o productos sin tocar. El 54% también se compró orgánicamente y sigue excluido (3 compras en 3.079 impresiones en todo el día: muerto, como siempre).
+
+- Conocidos, 14 nov desde 16:00 UTC, logística por impresión con puesto, carrito, veces carritado, contexto de sesión, vistas actuales y cuota de categoría: comprado en el carrusel histórico +1,61 ± 0,14 en compras (109 compras en 4.350 impresiones) y +1,46 ± 0,09 en clics; solo clicado +0,40 ± 0,15 y +0,45 ± 0,11. Home: +0,88 ± 0,59 compras, +1,72 ± 0,52 clics.
+- Dentro de las mismas peticiones (quita la propensión del usuario, que aquí es alta: sus otros carritos venden 258 por 10k en el puesto 1): carrito comprado antes en carrusel 512 frente a 258 en el puesto 1, 210 frente a 104 en 2–3, 101 frente a 51 en 4–6; no carrito 279 frente a 71 en 2–3, 123 frente a 41 en 4–6. Es decir x2 sobre otro carrito y x3–5 sobre un no carrito.
+- Sin decaimiento por antigüedad (0–7 días 13/543, 40–61 días 32/1.030).
+- Alcance: 13,8% de las peticiones de conocidos tienen al menos un candidato no comprado orgánicamente; hoy aparece en el 43% de ellas y en el puesto 1 en un tercio de esas.
+- Estimación (conjetura): +0,05 a +0,15 puntos de conversión total.
+
+Features `hcb` / `hcc` (peso 0 = inertes), fichero `data/hist_carousel.parquet` (`download_prev_views.py`). Política `policy.unified_hcb.json` (u1h = u1v + hcb 3,0 y hcc 0,8 en páginas de conocidos, hcb 1,5 en home). La dosis está en la escala de cs2r (chn 3,0) y no se ha pasado por repetición.
