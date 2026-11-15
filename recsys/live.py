@@ -840,11 +840,11 @@ def scratch_insert(row):
 def make_gate(standby, lock_path, argv=None, env=None):
     """--standby: load, score without sending, write only after a promote file (runbook, T-063). WRITER_LEASE=1: remote
     fencing token in <team>.scratch. Neither given -> None."""
-    if __package__: from . import failover
-    else: import failover
     env = os.environ if env is None else env
     lease_on = env.get('WRITER_LEASE') == '1'
-    if not standby and not lease_on: return None
+    if not standby and not lease_on: return None          # the default: failover.py is not even imported
+    if __package__: from . import failover
+    else: import failover
     token = arg_value('--promote-token', env.get('PROMOTE_TOKEN'), argv)
     if standby and not token: raise SystemExit('--standby needs --promote-token <word> (or PROMOTE_TOKEN)')
     lease = failover.Lease(TEAM, query, scratch_insert, failover.holder_name(),
@@ -1011,11 +1011,13 @@ def main():
             warm_up()
             settle_gc()
             if STOP.is_set(): return
-            if takeover: writer_lock = take_over(lock_path, old_pid)
+            if takeover:
+                if GATE is not None: GATE.start()          # lease: take the token BEFORE asking the old writer to stop
+                writer_lock = take_over(lock_path, old_pid)
         else:
             settle_gc()
+            if GATE is not None: GATE.start()              # lease-only writer: take the token or die before writing
         if GATE is not None:
-            if not standby: GATE.start(writer_lock)          # lease-only writer: take the token or die before writing
             threading.Thread(target=GATE.run_checks, args=(STOP,), daemon=True).start()
         if not DRY:
             journal = Journal(directory / 'attempts.sqlite3')
@@ -1044,8 +1046,10 @@ def main():
                     verdict = GATE.tick()
                     if verdict == 'stop': break
                     if verdict == 'promoted':
-                        reconcile(); idle_seen.clear()
+                        idle_seen.clear()
                         print('ready LIVE (promoted)', flush=True)
+                        try: reconcile()
+                        except Exception as exc: print('reconcile after promote failed', type(exc).__name__, flush=True)
                     elif verdict != 'write':
                         if verdict == 'idle': failover_idle(idle_seen)
                         time.sleep(0.25); continue
