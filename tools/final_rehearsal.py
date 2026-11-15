@@ -18,6 +18,19 @@ Scenarios
   stock shock     a third of the catalogue goes out of stock, including each request's recent views
   stale refresh   RawTree stops answering queries: served from the last features (also covers "no leaderboard")
 
+Regime-change scenarios (T-064, only with --regime; they run after the ones above, on a frozen refresher, and rebuild
+the catalogue state with the writer's own functions: new_products, organic_counts, LiveFit.set_catalog, make_pools)
+  old cat dead    every product of the pre-event catalogue inactive; only products launched during the event are left
+  tiny catalogue  12 / 10 / 9 active products overall, through the real serve() + send_answers(dry) path: what would be
+                  posted and what happens to the batch when serving.repair raises
+  empty state     all shopper state gone (carts, purchases, views, earlier requests) and every shopper unknown;
+                  blank shopper (no views, unknown page / device / region); restart before the first lfm snapshot
+  unknown categ.  recent views only of products moved to categories that no fitted table has seen
+  launched cliff  live.new_products() returns None above 25% of the catalogue (newp, newph and newcap go off):
+                  lists at the current share, 24% and 26%, per policy given with --cliff-policy (repeatable)
+"late events / reconnect": the stale half is the existing "stale refresh" scenario; the burst half is not simulated.
+    python tools/final_rehearsal.py --n 400 --regime --policy recsys/policy.rot_uf1.json --cliff-policy recsys/policy.rot_uf1.json
+
 Checks per answer: exactly 10 distinct products, all in the catalogue and in stock as the writer sees it, none the
 shopper already bought. Latency is predict() per request, batches of 4 as in the serving loop.
 Do not run it on the machine that hosts the live writer: it competes for CPU.
@@ -40,7 +53,7 @@ def main():
         if '/v1/tables/' in str(url): raise RuntimeError('rehearsal: refusing to write to RawTree')
         return real_post(self, url, *a, **k)
     requests.Session.post = guarded_post
-    os.chdir(ROOT / 'recsys'); sys.path.insert(0, str(ROOT / 'recsys'))
+    os.chdir(ROOT / 'recsys'); sys.path.insert(0, str(ROOT / 'recsys')); sys.path.insert(0, str(ROOT / 'tools'))
     sys.argv = ['live.py', '--dry-run', '--lfm']
     import numpy as np
     import live
@@ -53,6 +66,9 @@ def main():
     while live.state['pools'] is None or not (live.LF and live.LF.ok) or live.state['live'] is None or not live.state['stock_checked']: time.sleep(0.5)
     if not (live.DATA / 'policy.json').exists():
         arms = [{'tag': 'r3', 'file': 'lfm_coef_r3.json'}]; live.LF.set_arms(arms); live.POLICY['lfm_arms'] = arms
+    if '--policy' in sys.argv and not (live.DATA / 'policy.json').exists():
+        conf = json.loads((ROOT / sys.argv[sys.argv.index('--policy') + 1]).read_text())
+        live.POLICY['lfm_arms'] = []; live.LF.set_arms([]); live.publish_policy(live.check_policy(conf))     # the writer's own validation path
     print('ready after', round(time.time() - t, 1), 's | policy', json.dumps(live.POLICY), flush=True)
 
     rows = live.query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, "
@@ -112,6 +128,9 @@ def main():
     time.sleep(3)
     total += run('stale refresh', [dict(r) for r in rows])
     live.query = real_query
+    if '--regime' in sys.argv:
+        from final_regime import regime
+        total += regime(live, rows, run, rng)
     print('TOTAL invalid answers:', total, '| stock last refreshed', round(time.monotonic() - live.state['stock_checked'], 1), 's ago during the stale scenario')
     return total
 
