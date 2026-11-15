@@ -817,3 +817,9 @@ Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cu
 - Estimación (conjetura): +0,05 a +0,15 puntos de conversión total.
 
 Features `hcb` / `hcc` (peso 0 = inertes), fichero `data/hist_carousel.parquet` (`download_prev_views.py`). Política `policy.unified_hcb.json` (u1h = u1v + hcb 3,0 y hcc 0,8 en páginas de conocidos, hcb 1,5 en home). La dosis está en la escala de cs2r (chn 3,0) y no se ha pasado por repetición.
+
+## E-533 — Ráfaga de la 01:30 UTC (Leashes) en vivo y dosis ajustada con la puntuación de u1 como control (T-053, 15 nov 02:30 UTC)
+
+- **En vivo:** detector rápido en main 80a3ad4, listas con contexto 10 de 10 calientes desde el minuto 2. `u1c` (`hotc` 9, minutos 2–15): 297 listas con contexto, 2 compras (0,7%), clics 3,7%; `u1` (`hot` 3 / 1,5, minutos 15–45): 755 listas, 9 compras (1,2%), clics 7,0%; antes de la ráfaga 1,2% y 5,2%. Leaderboard (conversión esperada), equipo − referencia: calma 00:45–01:30 +0,08; 01:30–01:45 (`u1c`) +0,08; 01:45–02:15 (`u1`) +0,22. team_06 +0,24 → +0,38 → +0,40. **`hotc` 9 REJECTED**: el ×11 de E-530 era selección (los calientes enseñados ayer los había elegido el modelo por afinidad).
+- **Ajuste** (`imp2.py` + `fit.py` del hilo; 957.750 impresiones de 7 ráfagas ±45 min, clic con compras ×3, logit con la puntuación de u1 sin `hot`, log del puesto y efecto fijo de la subcategoría): conocidos en página `hot` +1,35 ± 0,33 con pendiente de la puntuación 0,34 → 4,0 en unidades de u1 (subcategoría en vistas +1,65 ± 0,39, solo categoría +1,04 ± 0,44, sin contexto +1,00 ± 0,65); nuevos en página +1,62 ± 0,56 con pendiente 1,00 → 1,6; home +2,3 ± 1,3 con pendiente 0,90 → 2,5 (6 clics). El efecto es un multiplicador de ×4–5 parecido en todos los contextos.
+- **Decisión propuesta:** `hot` 4,0 conocidos (antes 3,0), 1,5 nuevos (igual), 2,0 home (antes 0) en los cuatro brazos de la rotación; `hotc` se queda a 0.
