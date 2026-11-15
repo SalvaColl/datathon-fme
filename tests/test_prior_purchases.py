@@ -67,6 +67,32 @@ class PriorPurchaseTests(unittest.TestCase):
         self.assertEqual(lf.prior_stats["products_entering"], len({"A31", "A32"} & set(served)))
         self.assertEqual(c["products_entering"], len({"A31", "A32"} & set(served)))    # the shadow predicted the allow list
 
+    def test_a_released_purchase_does_not_get_its_cart_back(self):
+        """98.8% of the bought pairs went through the cart: releasing the exclusion must not turn them into live carts."""
+        lf, aff = build(); shopper(lf); lf.set_prior(START, "allow")              # A31: carted on Saturday, then bought
+        b, lc, hc = lf.user_state("u9")[:3]
+        self.assertIn("A31", b); self.assertNotIn("A31", lc); self.assertNotIn("A31", hc); self.assertEqual(lc, {"A03"})
+        S, s = lf.scores(REQ, lf.user_state("u9"), aff); k = S.row["A31"]
+        twin, _ = build()                                                          # same shopper without the cart and the purchase
+        for _ in range(5): twin.add("u9", "A31", 1, 0, 0)
+        twin.add("u9", "A03", 0, 1, 0)
+        for p in ("A32", "A33", "A34"): twin.add("u9", p, 0, 0, 1)
+        _, t = twin.scores(REQ, twin.user_state("u9"), aff)
+        self.assertAlmostEqual(float(s[k]), float(t[k]), places=9)                 # scored as a viewed product, not as a cart
+        naive, _ = build()                                                         # what a plain "forget the purchase" would do
+        for _ in range(5): naive.add("u9", "A31", 1, 0, 0)
+        naive.add("u9", "A31", 0, 1, 0); naive.add("u9", "A03", 0, 1, 0)
+        _, c = naive.scores(REQ, naive.user_state("u9"), aff)
+        self.assertGreater(float(c[k]), float(s[k]) + 0.5)                         # the cart signal it does NOT receive
+
+    def test_cart_window_accepts_the_same_boundary_instant(self):
+        lf, aff = build(); shopper(lf)
+        lf.add("u9", "A05", 0, 1, 0, ta=SUN + "08:59:59.999"); lf.add("u9", "A06", 0, 1, 0, ta=SUN + "09:00:00.000")
+        lf.set_window(START, carts="day"); lf.set_prior(START, "allow")
+        b, lc, hc = lf.user_state("u9")[:3]
+        self.assertEqual(lc, {"A06"}); self.assertEqual(set(hc), {"A03", "A05"})       # earlier carts: kept as history carts
+        self.assertNotIn("A31", hc); self.assertEqual(lf.prior_bought("u9"), {"A31", "A32"})
+
     def test_bad_values_are_rejected(self):
         lf, _ = build()
         for kw in (dict(boundary="2026-11-15"), dict(boundary="2026-11-15T09:00:00"), dict(boundary=START, mode="ignore")):
