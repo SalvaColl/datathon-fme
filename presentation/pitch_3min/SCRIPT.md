@@ -17,7 +17,7 @@ Pero muchas ideas acabaron aquí. Probamos modelos demasiado complejos, como gra
 
 ## 4. Cada señal suma. Cada comprador cuenta. — 1:25–2:00
 
-Nos quedamos con un modelo lineal que combina gustos, actividad de la sesión, calidad del producto y tendencias. Aprendió los pesos con clics y compras, dando más importancia a las compras. Así puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las señales: el modelo es estable; la información está viva.
+Nos quedamos con un modelo de regresión logística que combina gustos, actividad de la sesión, calidad del producto y tendencias. Aprendió los pesos con clics y compras, dando más importancia a las compras. Así puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las señales: el modelo es estable; la información está viva.
 
 ## 5. RawTree: del dato a la acción. — 2:00–2:35
 
@@ -29,7 +29,7 @@ Usamos Claude para programar e integrar mejoras, y Codex para investigar señale
 
 ## Cómo contarlo
 
-Guion: 343 palabras. Plan completo: 180 segundos.
+Guion: 345 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

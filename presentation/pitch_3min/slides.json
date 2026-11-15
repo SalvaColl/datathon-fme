@@ -702,8 +702,8 @@
     "kicker": "Nuestro modelo",
     "title": "Cada se\u00f1al suma. Cada comprador cuenta.",
     "seconds": 35,
-    "notes": "Nos quedamos con un modelo lineal que combina gustos, actividad de la sesi\u00f3n, calidad del producto y tendencias. Aprendi\u00f3 los pesos con clics y compras, dando m\u00e1s importancia a las compras. As\u00ed puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las se\u00f1ales: el modelo es estable; la informaci\u00f3n est\u00e1 viva.",
-    "source": "presentation/HOW_AND_WHY.md y recsys/lfm_build.py: entrenamiento base con clics, compras con peso 3 y modelos lineales por segmento. recsys/lfm.py y handoff final: afinidad, sesi\u00f3n, calidad org\u00e1nica, tendencias, exclusiones de compras e inactivos. El diagrama resume familias de se\u00f1ales y el ranking; los pesos finales incluyen reajustes y overrides. Los diez bloques numerados son posiciones, no puntuaciones medidas. Pesos congelados, se\u00f1ales actualizadas.",
+    "notes": "Nos quedamos con un modelo de regresi\u00f3n log\u00edstica que combina gustos, actividad de la sesi\u00f3n, calidad del producto y tendencias. Aprendi\u00f3 los pesos con clics y compras, dando m\u00e1s importancia a las compras. As\u00ed puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las se\u00f1ales: el modelo es estable; la informaci\u00f3n est\u00e1 viva.",
+    "source": "presentation/HOW_AND_WHY.md y recsys/lfm_build.py: entrenamiento base con clics, compras con peso 3 y regresi\u00f3n log\u00edstica por segmento. recsys/lfm.py y handoff final: afinidad, sesi\u00f3n, calidad org\u00e1nica, tendencias, exclusiones de compras e inactivos. El diagrama resume familias de se\u00f1ales y el ranking; los pesos finales incluyen reajustes y overrides. Los diez bloques numerados son posiciones, no puntuaciones medidas. Pesos congelados, se\u00f1ales actualizadas.",
     "shapes": [
       {
         "kind": "rect",
@@ -757,7 +757,7 @@
         "w": 1460,
         "h": 45.32,
         "lines": [
-          "Un modelo lineal: combina se\u00f1ales y ordena los productos para cada persona."
+          "Regresi\u00f3n log\u00edstica: combina se\u00f1ales y ordena productos para cada persona."
         ],
         "size": 28,
         "color": "A6B5C8",

@@ -17,11 +17,11 @@ Pero muchas ideas acabaron aquí. Probamos modelos demasiado complejos, como gra
 
 ## 4. Cada señal suma. Cada comprador cuenta. — 1:25–2:00
 
-Nos quedamos con un modelo lineal que combina gustos, actividad de la sesión, calidad del producto y tendencias. Aprendió los pesos con clics y compras, dando más importancia a las compras. Así puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las señales: el modelo es estable; la información está viva.
+Nos quedamos con un modelo de regresión logística que combina gustos, actividad de la sesión, calidad del producto y tendencias. Aprendió los pesos con clics y compras, dando más importancia a las compras. Así puntuamos los productos y elegimos los diez mejores, excluyendo los agotados y los ya comprados. Para la final fijamos los pesos, pero seguimos actualizando las señales: el modelo es estable; la información está viva.
 
 ## 5. RawTree: del dato a la acción. — 2:00–2:35
 
-RawTree nos permitió cerrar todo ese circuito en una misma plataforma: leer la tienda, agregar actividad con SQL, enviar recomendaciones y recuperar su feedback. Lo más útil fue poder pasar del dato a una decisión medible sin montar toda esa infraestructura nosotros. Y tenía que funcionar en tiempo real: en la ventana de práctica documentada, respondimos a tiempo al 99,96 % de las peticiones.
+RawTree fue el punto de encuentro de todo nuestro sistema. Desde ahí leíamos las peticiones y los cambios de la tienda, agregábamos actividad con SQL y enviábamos las recomendaciones. Después recuperábamos el feedback para comprobar qué funcionaba. Tener todo ese circuito en una misma plataforma nos permitió centrarnos en mejorar el modelo y responder dentro de los tres segundos.
 
 ## 6. Los agentes aceleran. Nosotros decidimos. — 2:35–3:00
 
@@ -29,7 +29,7 @@ Usamos Claude para programar e integrar mejoras, y Codex para investigar señale
 
 ## Cómo contarlo
 
-Guion: 343 palabras. Plan completo: 180 segundos.
+Guion: 345 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

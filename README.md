@@ -4,9 +4,15 @@ Our entry for the **RawTree Challenge, Datathon FME 2026**. One serving process 
 
 **Final configuration reported by the deployment owner:** policy ur2, serving commit e8a1f18, fixed from 15 Nov 09:20 CET. This repository also contains experiments that were never deployed. Presence in Git does not mean a feature ran in the final.
 
+## Presentación
+
+**[Abrir presentación (HTML)](presentation/pitch_3min/pitch.html)** · [PDF actualizado](presentation/pitch_3min/Team26_3min_ES.pdf) · [Guion en español](presentation/pitch_3min/GUION_ES.md)
+
+Descarga el repositorio y abre el HTML en el navegador. En GitHub puedes consultar directamente el PDF.
+
 ## For the judges
 
-- [Latest three-minute pitch: HTML, Spanish](presentation/pitch_3min/pitch.html), [current speaker script](presentation/pitch_3min/GUION_ES.md). [PDF](presentation/pitch_3min/Team26_3min_ES.pdf) and [PowerPoint](presentation/pitch_3min/Team26_3min_ES.pptx) retain the preceding revision; the HTML includes the newest diagrams and RawTree detail.
+- [Latest three-minute pitch: HTML, Spanish](presentation/pitch_3min/pitch.html), [current speaker script](presentation/pitch_3min/GUION_ES.md). [PDF](presentation/pitch_3min/Team26_3min_ES.pdf) matches the current HTML; [PowerPoint](presentation/pitch_3min/Team26_3min_ES.pptx) retains a preceding revision.
 - [Evidence, windows, sample sizes and limitations](presentation/pitch_3min/EVIDENCE.md).
 - [Version-by-version data and rejected variants](presentation/pitch_3min/datos_versiones.html), also embedded behind D in the presentation.
 - [Training and evaluation walkthrough](presentation/HOW_AND_WHY.md).

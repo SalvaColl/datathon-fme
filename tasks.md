@@ -4,6 +4,8 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-27 | P1 | Publish current presentation on main with root README link | Codex / codex/pitch-3min -> main | READY TO PUBLISH: root README links HTML/PDF/script; diff check passed; integrating presentation history into main | Presentation/docs only; no serving changes |
+| T-PITCH-26 | P1 | Replace linear-model wording with logistic regression in pitch and notes | Codex / codex/pitch-3min | DONE: HTML/SVG/PDF/preview and script regenerated; build_pitch.py and render_pitch.py passed; slide 4 visually checked | Presentation only; logistic training verified in recsys/lfm_build.py |
 | T-PITCH-25 | P1 | Clarify complex-model and signal-interaction wording | Codex / codex/pitch-3min | DONE: Modelos demasiado complejos and interacciones entre señales in slide/script; rendered and visually checked | Presentation/notes only |
 | T-PITCH-24 | P1 | Spanish three-minute speaking script aligned with final six-slide story | Codex / codex/pitch-3min | DONE: 337 words, explicit 3-second pause, six notes matching workflow/rejections/model/RawTree/AI; first slide hook only | Script/notes only; no visual changes |
 | T-PITCH-23 | P1 | Name tested complex approaches and clarify session co-view idea | Codex / codex/pitch-3min | DONE: gradient boosting/interactions named; co-view described as products seen in same session, no consistent improvement confirmed; artifacts regenerated | Presentation only |
