@@ -48,7 +48,7 @@ def in_burst(a, step, bursts):
     return False
 
 
-def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None, factors=None):
+def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None, factors=None, step_at=None):
     step = block_min * 60; champion = champion or seq[0]
     end = min(until or 1 << 62, int(time.time()) // 300 * 300)
     rows = []
@@ -56,7 +56,7 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         d = requests.get(URL, params={"by": "model", "from": a, "to": a + step}, timeout=30).json()
         t = next((x for x in d["teams"] if x["team_id"] == team), None)
         if not t or not d.get("custom"): continue
-        rows.append(dict(k=k, start=time.strftime("%H:%M", time.gmtime(a)), variant=seq[k % len(seq)], burst=in_burst(a, step, bursts), requests=t["requests"], conversion=round(t["conversion"], 3),
+        rows.append(dict(k=k, t=a, start=time.strftime("%H:%M", time.gmtime(a)), variant=seq[k % len(seq)], burst=in_burst(a, step, bursts), requests=t["requests"], conversion=round(t["conversion"], 3),
                          reference=round(d["reference"]["conversion"], 3), diff=round(t["conversion"] - d["reference"]["conversion"], 3),
                          cold=round(t["cold_conversion"], 3), cold_diff=round(t["cold_conversion"] - d["reference"].get("cold_conversion", 0), 3),
                          on_time=round(t["on_time"], 2), versions=len(t.get("versions", []))))
@@ -107,9 +107,9 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         fx = {}
         for col in ("diff", "noncold_diff", "cold_diff", "known_adj", "known_cold"):
             b = [r for r in good if r.get(col) is not None and r["variant"] in set(seq)]
-            names = list(factors); X = [[1.0] + [float(r["variant"] in factors[f]) for f in names] + [float(r["burst"])] for r in b]
+            names = list(factors); X = [[1.0] + [float(r["variant"] in factors[f]) for f in names] + [float(r["burst"]), float(step_at is not None and r["t"] >= step_at)] for r in b]
             X = np.array(X); y = np.array([r[col] for r in b])
-            if X[:, -1].min() == X[:, -1].max(): X = X[:, :-1]
+            X = X[:, [j for j in range(X.shape[1]) if j <= len(names) or X[:, j].min() != X[:, j].max()]]      # drop constant nuisance columns
             if len(b) <= X.shape[1] + 1: fx[col] = dict(blocks=len(b)); continue
             beta, *_ = np.linalg.lstsq(X, y, rcond=None); res_ = y - X @ beta
             s2 = float(res_ @ res_) / (len(b) - X.shape[1]); cov = np.linalg.inv(X.T @ X)
@@ -129,9 +129,10 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--start", required=True); ap.add_argument("--block-min", type=int, default=15); ap.add_argument("--seq", required=True)
-    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--factors", help='main effects: "hcb=u1hb,u2hb;dose=u2c,u2hb"'); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
+    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--step-at", help="UTC time of a change common to every arm (a level shift), e.g. \"2026-11-15 03:20\""); ap.add_argument("--factors", help='main effects: "hcb=u1hb,u2hb;dose=u2c,u2hb"'); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
     g = ap.parse_args()
     b = None if g.bursts is None else [int(x[:2]) * 60 + int(x[3:5]) for x in g.bursts.split(",") if x]
     main(epoch(g.start), g.block_min, g.seq.split(","), epoch(g.until) if g.until else None, g.out, g.champion, g.min_on_time, bursts=b,
          kcodes=dict(x.split("=") for x in g.k_codes.split(",")) if g.k_codes else None,
+         step_at=epoch(g.step_at) if g.step_at else None,
          factors={f.split("=")[0]: set(f.split("=")[1].split(",")) for f in g.factors.split(";")} if g.factors else None)
