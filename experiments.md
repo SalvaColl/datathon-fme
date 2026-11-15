@@ -682,4 +682,14 @@ Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer 
 
 - **Tests:** 6 en `tests/test_organic_quality.py` (`ColdKnownTests`): regla de cohorte (espejo de `cold_new`; `cold` y `cold_new` sin cambios), exige un control con pesos idénticos, no se mezcla con `cold_new` sin control, control / nuevos / home idénticos al campeón en puntuación y lista, solo se mueve el producto lanzado, y la ruta usa la misma regla que la puntuación (no existen etiquetas `ck1-n`, `ck1-kh`, `ck1-nh`; el tráfico no tratado sale idéntico al control solo).
 - **Evidencia previa (dato del encargo, replay en sombra, 504 peticiones de conocidos en producto/categoría, 14 nov 23:10–23:15 UTC):** cuota de lanzamientos en la lista r3 0,26%, con corrección de calidad 7,64%, np2 52,46%; todas las listas válidas. Cambia la composición; no mide conversión.
-- **No medido:** conversión, ni latencia en vivo. Sin activar.
+- **Replay propio con el código del writer** (`cd recsys && python cold_lq_replay.py --mode cold_known --n 4000 --since "2026-11-14 20:00"`, 4.061 peticiones del 14 nov 20:00 – 15 nov 00:08 UTC, catálogo, stock y cuentas orgánicas a fecha de cada petición, pesos r3; salida en `/mnt/project-files/calidad-conocidos/replay_e472.json`). OFFLINE ESTIMATE de composición:
+
+| cohorte | peticiones | listas que cambian | slot 1 cambia | cuota de lanzamientos control → retador | listas con algún lanzamiento |
+|---|---|---|---|---|---|
+| conocidos, producto | 1.577 | 50,0% | 3,6% | 0,41% → 7,26% | 4,1% → 50,0% |
+| conocidos, categoría | 719 | 50,8% | 5,0% | 0,53% → 7,44% | 5,0% → 50,9% |
+| conocidos, home o sin vistas | 573 | 0% | 0% | 0,35% → 0,35% | sin cambio |
+| nuevos (todas las páginas) | 1.192 | 0% | 0% | sin cambio | sin cambio |
+
+  Fuera de la cohorte, 0 listas cambiadas. Validez 100% en los dos brazos. Latencia de `slate` en el contenedor: control p50 1,23 / p99 14,3 ms, retador 1,21 / 12,0 ms; las correcciones tardan 150 ms por refresco, en el hilo refrescador. Hasta 400 productos corregidos, 45 recortados por la cota. Coincide con el replay en sombra del encargo (7,64%).
+- **No medido:** conversión, ni latencia en vivo. El replay no reconstruye las compras del carrusel. Sin activar.
