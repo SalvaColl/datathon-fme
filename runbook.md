@@ -233,3 +233,31 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Lectura de una ventana: `python recsys/confirm_read.py --from "2026-11-15 00:10" --to "2026-11-15 01:40" --control <código> --challenger <código> --sd 6.0` (usar `--sd 5.5` para conocidos). Los códigos públicos de `r3p`, `cn1p` y `np1p` salen en el log del writer como eventos `label` al servir la primera petición de cada uno.
 - Vuelta atrás: política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json`.
 
+
+## Vigilancia y relevo durante la final — T-067 (2026-11-15)
+
+**Vigilar sin tocar el writer** (cualquier máquina con `.env`, solo lectura, 6 consultas agregadas por pasada):
+`python tools/final_watch.py --watch 60`
+
+- `launched ON/OFF`: `live.new_products()` apaga `newp`, `newph` y `newcap` sin error si los lanzados pasan del 25% del catálogo. A las 08:00 UTC del 15 nov: 600 de 5.600, límite 1.666, caben 1.066 más (ritmo visto: 100 cada 4 h; el siguiente lote a las 10:00 UTC). Si sale `OFF`, el bot sigue respondiendo listas válidas; solo pierde el empuje y el tope de lanzados. No es motivo de reinicio.
+- `quality FULL / ORATE_ONLY / OFF`: `lfm.organic_quality()` deja `orate`/`opop` a cero si hay menos de 50 productos con histórico Y menos de 50 con vistas en el stream. Con el catálogo antiguo retenido (caso actual) está en `FULL`.
+- `hot calm/ON/OFF`: la tendencia se apaga si las subcategorías calientes cubren más del 10% del catálogo.
+- `feed lag`: segundos desde la última fila de cada tabla. Peticiones al día y feedback parado más de 60 s = writer o red, no un stream tranquilo.
+- `last 5 min`: `ALARM` si lo nuestro baja del 97% o si hay peticiones y menos de la mitad de feedback. La luz verde oficial solo exige más del 90%.
+
+Lo que esta herramienta NO ve: fallos de las consultas del propio writer. En el Mac, sin cargar la máquina:
+`grep -c "refresh failed\|refresh error\|new_products failed\|hot_products failed\|organic_counts failed" data/live_main.log` y `tail -3 data/live_main.log`.
+
+**Fallo parcial conocido (caracterizado, no corregido).** En `live.refresher` la lectura de `shop.events` va antes de publicar el catálogo: si esa consulta falla (`refresh error` en el log), el ciclo entero se pierde y `state` conserva el catálogo y los inactivos del último ciclo bueno. Las roturas de stock siguen entrando por `stock_refresher` (cada segundo, consulta aparte); los productos lanzados y las desactivaciones sin `out_of_stock` esperan a que la consulta de eventos vuelva. Los fallos de afinidad, atributos, lfm, vistas previas y feedback sí están aislados: solo dejan su línea `... failed`.
+
+**Alarmas operativas, no de conversión.** No volver atrás de política porque baje la conversión observada en la final: cambia la población y las compras realizadas son pocas. Una vuelta atrás de política no arregla un fallo de red.
+
+**Relevo manual a otra máquina.** `serving.WriterLock` y `--takeover` son un cerrojo y un PID LOCALES: no coordinan dos portátiles. Nunca arrancar un segundo writer porque el feedback parezca parado. Orden obligatorio:
+
+1. Confirmar la caída con dos señales: `final_watch` con peticiones al día y sin feedback nuestro durante más de 2 minutos, Y una persona delante del Mac (o el Mac apagado o sin red).
+2. Cercar el writer viejo antes de arrancar nada: en el Mac `pkill -INT -f live.py` y comprobar `pgrep -fl live.py` vacío; si no responde, apagar el wifi o el Mac. Quien lo hace lo dice por escrito ("Mac cercado, hora").
+3. En la máquina de reserva, mismo commit y misma política: `git rev-parse HEAD` y `shasum -a 256 recsys/data/policy.json` deben coincidir con lo anotado del Mac (ver abajo). Arrancar SIN `--takeover` (no hay nada local que relevar): desde `recsys/`, `nohup ../../.venv/bin/python live.py >> data/live_main.log 2>&1 &`.
+4. La carga tarda unos 4 min 30 s (medido a las 06:20 UTC); durante ese tiempo responde el fallback de la organización. El arranque relee todo el sábado y todas las compras del carrusel, así que las exclusiones se reconstruyen.
+5. No volver a encender el writer del Mac sin parar antes el de reserva. Dos writers = respuestas duplicadas para la misma petición.
+
+**Anotar antes de las 09:00 UTC** (sin credenciales): `git rev-parse HEAD`, `shasum -a 256 data/policy.json lfm_coef*.json cold_prior.json`, PID y hora de `ready LIVE`. `python tools/final_checksums.py` imprime commit y sumas de los ficheros del repositorio y, si existe, de `data/policy.json`.
