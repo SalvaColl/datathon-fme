@@ -70,7 +70,12 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # (109 buys), +1.46 +- 0.09 on clicks; inside the same request x2 against another pending cart at the same slot
          # and x3-5 against a non-cart product; hcc +0.40 +- 0.15 (E-550). 0 for products bought organically (those stay
          # excluded); weight 0 in every committed file
-         "hcb", "hcc"]
+         "hcb", "hcc",
+         # T-059: `newp` for requests WITHOUT recent views (home). `newp` itself stays 0 there, so until now no policy could
+         # weight launched products on home. For new shoppers on home they are 8.5% of the organic purchases that follow
+         # the request and 0.9% of our impressions (14 Nov 16:45 UTC - 15 Nov 01:50 UTC); no carousel evidence yet
+         # (264 impressions), so this only opens the dial: weight 0 in every committed file and policy
+         "newph"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -221,6 +226,7 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         sc = Q @ mfu; sd = float(sc.std())
         if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
     if getattr(S, "newp", None) is not None and rv and page in LQ_PAGES: X[:, 21] = S.newp      # never on home or without views
+    if getattr(S, "newp", None) is not None and not rv: X[:, 29] = S.newp                       # T-059: its twin for requests without views
     if getattr(S, "hot", None) is not None:
         X[:, 22] = S.hot                                                                        # every page: a burst reaches every shopper
         if rows: X[:, 25] = S.hot * np.isin(S.cat, S.cat[rows])                                 # T-053: the burst's category is in the recent views
