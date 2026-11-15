@@ -344,16 +344,16 @@ def main(argv=None):
     query = make_query()
     team = args.team or os.environ['TEAM_ID']
     level = OK
-    while True:
-        v = run_once(query, team, args)
-        level = v['level']
-        print(json.dumps(v) if args.json else render(v, brief=bool(args.watch)), flush=True)
-        if not args.watch:
-            break
-        try:
+    try:
+        while True:
+            v = run_once(query, team, args)
+            level = v['level']
+            print(json.dumps(v) if args.json else render(v, brief=bool(args.watch)), flush=True)
+            if not args.watch:
+                break
             time.sleep(max(1.0, args.watch))
-        except KeyboardInterrupt:
-            break
+    except KeyboardInterrupt:
+        pass
     return exit_code(level)
 
 
