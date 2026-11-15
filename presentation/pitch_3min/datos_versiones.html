@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Equipo 26 — datos por versión</title>
+<style>
+.version-data{box-sizing:border-box;max-width:1280px;margin:auto;padding:32px;color:#f5f7fa;font:18px/1.5 Arial,sans-serif;background:#101a29}
+.version-data h1{font-size:36px;line-height:1.15;margin:0 0 12px}.version-data h2{font-size:25px;margin:36px 0 12px;color:#61e4b1}
+.version-data h3{font-size:20px;margin-top:26px}.version-data p{color:#b9c8da}.version-data a{color:#61e4b1}
+.version-data table{width:100%;border-collapse:collapse;background:#192638;margin:14px 0}
+.version-data th,.version-data td{padding:12px 15px;text-align:left;border-bottom:1px solid #304154;vertical-align:top}
+.version-data th{font-size:15px;color:#a6b5c8}.version-data .good{color:#61e4b1}.version-data .bad{color:#ffac86}
+.version-data .notice{padding:16px 20px;border-left:4px solid #ffac86;background:#192638}
+.version-data small{font-size:14px;color:#a6b5c8}.version-data summary{cursor:pointer;color:#61e4b1;font-weight:bold}
+.version-data code{font-size:16px}.version-data .scroll{overflow:auto}
+</style>
+<body style="margin:0;background:#101a29">
+<main class="version-data">
+<h1>Datos por versión</h1>
+<p>Apoyo para preguntas. Todo lo siguiente es práctica o evaluación offline; no es un resultado de la final.</p>
+<p class="notice"><strong>Comparar dentro de cada tabla y ventana.</strong> Las métricas y poblaciones de apartados distintos no son intercambiables. Las medias del equipo que mezclan versiones no se atribuyen a una sola política.</p>
+
+<h2>1. u1 frente a u3k: reajustar con nuestro feedback</h2>
+<p>15 nov, 03:20–05:20 CET. Ocho bloques de 15 minutos, cuatro por política, 2.700 peticiones por bloque. Cada bloque se compara con la referencia de esa misma ventana.</p>
+<div class="scroll"><table>
+<tr><th>Versión</th><th>Peticiones</th><th>Conversión esperada</th><th>Referencia media</th><th>Margen frente a referencia</th></tr>
+<tr><td>u1 · anterior</td><td>10.800</td><td>1,988%</td><td>1,944%</td><td>+0,044 pp</td></tr>
+<tr><td>u3k · pesos reajustados</td><td>10.800</td><td>2,117%</td><td>1,906%</td><td class="good">+0,212 pp</td></tr>
+</table></div>
+<p><strong>Diferencia de margen documentada: +0,167 pp, mostrada como +0,17 pp.</strong> Comparación por bloques temporales, no A/B aleatorizado. Medias calculadas a partir de valores documentados redondeados; no se atribuye causalidad perfecta.</p>
+<details><summary>Ver los ocho bloques</summary>
+<table><tr><th>Inicio CET, 15 nov</th><th>Versión</th><th>Equipo</th><th>Referencia</th></tr>
+<tr><td>03:20</td><td>u1</td><td>1,860%</td><td>1,920%</td></tr>
+<tr><td>03:35</td><td>u3k</td><td>2,121%</td><td>1,950%</td></tr>
+<tr><td>03:50</td><td>u1</td><td>2,053%</td><td>2,020%</td></tr>
+<tr><td>04:05</td><td>u3k</td><td>1,998%</td><td>1,844%</td></tr>
+<tr><td>04:20</td><td>u3k</td><td>2,186%</td><td>1,932%</td></tr>
+<tr><td>04:35</td><td>u1</td><td>2,132%</td><td>2,027%</td></tr>
+<tr><td>04:50</td><td>u3k</td><td>2,163%</td><td>1,896%</td></tr>
+<tr><td>05:05</td><td>u1</td><td>1,908%</td><td>1,810%</td></tr>
+</table></details>
+<small>Fuente: presentation/cifras.md, sección 5, rama javi/jury-final. La asignación a políticas viene del registro de despliegue; el marcador por sí solo no la reconstruye.</small>
+
+<h2>2. Grafo de co-visitas: una ventaja que no se repitió</h2>
+<p>Conversión esperada. Ronda 1: r3 frente a r5c05, 14 nov 18:50–19:20 CET. Ronda 2: r3 frente a f5c05, 19:25–19:55 CET. Los dos retadores usan la señal de grafo a 0,5 en páginas; difieren en home. Cada celda indica conversión y número de peticiones.</p>
+<div class="scroll"><table>
+<tr><th>Ronda</th><th>Segmento</th><th>r3</th><th>Retador</th></tr>
+<tr><td>1 · r5c05</td><td>Conocidos / páginas</td><td>1,57% · N=1.489</td><td class="good">1,77% · N=1.521</td></tr>
+<tr><td>1 · r5c05</td><td>Nuevos / páginas</td><td>2,61% · N=645</td><td>2,61% · N=619</td></tr>
+<tr><td>1 · r5c05</td><td>Conocidos / home</td><td>0,79% · N=362</td><td>0,46% · N=432</td></tr>
+<tr><td>1 · r5c05</td><td>Nuevos / home</td><td>0,56% · N=168</td><td>1,05% · N=145</td></tr>
+<tr><td>2 · f5c05</td><td>Conocidos / páginas</td><td>2,08% · N=1.539</td><td class="bad">1,67% · N=1.476</td></tr>
+<tr><td>2 · f5c05</td><td>Nuevos / páginas</td><td>3,09% · N=626</td><td class="bad">2,35% · N=587</td></tr>
+<tr><td>2 · f5c05</td><td>Conocidos / home</td><td>0,44% · N=372</td><td>0,48% · N=372</td></tr>
+<tr><td>2 · f5c05</td><td>Nuevos / home</td><td>0,66% · N=165</td><td>0,85% · N=146</td></tr>
+</table></div>
+<p><strong>Decisión:</strong> no promover la dosis de grafo 0,5. En conocidos/páginas pasó de +0,20 pp a −0,41 pp. Home conserva los mismos pesos entre control y retador en la segunda ronda: sus cifras pueden diferir porque reciben usuarios distintos.</p>
+<small>Fuentes: E-271 y E-272, experiments.md. No se extrapola la primera ronda ni se mezclan segmentos para proclamar un ganador.</small>
+
+<h2>3. Home genérico: cuatro políticas en la misma ventana</h2>
+<p>14 nov 18:05–18:35 CET, usuarios conocidos en home. Conversión esperada por política.</p>
+<table>
+<tr><th>Política</th><th>Peticiones</th><th>Conversión</th><th>Decisión</th></tr>
+<tr><td>Control · LFM r3</td><td>157</td><td>0,49%</td><td>Conservar</td></tr>
+<tr><td>conv · conversión genérica</td><td>167</td><td>0,38%</td><td>No promover</td></tr>
+<tr><td>catbest · mejores de categoría</td><td>184</td><td>0,21%</td><td>No promover</td></tr>
+<tr><td>trend · tendencias</td><td>180</td><td>0,14%</td><td>No promover</td></tr>
+</table>
+<p>Muestras pequeñas: estas diferencias observadas no son intervalos de confianza ni demuestran que toda política futura de home vaya a perder.</p>
+<small>Fuente: E-271 / R-18. No son cifras globales del equipo.</small>
+
+<h2>4. Complejidad del modelo: comparación offline</h2>
+<p>Log-verosimilitud de compras en datos apartados: <strong>mayor es mejor</strong>. Esta métrica NO es conversión.</p>
+<table>
+<tr><th>Segmento</th><th>Lineal r3</th><th>Gradient boosting</th><th>Lectura</th></tr>
+<tr><td>Conocidos</td><td class="good">−627,5</td><td>−645,3</td><td>Sin mejora al aumentar complejidad</td></tr>
+<tr><td>Nuevos</td><td class="good">−597,7</td><td>−606,1</td><td>Sin mejora al aumentar complejidad</td></tr>
+</table>
+<p>También se descartaron las interacciones probadas y 17 señales de orden de visita que no añadieron mejora confirmada. Esto no significa que se entrenaran y compararan exhaustivamente todas las arquitecturas de secuencia.</p>
+<small>Fuentes: E-260 / R-24 / R-26. El resumen no aporta N para esta tabla; no se inventa.</small>
+
+<h2>5. Observaciones que motivaron las señales</h2>
+<table>
+<tr><th>Observación</th><th>Resultado</th><th>Qué justifica</th><th>Límite</th></tr>
+<tr><td>Productos ya comprados</td><td>0 compras / 1.118 exposiciones</td><td>Excluir compras conocidas</td><td>Feedback temprano del primer modelo; E-081</td></tr>
+<tr><td>Afinidad por atributos</td><td>hit@1: 0,472 → 0,519; 4.697 sesiones con compra</td><td>Incorporar gustos por atributos</td><td>Evaluación histórica condicionada a compra; E-092</td></tr>
+</table>
+
+<h2>6. ur2 y el resultado de la final</h2>
+<p>El handoff identifica ur2 como política de la final. No disponemos aquí de una evaluación aislada confirmada de esa configuración. La cifra de 2,159% del equipo entre 08:00 y 09:00 CET mezcla versiones de práctica: <strong>no se asigna a ur2</strong>. La nueva señal de gustos tenía apoyo offline, pero no una ganancia online demostrada al congelar.</p>
+<p>El resultado final no está incluido en esta presentación. Las tablas anteriores no lo sustituyen.</p>
+<p>Más detalle: <a href="EVIDENCE.md">fuentes y límites</a> · <a href="../../experiments.md">experimentos</a> · <a href="../../insights.md">ideas y descartes</a>.</p>
+</main>
+</body>
+</html>

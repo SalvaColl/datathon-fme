@@ -322,11 +322,11 @@
     ]
   },
   {
-    "kicker": "Por qu\u00e9 este modelo / c\u00f3mo lo entrenamos",
-    "title": "Un modelo sencillo. Una elecci\u00f3n medida.",
+    "kicker": "Observaciones que cambiaron el modelo",
+    "title": "Observar. Cambiar. Comprobar.",
     "seconds": 35,
-    "notes": "Probamos modelos m\u00e1s complejos, pero no mejoraron los resultados con datos apartados. Elegimos un modelo lineal: r\u00e1pido e interpretable. En el entrenamiento base usamos solo productos mostrados. Aprendemos de los clics, dando triple peso a las compras, e incluimos la posici\u00f3n. Entrenamos con peticiones anteriores y validamos despu\u00e9s. Los ajustes finales se eligieron por segmento, con pruebas adicionales.",
-    "source": "recsys/lfm_build.py: filas expuestas, etiquetas de clic, peso de compra 3, posici\u00f3n y regresi\u00f3n log\u00edstica. R-24/E-260: comparaci\u00f3n con gradient boosting. El entrenamiento base no reproduce por s\u00ed solo todos los ajustes finales.",
+    "notes": "Las observaciones cambiaron el modelo. Mostramos productos ya comprados 1.118 veces: no hubo ninguna compra. Eso reforz\u00f3 la exclusi\u00f3n de compras anteriores. Tambi\u00e9n encontramos gustos en los atributos de las descripciones. En una prueba hist\u00f3rica, a\u00f1adir afinidad mejor\u00f3 el acierto en primer puesto del 47,2 al 51,9 %. Es una mejora de orden offline, no una cifra de conversi\u00f3n.",
+    "source": "E-081/I-082: feedback del primer modelo, 14 nov 12:01\u201313:02 UTC, 0 compras en 1.118 exposiciones ya compradas. E-092: 4.697 sesiones hist\u00f3ricas con compra, hit@1 0,472 -> 0,519 al incorporar afinidad. Las dos m\u00e9tricas son distintas; ninguna es una comparaci\u00f3n causal de conversi\u00f3n del modelo final.",
     "shapes": [
       {
         "kind": "rect",
@@ -353,7 +353,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "POR QU\u00c9 ESTE MODELO / C\u00d3MO LO ENTRENAMOS"
+          "OBSERVACIONES QUE CAMBIARON EL MODELO"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -392,8 +392,8 @@
         "w": 1465,
         "h": 197.64,
         "lines": [
-          "Un modelo sencillo.",
-          "Una elecci\u00f3n medida."
+          "Observar. Cambiar.",
+          "Comprobar."
         ],
         "size": 78,
         "color": "F5F7FA",
@@ -402,180 +402,159 @@
       {
         "kind": "rect",
         "x": 70,
-        "y": 390,
-        "w": 460,
-        "h": 245,
+        "y": 380,
+        "w": 710,
+        "h": 310,
         "color": "192638",
         "radius": 22
       },
       {
         "kind": "text",
-        "x": 98,
-        "y": 414,
-        "w": 404,
-        "h": 33.42,
+        "x": 100,
+        "y": 407,
+        "w": 1435,
+        "h": 35.8,
         "lines": [
-          "01 / EJEMPLOS"
+          "OBSERVACI\u00d3N EN VIVO"
         ],
-        "size": 18,
+        "size": 20,
+        "color": "FFAC86",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 453,
+        "w": 1435,
+        "h": 85.78,
+        "lines": [
+          "0 compras"
+        ],
+        "size": 62,
+        "color": "FFAC86",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 535,
+        "w": 650,
+        "h": 41.75,
+        "lines": [
+          "en 1.118 exposiciones de productos ya comprados"
+        ],
+        "size": 25,
+        "color": "F5F7FA",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 618,
+        "w": 1435,
+        "h": 42.94,
+        "lines": [
+          "DECISI\u00d3N \u2192 excluir compras previas"
+        ],
+        "size": 26,
         "color": "61E4B1",
         "bold": true
       },
       {
-        "kind": "text",
-        "x": 98,
-        "y": 457,
-        "w": 404,
-        "h": 52.46,
-        "lines": [
-          "Solo lo mostrado"
-        ],
-        "size": 34,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 98,
-        "y": 523,
-        "w": 404,
-        "h": 71.5,
-        "lines": [
-          "Clics como se\u00f1al.",
-          "Compras con peso \u00d73."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
         "kind": "rect",
-        "x": 550,
-        "y": 390,
-        "w": 460,
-        "h": 245,
+        "x": 800,
+        "y": 380,
+        "w": 730,
+        "h": 310,
         "color": "192638",
         "radius": 22
       },
       {
         "kind": "text",
-        "x": 578,
-        "y": 414,
-        "w": 404,
-        "h": 33.42,
+        "x": 830,
+        "y": 407,
+        "w": 705,
+        "h": 35.8,
         "lines": [
-          "02 / AJUSTE"
+          "PRUEBA HIST\u00d3RICA / OFFLINE"
         ],
-        "size": 18,
+        "size": 20,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 578,
-        "y": 457,
-        "w": 404,
-        "h": 52.46,
+        "x": 830,
+        "y": 453,
+        "w": 705,
+        "h": 76.25999999999999,
         "lines": [
-          "Incluir la posici\u00f3n"
+          "47,2% \u2192 51,9%"
         ],
-        "size": 34,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 578,
-        "y": 523,
-        "w": 404,
-        "h": 71.5,
-        "lines": [
-          "Regresi\u00f3n log\u00edstica.",
-          "Pesos por tipo de usuario."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "rect",
-        "x": 1030,
-        "y": 390,
-        "w": 500,
-        "h": 245,
-        "color": "192638",
-        "radius": 22
-      },
-      {
-        "kind": "text",
-        "x": 1058,
-        "y": 414,
-        "w": 444,
-        "h": 33.42,
-        "lines": [
-          "03 / VALIDACI\u00d3N"
-        ],
-        "size": 18,
+        "size": 54,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 1058,
-        "y": 457,
-        "w": 444,
-        "h": 52.46,
+        "x": 830,
+        "y": 535,
+        "w": 670,
+        "h": 41.75,
         "lines": [
-          "Validaci\u00f3n temporal"
+          "acierto en primer puesto \u00b7 4.697 sesiones con compra"
         ],
-        "size": 34,
+        "size": 25,
         "color": "F5F7FA",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 830,
+        "y": 618,
+        "w": 705,
+        "h": 42.94,
+        "lines": [
+          "DECISI\u00d3N \u2192 incorporar afinidad"
+        ],
+        "size": 26,
+        "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 1058,
-        "y": 523,
-        "w": 444,
-        "h": 71.5,
-        "lines": [
-          "Entrenar antes.",
-          "Evaluar despu\u00e9s."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "rect",
-        "x": 70,
-        "y": 690,
+        "x": 75,
+        "y": 735,
         "w": 1460,
-        "h": 87,
-        "color": "304154",
-        "radius": 16
+        "h": 47.699999999999996,
+        "lines": [
+          "Observaci\u00f3n \u2192 hip\u00f3tesis \u2192 cambio medido"
+        ],
+        "size": 30,
+        "color": "F5F7FA",
+        "bold": true
       },
       {
         "kind": "text",
-        "x": 98,
-        "y": 714,
-        "w": 1437,
-        "h": 45.32,
+        "x": 75,
+        "y": 786,
+        "w": 1460,
+        "h": 33.42,
         "lines": [
-          "El modelo complejo no mejor\u00f3 la prueba: elegimos rapidez y claridad."
+          "E-081 / E-092 \u00b7 M\u00c9TRICAS DISTINTAS: FEEDBACK REAL Y ACIERTO OFFLINE"
         ],
-        "size": 28,
-        "color": "F5F7FA",
+        "size": 18,
+        "color": "A6B5C8",
         "bold": false
       }
     ]
   },
   {
-    "kicker": "C\u00f3mo nos adaptamos sin perder el control",
-    "title": "Pesos estables. Datos que cambian.",
+    "kicker": "Ideas descartadas / por qu\u00e9 repetimos las pruebas",
+    "title": "Una ronda no bastaba.",
     "seconds": 35,
-    "notes": "Congelamos los pesos, no la tienda. Seguimos actualizando memoria, calidad, stock y precios. Separamos nuestras recomendaciones de la actividad org\u00e1nica para no inflar la calidad de un producto. Detectamos tendencias comparando eventos recientes con su nivel habitual. As\u00ed nos adaptamos sin reajustar el modelo con unas pocas compras ruidosas. Y mantenemos todas las exclusiones de compras anteriores.",
-    "source": "Handoff final y aclaraci\u00f3n del organizador: el mundo no se reinicia. Los eventos de carrito son actividad, no pedidos pendientes. No se atribuye una mejora online demostrada a cada se\u00f1al.",
+    "notes": "Tambi\u00e9n descartamos ideas al repetir las pruebas. Un grafo gan\u00f3 0,20 puntos en una ronda, pero perdi\u00f3 0,41 en la siguiente. No lo promovimos. Los modelos m\u00e1s complejos tampoco mejoraron la validaci\u00f3n. Conservamos una base lineal, entrenada con productos mostrados: clics, compras con triple peso y posici\u00f3n. Entrenamos antes y evaluamos despu\u00e9s. La complejidad ten\u00eda que demostrar su valor.",
+    "source": "E-271: conocidos/p\u00e1gina, r3 1,57% (1.489) vs grafo 1,77% (1.521), 14 nov 17:50\u201318:20 UTC. E-272: r3 2,08% (1.539) vs grafo 1,67% (1.476), 18:25\u201318:55 UTC. Los brazos difieren en home, pero mantienen los mismos pesos del grafo en p\u00e1ginas. R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.",
     "shapes": [
       {
         "kind": "rect",
@@ -602,7 +581,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "C\u00d3MO NOS ADAPTAMOS SIN PERDER EL CONTROL"
+          "IDEAS DESCARTADAS / POR QU\u00c9 REPETIMOS LAS PRUEBAS"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -637,185 +616,277 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 145,
+        "y": 143,
         "w": 1465,
         "h": 200.01999999999998,
         "lines": [
-          "Pesos estables.",
-          "Datos que cambian."
+          "Una ronda",
+          "no bastaba."
         ],
         "size": 79,
         "color": "F5F7FA",
         "bold": true
       },
       {
+        "kind": "text",
+        "x": 810,
+        "y": 165,
+        "w": 725,
+        "h": 41.75,
+        "lines": [
+          "BASE + GRAFO / conocidos en p\u00e1ginas"
+        ],
+        "size": 25,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 830,
+        "y": 235,
+        "w": 705,
+        "h": 38.18,
+        "lines": [
+          "Ronda"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 1000,
+        "y": 235,
+        "w": 535,
+        "h": 38.18,
+        "lines": [
+          "Base"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 1175,
+        "y": 235,
+        "w": 360,
+        "h": 38.18,
+        "lines": [
+          "+ grafo"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 1380,
+        "y": 235,
+        "w": 155,
+        "h": 38.18,
+        "lines": [
+          "Diferencia"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 830,
+        "y": 292,
+        "w": 705,
+        "h": 46.51,
+        "lines": [
+          "01"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1000,
+        "y": 292,
+        "w": 535,
+        "h": 46.51,
+        "lines": [
+          "1,57%"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1175,
+        "y": 292,
+        "w": 360,
+        "h": 46.51,
+        "lines": [
+          "1,77%"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1380,
+        "y": 292,
+        "w": 155,
+        "h": 41.75,
+        "lines": [
+          "+0,20 pp"
+        ],
+        "size": 25,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 830,
+        "y": 358,
+        "w": 705,
+        "h": 46.51,
+        "lines": [
+          "02"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1000,
+        "y": 358,
+        "w": 535,
+        "h": 46.51,
+        "lines": [
+          "2,08%"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1175,
+        "y": 358,
+        "w": 360,
+        "h": 46.51,
+        "lines": [
+          "1,67%"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1380,
+        "y": 358,
+        "w": 155,
+        "h": 41.75,
+        "lines": [
+          "\u22120,41 pp"
+        ],
+        "size": 25,
+        "color": "FFAC86",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 830,
+        "y": 429,
+        "w": 705,
+        "h": 41.75,
+        "lines": [
+          "La ventaja no se repiti\u00f3 \u2192 no promover"
+        ],
+        "size": 25,
+        "color": "FFAC86",
+        "bold": true
+      },
+      {
         "kind": "rect",
         "x": 70,
-        "y": 395,
-        "w": 460,
-        "h": 240,
+        "y": 528,
+        "w": 1460,
+        "h": 112,
         "color": "192638",
-        "radius": 22
+        "radius": 16
       },
       {
         "kind": "text",
-        "x": 98,
-        "y": 419,
-        "w": 404,
-        "h": 33.42,
+        "x": 100,
+        "y": 551,
+        "w": 1435,
+        "h": 40.56,
         "lines": [
-          "01 / MEMORIA"
+          "Tambi\u00e9n descartamos"
         ],
-        "size": 18,
+        "size": 24,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 98,
-        "y": 462,
-        "w": 404,
-        "h": 52.46,
+        "x": 100,
+        "y": 590,
+        "w": 1435,
+        "h": 44.129999999999995,
         "lines": [
-          "Recordar el inter\u00e9s"
+          "GBM e interacciones sin mejora \u00b7 se\u00f1ales del orden de visita sin ganancia"
         ],
-        "size": 34,
+        "size": 27,
         "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 98,
-        "y": 528,
-        "w": 404,
-        "h": 71.5,
-        "lines": [
-          "Visitas y actividad acumuladas.",
-          "Lo comprado queda fuera."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
         "bold": false
       },
       {
         "kind": "rect",
-        "x": 550,
-        "y": 395,
-        "w": 460,
-        "h": 240,
-        "color": "192638",
-        "radius": 22
+        "x": 70,
+        "y": 681,
+        "w": 1460,
+        "h": 74,
+        "color": "304154",
+        "radius": 13
       },
       {
         "kind": "text",
-        "x": 578,
-        "y": 419,
-        "w": 404,
-        "h": 33.42,
+        "x": 98,
+        "y": 701,
+        "w": 1437,
+        "h": 45.32,
         "lines": [
-          "02 / CALIDAD"
+          "Base lineal: solo expuestos \u00b7 compras \u00d73 \u00b7 posici\u00f3n \u00b7 validaci\u00f3n temporal"
         ],
-        "size": 18,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 578,
-        "y": 462,
-        "w": 404,
-        "h": 52.46,
-        "lines": [
-          "Separar las fuentes"
-        ],
-        "size": 34,
+        "size": 28,
         "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 578,
-        "y": 528,
-        "w": 404,
-        "h": 71.5,
-        "lines": [
-          "Actividad org\u00e1nica \u2192 calidad.",
-          "Nuestro feedback \u2192 memoria."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "rect",
-        "x": 1030,
-        "y": 395,
-        "w": 500,
-        "h": 240,
-        "color": "192638",
-        "radius": 22
-      },
-      {
-        "kind": "text",
-        "x": 1058,
-        "y": 419,
-        "w": 444,
-        "h": 33.42,
-        "lines": [
-          "03 / TENDENCIAS"
-        ],
-        "size": 18,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1058,
-        "y": 462,
-        "w": 444,
-        "h": 52.46,
-        "lines": [
-          "Detectar el cambio"
-        ],
-        "size": 34,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1058,
-        "y": 528,
-        "w": 444,
-        "h": 71.5,
-        "lines": [
-          "Eventos recientes frente al pasado.",
-          "Sin horarios prefijados."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
         "bold": false
       },
       {
         "kind": "text",
         "x": 75,
-        "y": 704,
+        "y": 786,
         "w": 1460,
-        "h": 48.89,
+        "h": 33.42,
         "lines": [
-          "La tienda cambia. La pol\u00edtica se mantiene bajo control."
+          "14 NOV \u00b7 18:50\u201319:20 Y 19:25\u201319:55 CET \u00b7 E-271 / E-272 / E-260"
         ],
-        "size": 31,
-        "color": "61E4B1",
-        "bold": true
+        "size": 18,
+        "color": "A6B5C8",
+        "bold": false
       }
     ]
   },
   {
-    "kicker": "M\u00e9todo / evidencia",
-    "title": "Medir antes de creer.",
+    "kicker": "Datos por versi\u00f3n / comparaci\u00f3n con contexto",
+    "title": "Cada versi\u00f3n, con su contexto.",
     "seconds": 35,
-    "notes": "El hist\u00f3rico refleja lo que otros modelos eligieron mostrar. Por eso el offline solo filtra ideas. En vivo comparamos con la referencia de la misma ventana: una hora favorable no deb\u00eda parecer un modelo mejor. En ocho bloques, el reajuste mostr\u00f3 0,17 puntos m\u00e1s, con 10.800 peticiones por pol\u00edtica. No fue un A/B aleatorizado. Tambi\u00e9n buscamos fallos que los tests no estaban cubriendo.",
-    "source": "presentation/cifras.md, rama javi/jury-final: 03:20\u201305:20 CET, 8 bloques de 2.700 peticiones. 4 bloques y 10.800 peticiones por pol\u00edtica; diferencia de 0,167 puntos tras ajustar por la referencia. Comparaci\u00f3n temporal, no A/B aleatorizado.",
+    "notes": "Aqu\u00ed est\u00e1n las cifras de dos versiones, con sus muestras y su referencia. El margen pas\u00f3 de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. Son ocho bloques de pr\u00e1ctica, no un A/B aleatorizado. Las tablas completas est\u00e1n disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.",
+    "source": "presentation/cifras.md, javi/jury-final: 8 bloques, 4 por pol\u00edtica, 10.800 peticiones por pol\u00edtica. Medias de conversiones documentadas: u1 1,98825 y referencia 1,94425; u3k 2,117 y referencia 1,9055. Margen documentado +0,044 frente a +0,212 pp. Valores mostrados redondeados; comparaci\u00f3n temporal, no aleatorizada.",
     "shapes": [
       {
         "kind": "rect",
@@ -842,7 +913,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "M\u00c9TODO / EVIDENCIA"
+          "DATOS POR VERSI\u00d3N / COMPARACI\u00d3N CON CONTEXTO"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -877,372 +948,283 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 145,
+        "y": 143,
         "w": 1465,
-        "h": 200.01999999999998,
+        "h": 197.64,
         "lines": [
-          "Medir antes",
-          "de creer."
+          "Cada versi\u00f3n,",
+          "con su contexto."
         ],
-        "size": 79,
+        "size": 78,
         "color": "F5F7FA",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 870,
-        "y": 155,
-        "w": 665,
-        "h": 178.6,
+        "x": 1100,
+        "y": 158,
+        "w": 435,
+        "h": 142.9,
         "lines": [
           "+0,17"
         ],
-        "size": 140,
+        "size": 110,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 880,
-        "y": 327,
-        "w": 655,
-        "h": 52.46,
+        "x": 1110,
+        "y": 290,
+        "w": 425,
+        "h": 45.32,
         "lines": [
-          "puntos porcentuales"
+          "pp de margen"
         ],
-        "size": 34,
-        "color": "F5F7FA",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 880,
-        "y": 382,
-        "w": 655,
-        "h": 40.56,
-        "lines": [
-          "Diferencia observada tras reajustar"
-        ],
-        "size": 24,
+        "size": 28,
         "color": "A6B5C8",
         "bold": false
       },
       {
         "kind": "text",
-        "x": 78,
-        "y": 430,
-        "w": 1457,
-        "h": 41.75,
+        "x": 75,
+        "y": 355,
+        "w": 1460,
+        "h": 44.129999999999995,
         "lines": [
-          "01"
+          "Conversi\u00f3n esperada \u00b7 pr\u00e1ctica \u00b7 cada bloque frente a su referencia"
         ],
-        "size": 25,
-        "color": "61E4B1",
-        "bold": true
+        "size": 27,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 70,
+        "y": 432,
+        "w": 1460,
+        "h": 249,
+        "color": "192638",
+        "radius": 22
       },
       {
         "kind": "text",
-        "x": 140,
-        "y": 425,
-        "w": 1395,
-        "h": 46.51,
-        "lines": [
-          "Separaci\u00f3n temporal"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 140,
-        "y": 463,
-        "w": 1395,
+        "x": 100,
+        "y": 457,
+        "w": 1435,
         "h": 38.18,
         "lines": [
-          "Entrenar antes; evaluar con datos posteriores."
+          "Versi\u00f3n"
         ],
         "size": 22,
         "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 78,
-        "y": 521,
-        "w": 1457,
-        "h": 41.75,
-        "lines": [
-          "02"
-        ],
-        "size": 25,
-        "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 140,
-        "y": 516,
-        "w": 1395,
-        "h": 46.51,
-        "lines": [
-          "Misma ventana"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 140,
-        "y": 554,
-        "w": 1395,
+        "x": 570,
+        "y": 457,
+        "w": 965,
         "h": 38.18,
         "lines": [
-          "Comparar con la referencia de esa misma hora."
+          "Peticiones"
         ],
         "size": 22,
         "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 78,
-        "y": 612,
-        "w": 1457,
-        "h": 41.75,
-        "lines": [
-          "03"
-        ],
-        "size": 25,
-        "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 140,
-        "y": 607,
-        "w": 1395,
-        "h": 46.51,
-        "lines": [
-          "Pruebas que fallan"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 140,
-        "y": 645,
-        "w": 1395,
+        "x": 790,
+        "y": 457,
+        "w": 745,
         "h": 38.18,
         "lines": [
-          "Buscar casos que los tests no estaban cubriendo."
+          "Conversi\u00f3n"
         ],
         "size": 22,
         "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "rect",
-        "x": 880,
-        "y": 493,
-        "w": 58,
-        "h": 92,
-        "color": "FFAC86",
-        "radius": 10
-      },
-      {
-        "kind": "text",
-        "x": 898,
-        "y": 523,
-        "w": 637,
-        "h": 42.94,
-        "lines": [
-          "A"
-        ],
-        "size": 26,
-        "color": "101A29",
         "bold": true
       },
       {
-        "kind": "rect",
-        "x": 954,
-        "y": 493,
-        "w": 58,
-        "h": 92,
+        "kind": "text",
+        "x": 1050,
+        "y": 457,
+        "w": 485,
+        "h": 38.18,
+        "lines": [
+          "Referencia"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1310,
+        "y": 457,
+        "w": 225,
+        "h": 38.18,
+        "lines": [
+          "Margen"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 514,
+        "w": 1435,
+        "h": 46.51,
+        "lines": [
+          "u1 \u00b7 anterior"
+        ],
+        "size": 29,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 570,
+        "y": 514,
+        "w": 965,
+        "h": 46.51,
+        "lines": [
+          "10.800"
+        ],
+        "size": 29,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 790,
+        "y": 514,
+        "w": 745,
+        "h": 46.51,
+        "lines": [
+          "1,988%"
+        ],
+        "size": 29,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1050,
+        "y": 514,
+        "w": 485,
+        "h": 46.51,
+        "lines": [
+          "1,944%"
+        ],
+        "size": 29,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1310,
+        "y": 514,
+        "w": 225,
+        "h": 44.129999999999995,
+        "lines": [
+          "+0,044 pp"
+        ],
+        "size": 27,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 590,
+        "w": 1435,
+        "h": 46.51,
+        "lines": [
+          "u3k \u00b7 reajustada"
+        ],
+        "size": 29,
         "color": "61E4B1",
-        "radius": 10
-      },
-      {
-        "kind": "text",
-        "x": 972,
-        "y": 523,
-        "w": 563,
-        "h": 42.94,
-        "lines": [
-          "B"
-        ],
-        "size": 26,
-        "color": "101A29",
         "bold": true
       },
       {
-        "kind": "rect",
-        "x": 1028,
-        "y": 493,
-        "w": 58,
-        "h": 92,
-        "color": "FFAC86",
-        "radius": 10
-      },
-      {
         "kind": "text",
-        "x": 1046,
-        "y": 523,
-        "w": 489,
-        "h": 42.94,
+        "x": 570,
+        "y": 590,
+        "w": 965,
+        "h": 46.51,
         "lines": [
-          "A"
+          "10.800"
         ],
-        "size": 26,
-        "color": "101A29",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1102,
-        "y": 493,
-        "w": 58,
-        "h": 92,
+        "size": 29,
         "color": "61E4B1",
-        "radius": 10
-      },
-      {
-        "kind": "text",
-        "x": 1120,
-        "y": 523,
-        "w": 415,
-        "h": 42.94,
-        "lines": [
-          "B"
-        ],
-        "size": 26,
-        "color": "101A29",
         "bold": true
       },
       {
-        "kind": "rect",
-        "x": 1176,
-        "y": 493,
-        "w": 58,
-        "h": 92,
+        "kind": "text",
+        "x": 790,
+        "y": 590,
+        "w": 745,
+        "h": 46.51,
+        "lines": [
+          "2,117%"
+        ],
+        "size": 29,
         "color": "61E4B1",
-        "radius": 10
-      },
-      {
-        "kind": "text",
-        "x": 1194,
-        "y": 523,
-        "w": 341,
-        "h": 42.94,
-        "lines": [
-          "B"
-        ],
-        "size": 26,
-        "color": "101A29",
         "bold": true
       },
       {
-        "kind": "rect",
-        "x": 1250,
-        "y": 493,
-        "w": 58,
-        "h": 92,
-        "color": "FFAC86",
-        "radius": 10
-      },
-      {
         "kind": "text",
-        "x": 1268,
-        "y": 523,
-        "w": 267,
-        "h": 42.94,
+        "x": 1050,
+        "y": 590,
+        "w": 485,
+        "h": 46.51,
         "lines": [
-          "A"
+          "1,906%"
         ],
-        "size": 26,
-        "color": "101A29",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1324,
-        "y": 493,
-        "w": 58,
-        "h": 92,
+        "size": 29,
         "color": "61E4B1",
-        "radius": 10
-      },
-      {
-        "kind": "text",
-        "x": 1342,
-        "y": 523,
-        "w": 193,
-        "h": 42.94,
-        "lines": [
-          "B"
-        ],
-        "size": 26,
-        "color": "101A29",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1398,
-        "y": 493,
-        "w": 58,
-        "h": 92,
-        "color": "FFAC86",
-        "radius": 10
-      },
-      {
-        "kind": "text",
-        "x": 1416,
-        "y": 523,
-        "w": 119,
-        "h": 42.94,
-        "lines": [
-          "A"
-        ],
-        "size": 26,
-        "color": "101A29",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 880,
-        "y": 616,
-        "w": 655,
-        "h": 42.94,
+        "x": 1310,
+        "y": 590,
+        "w": 225,
+        "h": 44.129999999999995,
         "lines": [
-          "8 bloques \u00b7 10.800 peticiones por pol\u00edtica"
+          "+0,212 pp"
         ],
-        "size": 26,
+        "size": 27,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 75,
+        "y": 715,
+        "w": 1460,
+        "h": 45.32,
+        "lines": [
+          "8 bloques \u00b7 4 por pol\u00edtica \u00b7 no es un A/B aleatorizado"
+        ],
+        "size": 28,
         "color": "F5F7FA",
         "bold": true
       },
       {
         "kind": "text",
         "x": 75,
-        "y": 762,
+        "y": 766,
         "w": 1460,
-        "h": 34.61,
+        "h": 33.42,
         "lines": [
-          "PR\u00c1CTICA / 15 NOV 03:20\u201305:20 CET \u00b7 BLOQUES TEMPORALES, NO A/B ALEATORIZADO"
+          "15 NOV 03:20\u201305:20 CET \u00b7 MARGEN = EQUIPO \u2212 REFERENCIA \u00b7 DATOS REDONDEADOS"
         ],
-        "size": 19,
+        "size": 18,
         "color": "A6B5C8",
         "bold": false
       }

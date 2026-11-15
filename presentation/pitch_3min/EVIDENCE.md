@@ -96,3 +96,15 @@ Slide five names RawTree's creator, Tinybird, and shows the actual uses: reading
 Primary source for corporate attribution: https://rawtree.com/ (footer: "A Tinybird product"). Usage evidence: recsys/live.py, recsys/trends.py, final handoff and the 144-snapshot record in the earlier evidence map.
 
 This revision updates HTML/SVG/notes only at the user's request. Earlier PDF/PowerPoint files are not claimed to contain these last changes.
+
+## Observations, rejections and version data
+
+Current pitch: six main slides, 308 words and a 180-second plan. Slide two adds E-081's 0 purchases/1,118 already-bought exposures and E-092's historical hit@1 0.472 -> 0.519 over 4,697 purchased sessions. The labels distinguish live feedback from offline ranking accuracy.
+
+Slide three shows why replication changed the graph decision: +0.20 pp in E-271 followed by -0.41 pp in E-272 for known shoppers on pages. These are separate windows and named arms; the appendix lists all four cohorts and sample sizes. It does not claim all graph models universally fail.
+
+Slide four replaces decorative block tiles with the actual u1/u3k group table: observed conversion, matched reference averages and their difference, each based on four equally sized blocks. Values are rounded from the documented block figures. Temporal confounding remains; it is not a randomized A/B.
+
+datos_versiones.html and the embedded D/"Datos por versión" panel include the eight blocks, r3/graph cohort results from E-271/E-272, generic-home variants and the offline GBM comparison. Each section states its metric, population, window, available N and source. No ur2-only conversion is invented, and the 2.159% mixed practice-hour aggregate is not assigned to ur2.
+
+The root data sources are experiments.md (E-081/E-092/E-260/E-271/E-272), insights.md (R-24/R-26) and presentation/cifras.md on javi/jury-final. These are the available documented comparisons, not an exhaustive reconstruction of every policy ever served.

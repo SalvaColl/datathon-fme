@@ -1,23 +1,23 @@
 # Equipo 26 — presentación de tres minutos
 
 Seis diapositivas. Guion breve, pensado para hablar con pausas.
-Los tiempos son una guía de ensayo. Las fuentes están en las notas de PowerPoint y EVIDENCE.md.
+Los tiempos son una guía de ensayo. Las fuentes y límites están en EVIDENCE.md y en el panel de datos del HTML.
 
 ## 1. Diez productos. Tres segundos. Un comprador. — 0:00–0:15
 
 Diez productos. Tres segundos. Un comprador. Somos el equipo 26. Lo difícil no era añadir otro modelo, sino decidir qué señales creer y llegar a tiempo.
 
-## 2. Un modelo sencillo. Una elección medida. — 0:15–0:50
+## 2. Observar. Cambiar. Comprobar. — 0:15–0:50
 
-Probamos modelos más complejos, pero no mejoraron los resultados con datos apartados. Elegimos un modelo lineal: rápido e interpretable. En el entrenamiento base usamos solo productos mostrados. Aprendemos de los clics, dando triple peso a las compras, e incluimos la posición. Entrenamos con peticiones anteriores y validamos después. Los ajustes finales se eligieron por segmento, con pruebas adicionales.
+Las observaciones cambiaron el modelo. Mostramos productos ya comprados 1.118 veces: no hubo ninguna compra. Eso reforzó la exclusión de compras anteriores. También encontramos gustos en los atributos de las descripciones. En una prueba histórica, añadir afinidad mejoró el acierto en primer puesto del 47,2 al 51,9 %. Es una mejora de orden offline, no una cifra de conversión.
 
-## 3. Pesos estables. Datos que cambian. — 0:50–1:25
+## 3. Una ronda no bastaba. — 0:50–1:25
 
-Congelamos los pesos, no la tienda. Seguimos actualizando memoria, calidad, stock y precios. Separamos nuestras recomendaciones de la actividad orgánica para no inflar la calidad de un producto. Detectamos tendencias comparando eventos recientes con su nivel habitual. Así nos adaptamos sin reajustar el modelo con unas pocas compras ruidosas. Y mantenemos todas las exclusiones de compras anteriores.
+También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. Conservamos una base lineal, entrenada con productos mostrados: clics, compras con triple peso y posición. Entrenamos antes y evaluamos después. La complejidad tenía que demostrar su valor.
 
-## 4. Medir antes de creer. — 1:25–2:00
+## 4. Cada versión, con su contexto. — 1:25–2:00
 
-El histórico refleja lo que otros modelos eligieron mostrar. Por eso el offline solo filtra ideas. En vivo comparamos con la referencia de la misma ventana: una hora favorable no debía parecer un modelo mejor. En ocho bloques, el reajuste mostró 0,17 puntos más, con 10.800 peticiones por política. No fue un A/B aleatorizado. También buscamos fallos que los tests no estaban cubriendo.
+Aquí están las cifras de dos versiones, con sus muestras y su referencia. El margen pasó de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. Son ocho bloques de práctica, no un A/B aleatorizado. Las tablas completas están disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.
 
 ## 5. RawTree: del dato a la acción. — 2:00–2:35
 
@@ -29,9 +29,10 @@ Claude y Codex nos ayudaron a implementar experimentos, auditar código y buscar
 
 ## Cómo contarlo
 
-Guion: 316 palabras. Plan completo: 180 segundos.
+Guion: 308 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 R inicia el cronómetro; flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa.
+D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.
 El foco es CÓMO y POR QUÉ. Los cuatro nombres aparecen al final, sin un reparto de funciones no confirmado.
 Si preguntan por más detalle, HOW_AND_WHY.md contiene un recorrido por el código. No atribuyas a la final los resultados de práctica.
 La comparación de +0,17 puntos usa bloques temporales: no la describas como A/B aleatorizado.

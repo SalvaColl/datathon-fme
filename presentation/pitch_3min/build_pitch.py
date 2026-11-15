@@ -4,6 +4,7 @@ from xml.sax.saxutils import escape
 from zipfile import ZipFile, ZIP_DEFLATED
 from datetime import datetime, timezone
 import json
+import re
 import sys
 import textwrap
 from PIL import ImageFont
@@ -131,6 +132,35 @@ ES_SOURCES = [
     "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; "
     "no se inventan funciones individuales ni versiones concretas de los agentes.",
 ]
+ES_NOTES[1] = (
+    "Las observaciones cambiaron el modelo. Mostramos productos ya comprados 1.118 veces: no hubo ninguna compra. "
+    "Eso reforzó la exclusión de compras anteriores. "
+    "También encontramos gustos en los atributos de las descripciones. "
+    "En una prueba histórica, añadir afinidad mejoró el acierto en primer puesto del 47,2 al 51,9 %. "
+    "Es una mejora de orden offline, no una cifra de conversión.")
+ES_NOTES[2] = (
+    "También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. "
+    "No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. "
+    "Conservamos una base lineal, entrenada con productos mostrados: clics, compras con triple peso y posición. "
+    "Entrenamos antes y evaluamos después. La complejidad tenía que demostrar su valor.")
+ES_NOTES[3] = (
+    "Aquí están las cifras de dos versiones, con sus muestras y su referencia. "
+    "El margen pasó de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. "
+    "Son ocho bloques de práctica, no un A/B aleatorizado. "
+    "Las tablas completas están disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.")
+ES_SOURCES[1] = (
+    "E-081/I-082: feedback del primer modelo, 14 nov 12:01–13:02 UTC, 0 compras en 1.118 exposiciones ya compradas. "
+    "E-092: 4.697 sesiones históricas con compra, hit@1 0,472 -> 0,519 al incorporar afinidad. "
+    "Las dos métricas son distintas; ninguna es una comparación causal de conversión del modelo final.")
+ES_SOURCES[2] = (
+    "E-271: conocidos/página, r3 1,57% (1.489) vs grafo 1,77% (1.521), 14 nov 17:50–18:20 UTC. "
+    "E-272: r3 2,08% (1.539) vs grafo 1,67% (1.476), 18:25–18:55 UTC. "
+    "Los brazos difieren en home, pero mantienen los mismos pesos del grafo en páginas. "
+    "R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.")
+ES_SOURCES[3] = (
+    "presentation/cifras.md, javi/jury-final: 8 bloques, 4 por política, 10.800 peticiones por política. "
+    "Medias de conversiones documentadas: u1 1,98825 y referencia 1,94425; u3k 2,117 y referencia 1,9055. "
+    "Margen documentado +0,044 frente a +0,212 pp. Valores mostrados redondeados; comparación temporal, no aleatorizada.")
 
 def slide(kicker, title, seconds, notes, source):
     n = len(slides)
@@ -202,67 +232,59 @@ rect(s, 1005, 638, 490, 59, C["green"], 13)
 text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
 text(s, 1006, 711, "Flujo conceptual, no tiempos por etapa.", 17, C["muted"])
 
-s = slide("Why this model / how we trained it", "A small model. A deliberate choice.", 35,
-    "We kept a linear ranker because gradient boosting did not improve our held-out results. "
-    "For baseline training, each shown product becomes an example; unshown products are not labeled failures. "
-    "Clicks provide more examples, while purchases receive three times the weight. We model slot position because exposure changes behavior. "
-    "We reconstruct earlier shopper state and test on later requests. "
-    "The final policy then combines cohort-specific refits and overrides, rather than blindly deploying the default training output.",
-    "recsys/lfm_build.py: impressions(), fit(), BUY_W=3, log-slot and regularized LogisticRegression. "
-    "Purchase calibration supports reports, not a guarantee for overridden final scores. R-24/E-260 documents the "
-    "held-out gradient-boosting comparison. As-of metadata limitations remain in the replay reports.")
-text(s, 70, 143, "A small model.\nA deliberate choice.", 78, bold=True)
-card(s, 70, 390, 460, 245, "01 / examples", "Learn from exposure",
-     "Shown products + feedback.\nPurchases weighted ×3.")
-card(s, 550, 390, 460, 245, "02 / fitting", "Control position",
-     "Regularized logistic model.\nSeparate known/new weights.")
-card(s, 1030, 390, 500, 245, "03 / validation", "Test later requests",
-     "Earlier training → later test.\nComplexity needs evidence.")
-rect(s, 70, 690, 1460, 87, C["line"], 16)
-text(s, 98, 714, "Why linear? Fast to serve, easy to inspect, retained after held-out comparisons.", 28)
 
-s = slide("Why this adaptation / how it stays stable", "Frozen weights. Live intelligence.", 35,
-    "We separated changing evidence from stable model weights. "
-    "Shopper memory updates as people return, including new shoppers without historical profiles. "
-    "Product quality uses organic views and purchases; recommendation purchases update user memory, not the organic rate. "
-    "That separation prevents a feedback loop. Trends come from recent events versus a baseline, not yesterday's clock. "
-    "This lets us adapt during the final without refitting on a handful of noisy purchases. Previous purchases still stay excluded.",
-    "Final handoff and organizer same-world clarification. Fast trend detector is active; "
-    "exact detection delay is not claimed. Home launch cap has exceptions for the shopper's own items.")
-text(s, 70, 145, "Frozen weights.\nLive intelligence.", 79, bold=True)
-card(s, 70, 395, 460, 240, "01 / shopper memory", "Use earlier visits",
-     "Session evidence accumulates.\nKnown purchases stay out.")
-card(s, 550, 395, 460, 240, "02 / product quality", "Keep sources separate",
-     "Organic counts → quality.\nPrivate buys → user memory.")
-card(s, 1030, 395, 500, 240, "03 / trends", "Compare event windows",
-     "Recent activity vs baseline.\nNo timetable assumptions.")
-text(s, 75, 704, "Why: adapt from live evidence; keep the final policy stable.", 31, C["green"], True)
 
-s = slide("Method / evidence", "Measure before believing.", 35,
-    "Offline screening was not enough, because logged impressions reflect what earlier policies chose to show. "
-    "For live checks, we compared against the reference in the same windows, so a better hour would not look like a better model. "
-    "Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement, with ten thousand eight hundred requests per policy. "
-    "These were time blocks, not randomized A/B. "
-    "We also rejected ideas and wrote counterexamples when passing tests missed real query behavior.",
-    "presentation/cifras.md from javi/jury-final, section 5: 15 Nov 02:20–04:20 UTC; "
-    "8 × 2,700 requests, 4 blocks/policy. Mean team-minus-reference: +0.212 vs +0.044 pp; delta +0.167 pp. "
-    "Deployment log assigns policies. Handoff z≈3.0 and alternate documented z=3.5 are not repeated on-slide.")
-text(s, 70, 145, "Measure before\nbelieving.", 79, bold=True)
-text(s, 870, 155, "+0.17", 140, C["green"], True)
-text(s, 880, 327, "percentage points", 34)
-text(s, 880, 382, "Observed after refitting the weights", 24, C["muted"])
-for j, (title, body) in enumerate([
-    ("Temporal offline", "Screen hypotheses without future information."),
-    ("Matched windows", "Compare against the reference at the same time."),
-    ("Counterexamples", "A green test is only as good as its assumptions.")]):
-    text(s, 78, 430+j*91, f"0{j+1}", 25, C["green"], True)
-    text(s, 140, 425+j*91, title, 29, bold=True)
-    text(s, 140, 463+j*91, body, 22, C["muted"])
-for j, control in enumerate([True, False, True, False, False, True, False, True]):
-    rect(s, 880+j*74, 493, 58, 92, C["orange"] if control else C["green"], 10)
-    text(s, 898+j*74, 523, "A" if control else "B", 26, C["bg"], True)
-text(s, 880, 616, "8 blocks · 10,800 requests per policy", 26, bold=True)
-text(s, 75, 762, "PRACTICE / 15 NOV 03:20–05:20 CET · TIME BLOCKS, NOT RANDOMIZED A/B", 19, C["muted"])
+s = slide("Observaciones que cambiaron el modelo", "Observar. Cambiar. Comprobar.", 35, "", "")
+text(s, 70, 143, "Observar. Cambiar.\nComprobar.", 78, bold=True)
+rect(s, 70, 380, 710, 310, C["card"], 22)
+text(s, 100, 407, "OBSERVACIÓN EN VIVO", 20, C["orange"], True)
+text(s, 100, 453, "0 compras", 62, C["orange"], True)
+text(s, 100, 535, "en 1.118 exposiciones de productos ya comprados", 25, width=650)
+text(s, 100, 618, "DECISIÓN → excluir compras previas", 26, C["green"], True)
+rect(s, 800, 380, 730, 310, C["card"], 22)
+text(s, 830, 407, "PRUEBA HISTÓRICA / OFFLINE", 20, C["green"], True)
+text(s, 830, 453, "47,2% → 51,9%", 54, C["green"], True)
+text(s, 830, 535, "acierto en primer puesto · 4.697 sesiones con compra", 25, width=670)
+text(s, 830, 618, "DECISIÓN → incorporar afinidad", 26, C["green"], True)
+text(s, 75, 735, "Observación → hipótesis → cambio medido", 30, bold=True)
+text(s, 75, 786, "E-081 / E-092 · MÉTRICAS DISTINTAS: FEEDBACK REAL Y ACIERTO OFFLINE", 18, C["muted"])
+
+s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
+text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
+text(s, 810, 165, "BASE + GRAFO / conocidos en páginas", 25, C["green"], True)
+for x, label in [(830,"Ronda"),(1000,"Base"),(1175,"+ grafo"),(1380,"Diferencia")]:
+    text(s, x, 235, label, 22, C["muted"])
+for y, vals, col in [
+    (292, ["01","1,57%","1,77%","+0,20 pp"], C["green"]),
+    (358, ["02","2,08%","1,67%","−0,41 pp"], C["orange"]),
+]:
+    for x, value in zip([830,1000,1175,1380], vals):
+        text(s, x, y, value, 29 if x<1380 else 25, col if x==1380 else C["white"], True)
+text(s, 830, 429, "La ventaja no se repitió → no promover", 25, C["orange"], True)
+rect(s, 70, 528, 1460, 112, C["card"], 16)
+text(s, 100, 551, "También descartamos", 24, C["green"], True)
+text(s, 100, 590, "GBM e interacciones sin mejora · señales del orden de visita sin ganancia", 27)
+rect(s, 70, 681, 1460, 74, C["line"], 13)
+text(s, 98, 701, "Base lineal: solo expuestos · compras ×3 · posición · validación temporal", 28)
+text(s, 75, 786, "14 NOV · 18:50–19:20 Y 19:25–19:55 CET · E-271 / E-272 / E-260", 18, C["muted"])
+
+s = slide("Datos por versión / comparación con contexto", "Cada versión, con su contexto.", 35, "", "")
+text(s, 70, 143, "Cada versión,\ncon su contexto.", 78, bold=True)
+text(s, 1100, 158, "+0,17", 110, C["green"], True)
+text(s, 1110, 290, "pp de margen", 28, C["muted"])
+text(s, 75, 355, "Conversión esperada · práctica · cada bloque frente a su referencia", 27, C["muted"])
+rect(s, 70, 432, 1460, 249, C["card"], 22)
+columns=[100,570,790,1050,1310]
+for x,label in zip(columns,["Versión","Peticiones","Conversión","Referencia","Margen"]):
+    text(s, x, 457, label, 22, C["muted"], True)
+for y, vals, col in [
+    (514, ["u1 · anterior","10.800","1,988%","1,944%","+0,044 pp"], C["muted"]),
+    (590, ["u3k · reajustada","10.800","2,117%","1,906%","+0,212 pp"], C["green"]),
+]:
+    for x,value in zip(columns,vals):
+        text(s, x, y, value, 29 if x<1310 else 27, col, True)
+text(s, 75, 715, "8 bloques · 4 por política · no es un A/B aleatorizado", 28, bold=True)
+text(s, 75, 766, "15 NOV 03:20–05:20 CET · MARGEN = EQUIPO − REFERENCIA · DATOS REDONDEADOS", 18, C["muted"])
 
 s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 35,
     "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "
@@ -396,6 +418,9 @@ def build_pptx():
 def build_html():
     sections=''.join(f'<section class="slide" aria-label="Diapositiva {i+1}">{svg(s)}</section>' for i,s in enumerate(slides))
     data=json.dumps([dict(notes=s["notes"],seconds=s["seconds"]) for s in slides]).replace("</","<\\/")
+    evidence = (HERE/"datos_versiones.html").read_text(encoding="utf8")
+    evidence_style = re.search(r"<style>(.*?)</style>", evidence, re.S).group(1)
+    evidence_body = re.search(r"<body[^>]*>(.*?)</body>", evidence, re.S).group(1)
     html="""<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Equipo 26 — Presentación de tres minutos</title><style>
 *{box-sizing:border-box}body{margin:0;background:#101a29;color:#f5f7fa;font-family:Arial,sans-serif}
@@ -404,23 +429,27 @@ nav{position:fixed;bottom:14px;right:22px;display:flex;gap:7px;align-items:cente
 button{background:#26374a;border:0;border-radius:7px;color:white;padding:8px 12px;cursor:pointer}button:hover{background:#38516c}
 #clock{min-width:125px;font-variant-numeric:tabular-nums;font-size:13px;color:#a6b5c8}
 aside{display:none;position:fixed;right:24px;top:24px;max-width:420px;padding:24px;background:#101a29f5;border:1px solid #61e4b1;border-radius:14px;font-size:18px;line-height:1.55}aside.open{display:block}
-@page{size:13.333333in 7.5in;margin:0}@media print{html,body,#stage{width:13.333333in;height:auto}#stage{display:block}.slide,.slide.active{display:block;width:13.333333in;height:7.5in;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}nav,aside{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+__EVIDENCE_STYLE__
+dialog#versions{width:min(1440px,95vw);max-height:92vh;padding:12px;background:#101a29;color:#f5f7fa;border:1px solid #61e4b1;border-radius:18px}dialog#versions::backdrop{background:#000b}.close-data{position:sticky;top:0;float:right;z-index:2}
+@page{size:13.333333in 7.5in;margin:0}@media print{html,body,#stage{width:13.333333in;height:auto}#stage{display:block}.slide,.slide.active{display:block;width:13.333333in;height:7.5in;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}nav,aside,dialog{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style><main id="stage">__PITCH_SECTIONS__</main><aside id="notes"></aside>
-<nav><span id="clock">00:00 / 03:00</span><button id="prev" title="Anterior">←</button><button id="next" title="Siguiente / espacio">→</button><button id="nt" title="N">Notas</button><button id="fs" title="F">Pantalla completa</button><button id="rs" title="R">Reiniciar tiempo</button></nav>
+<dialog id="versions"><button class="close-data" onclick="document.getElementById('versions').close()">Volver al pitch · Esc</button>__EVIDENCE_BODY__</dialog>
+<nav><span id="clock">00:00 / 03:00</span><button id="prev" title="Anterior">←</button><button id="next" title="Siguiente / espacio">→</button><button id="dt" title="D">Datos por versión</button><button id="nt" title="N">Notas</button><button id="fs" title="F">Pantalla completa</button><button id="rs" title="R">Reiniciar tiempo</button></nav>
 <script>const data=__PITCH_DATA__;let idx=+(new URLSearchParams(location.search).get('s')||0),start=null;const pages=[...document.querySelectorAll('.slide')],note=document.getElementById('notes');
 function show(i){idx=Math.max(0,Math.min(pages.length-1,i));pages.forEach((p,k)=>p.classList.toggle('active',k===idx));note.textContent=data[idx].seconds+' s — '+data[idx].notes;document.title='Equipo 26 — '+(idx+1)+'/6';}
-function next(){if(start===null)start=performance.now();show(idx+1)}function toggleNotes(){note.classList.toggle('open')}function full(){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()}
-document.getElementById('prev').onclick=()=>show(idx-1);document.getElementById('next').onclick=next;document.getElementById('nt').onclick=toggleNotes;document.getElementById('fs').onclick=full;document.getElementById('rs').onclick=()=>start=performance.now();
-document.addEventListener('keydown',e=>{if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();next()}if(['ArrowLeft','PageUp'].includes(e.key))show(idx-1);if(e.key.toLowerCase()==='n')toggleNotes();if(e.key.toLowerCase()==='f')full();if(e.key.toLowerCase()==='r')start=performance.now();if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
+function next(){if(start===null)start=performance.now();show(idx+1)}function toggleNotes(){note.classList.toggle('open')}function full(){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()}function showData(){const v=document.getElementById('versions');if(v.open)v.close();else v.showModal()}
+document.getElementById('prev').onclick=()=>show(idx-1);document.getElementById('next').onclick=next;document.getElementById('dt').onclick=showData;document.getElementById('nt').onclick=toggleNotes;document.getElementById('fs').onclick=full;document.getElementById('rs').onclick=()=>start=performance.now();
+document.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='d'){e.preventDefault();showData();return}if(document.getElementById('versions').open)return;if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();next()}if(['ArrowLeft','PageUp'].includes(e.key))show(idx-1);if(e.key.toLowerCase()==='n')toggleNotes();if(e.key.toLowerCase()==='f')full();if(e.key.toLowerCase()==='r')start=performance.now();if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
 if(new URLSearchParams(location.search).has('clean'))document.querySelector('nav').style.display='none';
 setInterval(()=>{const n=start===null?0:Math.floor((performance.now()-start)/1000);document.getElementById('clock').textContent=String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')+' / 03:00';},250);show(idx);
-</script></html>""".replace("__PITCH_SECTIONS__",sections).replace("__PITCH_DATA__",data)
+if(new URLSearchParams(location.search).has('datos'))showData();
+</script></html>""".replace("__PITCH_SECTIONS__",sections).replace("__PITCH_DATA__",data).replace("__EVIDENCE_STYLE__",evidence_style).replace("__EVIDENCE_BODY__",evidence_body)
     (HERE/"pitch.html").write_text(html,encoding="utf8")
 
 def build_notes():
     out=["# Equipo 26 — presentación de tres minutos", "",
          "Seis diapositivas. Guion breve, pensado para hablar con pausas.",
-         "Los tiempos son una guía de ensayo. Las fuentes están en las notas de PowerPoint y EVIDENCE.md.", ""]
+         "Los tiempos son una guía de ensayo. Las fuentes y límites están en EVIDENCE.md y en el panel de datos del HTML.", ""]
     elapsed=0
     for i,s in enumerate(slides,1):
         end=elapsed+s["seconds"]
@@ -431,6 +460,7 @@ def build_notes():
     out += ["## Cómo contarlo", "", f"Guion: {words} palabras. Plan completo: {elapsed} segundos.",
             "Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.",
             "R inicia el cronómetro; flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa.",
+            "D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.",
             "El foco es CÓMO y POR QUÉ. Los cuatro nombres aparecen al final, sin un reparto de funciones no confirmado.",
             "Si preguntan por más detalle, HOW_AND_WHY.md contiene un recorrido por el código. No atribuyas a la final los resultados de práctica.",
             "La comparación de +0,17 puntos usa bloques temporales: no la describas como A/B aleatorizado.",

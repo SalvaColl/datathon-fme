@@ -1,8 +1,8 @@
 # Equipo 26 — presentación inicial de tres minutos
 
-**Versión actual: pitch.html**, en español y sin dependencias de red. Incluye el nuevo flujo del plazo de tres segundos y la explicación ampliada de RawTree/Tinybird. El guion actualizado está en **GUION_ES.md**. A partir de esta revisión trabajamos primero en HTML: los PDF/PPTX existentes conservan la revisión anterior.
+**Versión actual: pitch.html**, en español y sin dependencias de red. El hilo es observación → decisión → prueba → resultado por versión. Conserva el flujo del plazo de tres segundos y el uso de RawTree/Tinybird. **D** abre las tablas de apoyo, que también están en **datos_versiones.html**. El guion actualizado está en **GUION_ES.md**. Los PDF/PPTX conservan una revisión anterior.
 
-Seis diapositivas y un guion de **316 palabras**. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
+Seis diapositivas y un guion de **308 palabras**. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
 
 ## Published scoring weights
 
@@ -10,8 +10,8 @@ The stream is worth 70 of 100 overall points: conversion 50, cold start 10, reli
 
 | Jury criterion | Points out of 100 overall | Share of the 30 jury points | Where this pitch addresses it |
 |---|---:|---:|---|
-| Method | 10 | 33.3% | Slides 2 and 4: training, model choice, temporal validation and matched windows |
-| Learning from the stream | 10 | 33.3% | Slide 3: live evidence versus fixed parameters and source separation |
+| Method | 10 | 33.3% | Slides 3 and 4: training, rejected models, replication and matched-window comparisons |
+| Learning from the stream | 10 | 33.3% | Slides 2 and 5: purchase feedback changes the policy; event aggregates supply fresh signals |
 | RawTree use | 5 | 16.7% | Slide 5: SQL, snapshots, validation and batched submissions |
 | Communication | 5 | 16.7% | The entire story; slide 6 makes AI-assisted development explicit |
 
@@ -22,9 +22,9 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 | Slide | Time | Share of the pitch | Main point |
 |---|---|---:|---|
 | 1. Diez productos. Tres segundos. Un comprador. | 0:00–0:15 | 8,3% | Qué señales merecían confianza |
-| 2. Una elección medida | 0:15–0:50 | 19,4% | Cómo entrenamos y por qué elegimos el modelo lineal |
-| 3. Datos que cambian | 0:50–1:25 | 19,4% | Cómo nos adaptamos sin reajustar los pesos |
-| 4. Medir antes de creer | 1:25–2:00 | 19,4% | Por qué comparamos en la misma ventana |
+| 2. Observar. Cambiar. Comprobar. | 0:15–0:50 | 19,4% | Compras previas y afinidad: datos que motivaron señales |
+| 3. Una ronda no bastaba | 0:50–1:25 | 19,4% | Grafo, complejidad y señales que no justificaron promoción |
+| 4. Cada versión, con su contexto | 1:25–2:00 | 19,4% | Tabla u1/u3k con conversión, referencia y N |
 | 5. RawTree: del dato a la acción | 2:00–2:35 | 19,4% | SQL, submissions/feedback, métricas y trazabilidad |
 | 6. La IA acelera. La evidencia decide. | 2:35–3:00 | 13,9% | Claude/Codex, control humano y crédito breve |
 
@@ -35,9 +35,12 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 - F: fullscreen.
 - N: speaker notes (keep off on the projector).
 - R: start/reset the three-minute rehearsal clock.
+- D: abrir/cerrar datos por versión; Esc vuelve al pitch.
 - Home/End: first/last slide.
 
 Append ?clean=1 to hide controls. Append ?s=3&clean=1 to open slide four. Printing exports all six slides.
+
+Con ?datos=1 se abre directamente el panel de tablas. Está integrado en el HTML: no necesita red ni archivos externos para consultarlo.
 
 ## Evidence and wording
 
