@@ -107,6 +107,7 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         fx = {}
         for col in ("diff", "noncold_diff", "cold_diff", "known_adj", "known_cold"):
             b = [r for r in good if r.get(col) is not None and r["variant"] in set(seq)]
+            if len(b) < 4: fx[col] = dict(blocks=len(b)); continue
             names = list(factors); X = [[1.0] + [float(r["variant"] in factors[f]) for f in names] + [float(r["burst"]), float(step_at is not None and r["t"] >= step_at)] for r in b]
             X = np.array(X); y = np.array([r[col] for r in b])
             X = X[:, [j for j in range(X.shape[1]) if j <= len(names) or X[:, j].min() != X[:, j].max()]]      # drop constant nuisance columns
