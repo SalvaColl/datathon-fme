@@ -45,7 +45,12 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # T-044: product of a subcategory that is in a live burst right now (trends.py). In the two bursts our carousel
          # could measure (14 Nov, Bike Helmets and Game Consoles) these products sold 6.6 times more per impression than
          # outside the burst (15 buys vs 2.3 expected, E-440); weight 0 in every committed file
-         "hot"]
+         "hot",
+         # T-049: product quality read straight from the ORGANIC stream (60-day history + today), two numbers per product:
+         # orate = log purchases per view, opop = log views, both centred on the catalogue median. Within the same request and
+         # at the same slot they predict which product is bought better than `lq` (whose weight drops to 0 next to them),
+         # on held-out requests, for new and returning shoppers and on home (E-490); weight 0 in every committed file
+         "orate", "opop"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -128,6 +133,7 @@ class Snap:
         self.mf = None                        # (product factors, their rows, the matching rows of this snapshot), see LiveFit._mf_catalog
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
         self.hot = None                       # T-044: 1.0 for products of a subcategory in a live burst (LiveFit.set_catalog)
+        self.orate = self.opop = None         # T-049: organic quality of each product (LiveFit.set_catalog, organic_quality())
 
     def stale(self, u):
         """Boolean mask: products this user viewed in the history and never carted (dead in the live carousel)."""
@@ -193,7 +199,36 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
     if getattr(S, "newp", None) is not None and rv and page in LQ_PAGES: X[:, 21] = S.newp      # never on home or without views
     if getattr(S, "hot", None) is not None: X[:, 22] = S.hot                                    # every page: a burst reaches every shopper
+    if getattr(S, "orate", None) is not None: X[:, 23] = S.orate; X[:, 24] = S.opop             # every page: a property of the product
     return X if idx is None else X[idx]
+
+
+OQ_PRIOR_P, OQ_PRIOR_V, OQ_POP0, OQ_CLIP = 1.0, 20.0, 5.0, 3.0
+
+
+def organic_quality(ids, oq, hist=None):
+    """T-049 -> (orate, opop), one value per product of `ids`, or (None, None) when there is nothing usable.
+    oq: {product: (organic views, organic purchases)} over the 60-day history plus today (never purchases made through
+    our own carousel). hist: the products that have a 60-day history; None = all of `oq`.
+      orate = log((purchases + 1) / (views + 20)) minus the catalogue median: with no views a product sits at the prior
+              (1 purchase per 20 views, about the median), so a product launched today starts neutral and moves with the stream
+      opop  = log(views + 5) minus the catalogue median, for products WITH history; 0 (neutral) for the others, whose few
+              hours of views are not comparable with 60 days
+    Both clipped to +-3 so one odd product cannot dominate a slate."""
+    try:
+        if not oq: return None, None
+        g = oq.get; v = np.zeros(len(ids)); p = np.zeros(len(ids)); has = np.zeros(len(ids), dtype=bool)
+        for k, i in enumerate(ids):
+            c = g(i)
+            if c is None: continue
+            v[k] = max(float(c[0]), 0.0); p[k] = max(float(c[1]), 0.0); has[k] = hist is None or i in hist
+        if not np.isfinite(v).all() or not np.isfinite(p).all() or has.sum() < 50: return None, None
+        r = np.log((p + OQ_PRIOR_P) / (v + OQ_PRIOR_V)); pop = np.log(v + OQ_POP0)
+        orate = np.clip(r - np.median(r[has]), -OQ_CLIP, OQ_CLIP)
+        opop = np.where(has, np.clip(pop - np.median(pop[has]), -OQ_CLIP, OQ_CLIP), 0.0)
+        return orate, opop
+    except Exception as e:
+        print("lfm organic quality off:", type(e).__name__, e, flush=True); return None, None
 
 
 class LiveFit:
@@ -299,12 +334,14 @@ class LiveFit:
                 d = self.lcart_t.setdefault(u, {})
                 if ta > d.get(i, ""): d[i] = ta
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None):
-        """hot (T-044): products of the subcategories in a live burst, or None / empty (the feature stays 0)."""
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None, oq=None, oq_hist=None):
+        """hot (T-044): products of the subcategories in a live burst, or None / empty (the feature stays 0).
+        oq (T-049): {product: (organic views, organic purchases)}, oq_hist: products with a 60-day history; None = features stay 0."""
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
         S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold, newp)
         if hot: S.hot = np.isin(np.array(ids, dtype=object), list(hot)).astype(np.float64)
+        if oq: S.orate, S.opop = organic_quality(ids, oq, oq_hist)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
@@ -378,6 +415,12 @@ class LiveFit:
         k = FEATS.index("hot")
         sets = [self.w] + [w for w, _ in list(self.alt.values())]
         return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
+
+    def wants_oq(self) -> bool:
+        """Does any weight set in use give the organic quality features a weight? If not, nobody builds them."""
+        ks = [FEATS.index("orate"), FEATS.index("opop")]
+        sets = [self.w] + [w for w, _ in list(self.alt.values())]
+        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new") for k in ks)
 
     @property
     def ok(self): return self.snap is not None

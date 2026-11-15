@@ -459,6 +459,25 @@ def new_products(cat, max_share=0.25):
     except Exception as e:
         print('new_products failed', type(e).__name__, e, flush=True); return None
 
+OQ_HIST = {}
+def organic_counts(T):
+    """T-049: ({product: (organic views, organic purchases)} over the 60-day history plus today, products with history) for
+    the lfm features `orate` / `opop`. (None, None) (the features stay 0, every arm serves as before) when no arm weights
+    them or on any error. Today's part is the organic-only accumulator (T-047): never purchases made through our carousel.
+    Refresher thread only: no query."""
+    try:
+        if LF is None or not LF.wants_oq(): return None, None
+        if not OQ_HIST:
+            b = BASE["item"]; OQ_HIST.update(zip(b.index, zip(b["it_v"].values.astype(float), b["it_p"].values.astype(float))))
+        out = dict(OQ_HIST)
+        li = organic_frame(T) if T is not None else None
+        if li is not None and len(li):
+            for i, v, p in zip(li.index, li["it_v"].values, li["it_p"].values):
+                h = out.get(i); out[i] = (float(v) + h[0], float(p) + h[1]) if h else (float(v), float(p))
+        return out, set(OQ_HIST)
+    except Exception as e:
+        print('organic_counts failed', type(e).__name__, e, flush=True); return None, None
+
 HOT_LOG = {}
 def hot_products(cat, max_share=0.10):
     """T-044: products of the subcategories in a live burst (trends.py: share of views of the last 15 minutes at least twice
@@ -509,7 +528,9 @@ def refresher():
                 try: ATP.refresh(query, cat, unavail, organic_frame(T), sync=AP is None)   # T-047: attr_model reads these as organic totals
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
-                try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat))
+                try:
+                    oq, oq_hist = organic_counts(T)
+                    LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat), oq=oq, oq_hist=oq_hist)
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:
