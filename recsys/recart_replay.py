@@ -3,7 +3,7 @@ model decides, on the leaderboard, candidate vs control vs reference in identica
 
     cd recsys
     python download_user_items.py && python cold_lq_replay.py --pull      # READ-ONLY RawTree
-    python recart_replay.py [--n 12000] [--since "2026-11-14 12:00"] [--out file.json]
+    python recart_replay.py [--n 12000] [--since "2026-11-14 12:00"] [--pairs cs2r,r3] [--out file.json]
 
 Every sampled answered request is served twice per pair (control arm, the same arm with "recart": true) by
 live.clean_lfm_arms -> LiveFit.set_arms -> LiveFit.slate, with the catalogue, stock and shopper state AS OF the request
@@ -23,10 +23,13 @@ R3 = "lfm_coef_r3.json"
 PAIRS = {       # name -> control arm (without tag); the candidate is the same arm plus "recart": true
     "cx3": {"file": R3, "w": {"known": {"chn": 3.0}}, "home": {"file": R3}},
     "r3": {"file": R3},
+    # T-051: cs2r (policy.rot_cs2r.json), chn 3.0 = cl 3.0, so only products carted 2+ times in the history get anything
+    "cs2r": {"file": R3, "w": {"known": {"chn": 3.0, "cl": 3.0, "ssub2": 3.0, "scat2": 3.0, "ucat": 6.0, "islast": 3.7, "oinrv": 4.0}}, "home": {"file": R3}},
 }
 
 
-def main(n=12000, since="2026-11-14 12:00:00", out=None):
+def main(n=12000, since="2026-11-14 12:00:00", out=None, pairs=("cx3", "r3")):
+    PAIRS = {k: globals()["PAIRS"][k] for k in pairs}      # at most 2 pairs: clean_lfm_arms takes 4 arms
     os.environ.setdefault("DRY_RUN", "1")
     import lfm, lfm_build as LB, cold_lq_replay as R, qrank
     sys.argv = [sys.argv[0], "--dry-run"]
@@ -118,4 +121,5 @@ def observed(d, LF, aff, carts, buys, LB, lfm):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--n", type=int, default=12000); ap.add_argument("--since", default="2026-11-14 12:00:00"); ap.add_argument("--out")
-    a = ap.parse_args(); main(a.n, a.since, a.out)
+    ap.add_argument("--pairs", default="cx3,r3", help="one or two of: " + ", ".join(PAIRS))
+    a = ap.parse_args(); main(a.n, a.since, a.out, tuple(a.pairs.split(",")))
