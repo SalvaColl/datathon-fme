@@ -99,6 +99,8 @@ This revision updates HTML/SVG/notes only at the user's request. Earlier PDF/Pow
 
 ## Observations, rejections and version data
 
+Latest visual revision: slide footers, page numbers and tiny source references removed; full provenance remains here and in the D panel. Explanations use plain language and connect observations to decisions. User-confirmed tool split: Claude for coding, Codex for research. Current script: 307 words, six slides, 180-second plan. All six browser renders reviewed.
+
 Current pitch: six main slides, 308 words and a 180-second plan. Slide two adds E-081's 0 purchases/1,118 already-bought exposures and E-092's historical hit@1 0.472 -> 0.519 over 4,697 purchased sessions. The labels distinguish live feedback from offline ranking accuracy.
 
 Slide three shows why replication changed the graph decision: +0.20 pp in E-271 followed by -0.41 pp in E-272 for known shoppers on pages. These are separate windows and named arms; the appendix lists all four cohorts and sample sizes. It does not claim all graph models universally fail.

@@ -40,32 +40,6 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 842,
-        "w": 1465,
-        "h": 32.230000000000004,
-        "lines": [
-          "EQUIPO 26  /  RAWTREE \u00d7 DATATHON FME 2026"
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1450,
-        "y": 840,
-        "w": 85,
-        "h": 33.42,
-        "lines": [
-          "01 / 06"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 70,
         "y": 180,
         "w": 1465,
         "h": 369.0,
@@ -305,19 +279,6 @@
         "size": 26,
         "color": "101A29",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1006,
-        "y": 711,
-        "w": 529,
-        "h": 32.230000000000004,
-        "lines": [
-          "Flujo conceptual, no tiempos por etapa."
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
       }
     ]
   },
@@ -358,32 +319,6 @@
         "size": 20,
         "color": "61E4B1",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 70,
-        "y": 842,
-        "w": 1465,
-        "h": 32.230000000000004,
-        "lines": [
-          "EQUIPO 26  /  RAWTREE \u00d7 DATATHON FME 2026"
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1450,
-        "y": 840,
-        "w": 85,
-        "h": 33.42,
-        "lines": [
-          "02 / 06"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
       },
       {
         "kind": "text",
@@ -454,7 +389,7 @@
         "w": 1435,
         "h": 42.94,
         "lines": [
-          "DECISI\u00d3N \u2192 excluir compras previas"
+          "No volver a recomendar lo comprado"
         ],
         "size": 26,
         "color": "61E4B1",
@@ -515,7 +450,7 @@
         "w": 705,
         "h": 42.94,
         "lines": [
-          "DECISI\u00d3N \u2192 incorporar afinidad"
+          "Aprender gustos a partir de atributos"
         ],
         "size": 26,
         "color": "61E4B1",
@@ -533,19 +468,6 @@
         "size": 30,
         "color": "F5F7FA",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 786,
-        "w": 1460,
-        "h": 33.42,
-        "lines": [
-          "E-081 / E-092 \u00b7 M\u00c9TRICAS DISTINTAS: FEEDBACK REAL Y ACIERTO OFFLINE"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
       }
     ]
   },
@@ -590,32 +512,6 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 842,
-        "w": 1465,
-        "h": 32.230000000000004,
-        "lines": [
-          "EQUIPO 26  /  RAWTREE \u00d7 DATATHON FME 2026"
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1450,
-        "y": 840,
-        "w": 85,
-        "h": 33.42,
-        "lines": [
-          "03 / 06"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 70,
         "y": 143,
         "w": 1465,
         "h": 200.01999999999998,
@@ -634,11 +530,24 @@
         "w": 725,
         "h": 41.75,
         "lines": [
-          "BASE + GRAFO / conocidos en p\u00e1ginas"
+          "\u00bfAyuda relacionar productos entre s\u00ed?"
         ],
         "size": 25,
         "color": "61E4B1",
         "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 810,
+        "y": 204,
+        "w": 725,
+        "h": 38.18,
+        "lines": [
+          "Conversi\u00f3n \u00b7 usuarios conocidos en p\u00e1ginas"
+        ],
+        "size": 22,
+        "color": "A6B5C8",
+        "bold": false
       },
       {
         "kind": "text",
@@ -673,7 +582,7 @@
         "w": 360,
         "h": 38.18,
         "lines": [
-          "+ grafo"
+          "+ relaciones"
         ],
         "size": 22,
         "color": "A6B5C8",
@@ -801,11 +710,11 @@
         "x": 830,
         "y": 429,
         "w": 705,
-        "h": 41.75,
+        "h": 40.56,
         "lines": [
-          "La ventaja no se repiti\u00f3 \u2192 no promover"
+          "No repiti\u00f3 la mejora \u2192 descartamos esa variante"
         ],
-        "size": 25,
+        "size": 24,
         "color": "FFAC86",
         "bold": true
       },
@@ -838,7 +747,7 @@
         "w": 1435,
         "h": 44.129999999999995,
         "lines": [
-          "GBM e interacciones sin mejora \u00b7 se\u00f1ales del orden de visita sin ganancia"
+          "Ni modelos m\u00e1s complejos ni el orden de las visitas mejoraron la validaci\u00f3n"
         ],
         "size": 27,
         "color": "F5F7FA",
@@ -858,25 +767,12 @@
         "x": 98,
         "y": 701,
         "w": 1437,
-        "h": 45.32,
+        "h": 42.94,
         "lines": [
-          "Base lineal: solo expuestos \u00b7 compras \u00d73 \u00b7 posici\u00f3n \u00b7 validaci\u00f3n temporal"
+          "Elegimos un modelo lineal: aprende de clics y compras; se valida con datos posteriores"
         ],
-        "size": 28,
+        "size": 26,
         "color": "F5F7FA",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 786,
-        "w": 1460,
-        "h": 33.42,
-        "lines": [
-          "14 NOV \u00b7 18:50\u201319:20 Y 19:25\u201319:55 CET \u00b7 E-271 / E-272 / E-260"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
         "bold": false
       }
     ]
@@ -922,32 +818,6 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 842,
-        "w": 1465,
-        "h": 32.230000000000004,
-        "lines": [
-          "EQUIPO 26  /  RAWTREE \u00d7 DATATHON FME 2026"
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1450,
-        "y": 840,
-        "w": 85,
-        "h": 33.42,
-        "lines": [
-          "04 / 06"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 70,
         "y": 143,
         "w": 1465,
         "h": 197.64,
@@ -979,7 +849,7 @@
         "w": 425,
         "h": 45.32,
         "lines": [
-          "pp de margen"
+          "puntos de margen"
         ],
         "size": 28,
         "color": "A6B5C8",
@@ -992,7 +862,7 @@
         "w": 1460,
         "h": 44.129999999999995,
         "lines": [
-          "Conversi\u00f3n esperada \u00b7 pr\u00e1ctica \u00b7 cada bloque frente a su referencia"
+          "Reajustamos con nuestro feedback. Comparamos con la referencia de cada ventana."
         ],
         "size": 27,
         "color": "A6B5C8",
@@ -1209,7 +1079,7 @@
         "w": 1460,
         "h": 45.32,
         "lines": [
-          "8 bloques \u00b7 4 por pol\u00edtica \u00b7 no es un A/B aleatorizado"
+          "Margen = conversi\u00f3n \u2212 referencia"
         ],
         "size": 28,
         "color": "F5F7FA",
@@ -1218,13 +1088,13 @@
       {
         "kind": "text",
         "x": 75,
-        "y": 766,
+        "y": 760,
         "w": 1460,
-        "h": 33.42,
+        "h": 41.75,
         "lines": [
-          "15 NOV 03:20\u201305:20 CET \u00b7 MARGEN = EQUIPO \u2212 REFERENCIA \u00b7 DATOS REDONDEADOS"
+          "Pr\u00e1ctica \u00b7 8 bloques temporales, no un A/B aleatorizado"
         ],
-        "size": 18,
+        "size": 25,
         "color": "A6B5C8",
         "bold": false
       }
@@ -1271,32 +1141,6 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 842,
-        "w": 1465,
-        "h": 32.230000000000004,
-        "lines": [
-          "EQUIPO 26  /  RAWTREE \u00d7 DATATHON FME 2026"
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1450,
-        "y": 840,
-        "w": 85,
-        "h": 33.42,
-        "lines": [
-          "05 / 06"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 70,
         "y": 145,
         "w": 1465,
         "h": 185.73999999999998,
@@ -1326,11 +1170,11 @@
         "x": 82,
         "y": 550,
         "w": 1453,
-        "h": 46.51,
+        "h": 44.129999999999995,
         "lines": [
-          "v\u00e1lidas y a tiempo \u00b7 43.200 peticiones"
+          "a tiempo \u00b7 43.200 peticiones de pr\u00e1ctica"
         ],
-        "size": 29,
+        "size": 27,
         "color": "F5F7FA",
         "bold": false
       },
@@ -1341,7 +1185,7 @@
         "w": 1452,
         "h": 45.32,
         "lines": [
-          "p99  2,35 s     /     l\u00edmite  3 s"
+          "99% en menos de 2,35 s \u00b7 l\u00edmite: 3 s"
         ],
         "size": 28,
         "color": "A6B5C8",
@@ -1521,19 +1365,6 @@
         "size": 21,
         "color": "61E4B1",
         "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 762,
-        "w": 1460,
-        "h": 34.61,
-        "lines": [
-          "PR\u00c1CTICA / 15 NOV 04:00\u201308:00 CET \u00b7 43.182 DE 43.200 RESPUESTAS A TIEMPO"
-        ],
-        "size": 19,
-        "color": "A6B5C8",
-        "bold": false
       }
     ]
   },
@@ -1541,7 +1372,7 @@
     "kicker": "C\u00f3mo trabajamos / agentes de programaci\u00f3n",
     "title": "La IA acelera. La evidencia decide.",
     "seconds": 25,
-    "notes": "Claude y Codex nos ayudaron a implementar experimentos, auditar c\u00f3digo y buscar fallos. El equipo control\u00f3 las pruebas y el despliegue. Cubrimos modelos, nuevas se\u00f1ales, evaluaci\u00f3n y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidi\u00f3 qu\u00e9 conservar. Nos quedamos con una idea: construir r\u00e1pido y comprobar con rigor.",
+    "notes": "Usamos Claude para programar y Codex para investigar se\u00f1ales y contrastar hip\u00f3tesis. El equipo control\u00f3 las pruebas y el despliegue. Cubrimos modelos, nuevas se\u00f1ales, evaluaci\u00f3n y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidi\u00f3 qu\u00e9 conservar. Nos quedamos con una idea: construir r\u00e1pido y comprobar con rigor.",
     "source": "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; no se inventan funciones individuales ni versiones concretas de los agentes.",
     "shapes": [
       {
@@ -1578,32 +1409,6 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 842,
-        "w": 1465,
-        "h": 32.230000000000004,
-        "lines": [
-          "EQUIPO 26  /  RAWTREE \u00d7 DATATHON FME 2026"
-        ],
-        "size": 17,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1450,
-        "y": 840,
-        "w": 85,
-        "h": 33.42,
-        "lines": [
-          "06 / 06"
-        ],
-        "size": 18,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 70,
         "y": 149,
         "w": 1465,
         "h": 200.01999999999998,
@@ -1631,7 +1436,7 @@
         "w": 654,
         "h": 33.42,
         "lines": [
-          "HERRAMIENTA DE DESARROLLO"
+          "PROGRAMACI\u00d3N"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -1657,8 +1462,8 @@
         "w": 654,
         "h": 71.5,
         "lines": [
-          "Modelos, integraciones",
-          "y experimentos."
+          "Programar los modelos",
+          "e integrar las mejoras."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -1680,7 +1485,7 @@
         "w": 674,
         "h": 33.42,
         "lines": [
-          "HERRAMIENTA DE DESARROLLO"
+          "INVESTIGACI\u00d3N"
         ],
         "size": 18,
         "color": "61E4B1",
@@ -1706,8 +1511,8 @@
         "w": 674,
         "h": 71.5,
         "lines": [
-          "Auditor\u00edas, evaluaci\u00f3n",
-          "y casos de fallo."
+          "Investigar se\u00f1ales",
+          "y contrastar hip\u00f3tesis."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -1738,19 +1543,6 @@
         "size": 24,
         "color": "F5F7FA",
         "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 796,
-        "w": 1460,
-        "h": 44.129999999999995,
-        "lines": [
-          "Construir r\u00e1pido. Comprobar con rigor."
-        ],
-        "size": 27,
-        "color": "F5F7FA",
-        "bold": true
       }
     ]
   }

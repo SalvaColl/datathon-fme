@@ -67,8 +67,8 @@ ES_TEXT = {
     "Precompute. Validate. Batch.": "RawTree: del dato a la acción.",
     "Precompute.\nValidate. Batch.": "RawTree:\ndel dato a la acción.",
     "99.96%": "99,96%",
-    "valid and on time · 43,200 requests": "válidas y a tiempo · 43.200 peticiones",
-    "p99  2.35 s     /     deadline  3 s": "p99  2,35 s     /     límite  3 s",
+    "valid and on time · 43,200 requests": "a tiempo · 43.200 peticiones de práctica",
+    "p99  2.35 s     /     deadline  3 s": "99% en menos de 2,35 s · límite: 3 s",
     "RAWTREE → ONE SERVING LOOP": "RAWTREE → UN ÚNICO ESCRITOR",
     "Requests + events + catalogue": "Peticiones + eventos + catálogo",
     "SQL → feature snapshots": "SQL → datos preparados",
@@ -80,8 +80,8 @@ ES_TEXT = {
     "Agents accelerated. Evidence decided.": "La IA acelera. La evidencia decide.",
     "Agents accelerated.\nEvidence decided.": "La IA acelera.\nLa evidencia decide.",
     "Development tool": "Herramienta de desarrollo",
-    "Implementation, integrations\nand experiments.": "Modelos, integraciones\ny experimentos.",
-    "Audits, evaluation\nand failure cases.": "Auditorías, evaluación\ny casos de fallo.",
+    "Implementation, integrations\nand experiments.": "Programar los modelos\ne integrar las mejoras.",
+    "Audits, evaluation\nand failure cases.": "Investigar señales\ny contrastar hipótesis.",
     "Hypothesis → isolated code → tests → measured decision": "Hipótesis → código aislado → pruebas → decisión",
     "Build fast. Verify carefully.": "Construir rápido. Comprobar con rigor.",
 }
@@ -109,7 +109,7 @@ ES_NOTES = [
     "Leemos peticiones, eventos y cambios del catálogo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. "
     "Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos métricas en scratch. "
     "Así podemos explicar cada decisión y detectar fallos. En práctica, el 99,96 % de las respuestas llegó a tiempo.",
-    "Claude y Codex nos ayudaron a implementar experimentos, auditar código y buscar fallos. "
+    "Usamos Claude para programar y Codex para investigar señales y contrastar hipótesis. "
     "El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. "
     "Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. "
     "Nos quedamos con una idea: construir rápido y comprobar con rigor.",
@@ -171,8 +171,6 @@ def slide(kicker, title, seconds, notes, source):
     rect(s, 0, 0, W, H, C["bg"])
     rect(s, 70, 70, 36, 6, C["green"])
     text(s, 122, 57, kicker.upper(), 20, C["green"], bold=True)
-    text(s, 70, 842, "TEAM 26  /  RAWTREE × DATATHON FME 2026", 17, C["muted"])
-    text(s, 1450, 840, f"{len(slides):02d} / 06", 18, C["muted"])
     return s
 
 def rect(s, x, y, w, h, color, radius=0):
@@ -230,7 +228,6 @@ for y, step, label, description in [
         text(s, 1230, y+98, "↓", 28, C["green"])
 rect(s, 1005, 638, 490, 59, C["green"], 13)
 text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
-text(s, 1006, 711, "Flujo conceptual, no tiempos por etapa.", 17, C["muted"])
 
 
 
@@ -240,19 +237,19 @@ rect(s, 70, 380, 710, 310, C["card"], 22)
 text(s, 100, 407, "OBSERVACIÓN EN VIVO", 20, C["orange"], True)
 text(s, 100, 453, "0 compras", 62, C["orange"], True)
 text(s, 100, 535, "en 1.118 exposiciones de productos ya comprados", 25, width=650)
-text(s, 100, 618, "DECISIÓN → excluir compras previas", 26, C["green"], True)
+text(s, 100, 618, "No volver a recomendar lo comprado", 26, C["green"], True)
 rect(s, 800, 380, 730, 310, C["card"], 22)
 text(s, 830, 407, "PRUEBA HISTÓRICA / OFFLINE", 20, C["green"], True)
 text(s, 830, 453, "47,2% → 51,9%", 54, C["green"], True)
 text(s, 830, 535, "acierto en primer puesto · 4.697 sesiones con compra", 25, width=670)
-text(s, 830, 618, "DECISIÓN → incorporar afinidad", 26, C["green"], True)
+text(s, 830, 618, "Aprender gustos a partir de atributos", 26, C["green"], True)
 text(s, 75, 735, "Observación → hipótesis → cambio medido", 30, bold=True)
-text(s, 75, 786, "E-081 / E-092 · MÉTRICAS DISTINTAS: FEEDBACK REAL Y ACIERTO OFFLINE", 18, C["muted"])
 
 s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
 text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
-text(s, 810, 165, "BASE + GRAFO / conocidos en páginas", 25, C["green"], True)
-for x, label in [(830,"Ronda"),(1000,"Base"),(1175,"+ grafo"),(1380,"Diferencia")]:
+text(s, 810, 165, "¿Ayuda relacionar productos entre sí?", 25, C["green"], True)
+text(s, 810, 204, "Conversión · usuarios conocidos en páginas", 22, C["muted"])
+for x, label in [(830,"Ronda"),(1000,"Base"),(1175,"+ relaciones"),(1380,"Diferencia")]:
     text(s, x, 235, label, 22, C["muted"])
 for y, vals, col in [
     (292, ["01","1,57%","1,77%","+0,20 pp"], C["green"]),
@@ -260,19 +257,18 @@ for y, vals, col in [
 ]:
     for x, value in zip([830,1000,1175,1380], vals):
         text(s, x, y, value, 29 if x<1380 else 25, col if x==1380 else C["white"], True)
-text(s, 830, 429, "La ventaja no se repitió → no promover", 25, C["orange"], True)
+text(s, 830, 429, "No repitió la mejora → descartamos esa variante", 24, C["orange"], True)
 rect(s, 70, 528, 1460, 112, C["card"], 16)
 text(s, 100, 551, "También descartamos", 24, C["green"], True)
-text(s, 100, 590, "GBM e interacciones sin mejora · señales del orden de visita sin ganancia", 27)
+text(s, 100, 590, "Ni modelos más complejos ni el orden de las visitas mejoraron la validación", 27)
 rect(s, 70, 681, 1460, 74, C["line"], 13)
-text(s, 98, 701, "Base lineal: solo expuestos · compras ×3 · posición · validación temporal", 28)
-text(s, 75, 786, "14 NOV · 18:50–19:20 Y 19:25–19:55 CET · E-271 / E-272 / E-260", 18, C["muted"])
+text(s, 98, 701, "Elegimos un modelo lineal: aprende de clics y compras; se valida con datos posteriores", 26)
 
 s = slide("Datos por versión / comparación con contexto", "Cada versión, con su contexto.", 35, "", "")
 text(s, 70, 143, "Cada versión,\ncon su contexto.", 78, bold=True)
 text(s, 1100, 158, "+0,17", 110, C["green"], True)
-text(s, 1110, 290, "pp de margen", 28, C["muted"])
-text(s, 75, 355, "Conversión esperada · práctica · cada bloque frente a su referencia", 27, C["muted"])
+text(s, 1110, 290, "puntos de margen", 28, C["muted"])
+text(s, 75, 355, "Reajustamos con nuestro feedback. Comparamos con la referencia de cada ventana.", 27, C["muted"])
 rect(s, 70, 432, 1460, 249, C["card"], 22)
 columns=[100,570,790,1050,1310]
 for x,label in zip(columns,["Versión","Peticiones","Conversión","Referencia","Margen"]):
@@ -283,8 +279,8 @@ for y, vals, col in [
 ]:
     for x,value in zip(columns,vals):
         text(s, x, y, value, 29 if x<1310 else 27, col, True)
-text(s, 75, 715, "8 bloques · 4 por política · no es un A/B aleatorizado", 28, bold=True)
-text(s, 75, 766, "15 NOV 03:20–05:20 CET · MARGEN = EQUIPO − REFERENCIA · DATOS REDONDEADOS", 18, C["muted"])
+text(s, 75, 715, "Margen = conversión − referencia", 28, bold=True)
+text(s, 75, 760, "Práctica · 8 bloques temporales, no un A/B aleatorizado", 25, C["muted"])
 
 s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 35,
     "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "
@@ -296,7 +292,7 @@ s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Bat
     "144 scratch snapshots recorded. Handoff's p99≈2.0 s has no comparable window; use documented 2.35 s.")
 text(s, 70, 145, "Precompute.\nValidate. Batch.", 73, bold=True)
 text(s, 75, 397, "99.96%", 126, C["green"], True)
-text(s, 82, 550, "valid and on time · 43,200 requests", 29)
+text(s, 82, 550, "valid and on time · 43,200 requests", 27)
 text(s, 83, 602, "p99  2.35 s     /     deadline  3 s", 28, C["muted"])
 rect(s, 890, 164, 640, 533, C["card"], 24)
 text(s, 925, 196, "RAWTREE · TINYBIRD", 26, C["green"], True)
@@ -311,7 +307,6 @@ for j, (label, detail) in enumerate([
     text(s, 947, y, label, 28, bold=True, width=550)
     text(s, 947, y+40, detail, 18, C["muted"], width=550)
 text(s, 925, 652, "Trazabilidad: de la petición a su feedback.", 21, C["green"])
-text(s, 75, 762, "PRACTICE / 15 NOV 04:00–08:00 CET · 43,182 OF 43,200 SERVED ON TIME", 19, C["muted"])
 
 s = slide("How we worked / AI-assisted development", "Agents accelerated. Evidence decided.", 25,
     "We used Claude and Codex to implement experiments, audit code and find failure cases in isolated branches. "
@@ -323,13 +318,12 @@ s = slide("How we worked / AI-assisted development", "Agents accelerated. Eviden
     "tool or workstream assignment is asserted. Examples of agent work are in tasks and branch histories. "
     "Practice conversion 2.159% remains in EVIDENCE.md, not presented as a final result.")
 text(s, 70, 149, "Agents accelerated.\nEvidence decided.", 79, bold=True)
-card(s, 70, 395, 710, 235, "Development tool", "Claude",
+card(s, 70, 395, 710, 235, "PROGRAMACIÓN", "Claude",
      "Implementation, integrations\nand experiments.")
-card(s, 800, 395, 730, 235, "Development tool", "Codex",
+card(s, 800, 395, 730, 235, "INVESTIGACIÓN", "Codex",
      "Audits, evaluation\nand failure cases.")
 text(s, 75, 690, "Hypothesis → isolated code → tests → measured decision", 33, C["green"], True)
 text(s, 75, 754, "Salvador Coll · Héctor Verdeal · Daniel Nieto · Javier Andrés García", 24)
-text(s, 75, 796, "Build fast. Verify carefully.", 27, bold=True)
 
 def svg(s):
     out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="{escape(s["title"])}">']

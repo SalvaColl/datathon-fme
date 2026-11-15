@@ -25,11 +25,11 @@ RawTree, creado por Tinybird, es la base de nuestro circuito. Leemos peticiones,
 
 ## 6. La IA acelera. La evidencia decide. — 2:35–3:00
 
-Claude y Codex nos ayudaron a implementar experimentos, auditar código y buscar fallos. El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. Nos quedamos con una idea: construir rápido y comprobar con rigor.
+Usamos Claude para programar y Codex para investigar señales y contrastar hipótesis. El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. Nos quedamos con una idea: construir rápido y comprobar con rigor.
 
 ## Cómo contarlo
 
-Guion: 308 palabras. Plan completo: 180 segundos.
+Guion: 307 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 R inicia el cronómetro; flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.
