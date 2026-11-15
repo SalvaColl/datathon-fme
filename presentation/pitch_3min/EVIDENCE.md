@@ -99,6 +99,8 @@ This revision updates HTML/SVG/notes only at the user's request. Earlier PDF/Pow
 
 ## Observations, rejections and version data
 
+Current slide four is a visual progression: team start 0.91% (reference 2.03%, public snapshot 14 Nov 13:50 UTC, N=10,785, source presentation/guion.md), u1 1.98825% (reference 1.94425%), u3k 2.117% (reference 1.9055%). Bars start at zero; orange markers give the corresponding reference. The first point mixes versions and a downtime interval and is labeled team average, not an isolated model result. Later points are block averages, not consecutive randomized arms. This visual is practice evidence, not a final result or a causal estimate of each change.
+
 Current slide two returns to attribute affinity, checked in own live feedback (I-092/E-093): known shoppers, products without prior relationship and outside recent_views, 0.6 purchases per 10,000 exposures at affinity <0.10 versus 89.7 at affinity 0.20–0.25. Feedback covers 21,691 requests, 14 Nov 11:09–13:05 UTC; only 36 purchases in the main segment. This is an observational exposed-product group comparison, not before/after or a causal policy conversion uplift. Current script: 335 words.
 
 Latest slide two supersedes the affinity example with the documented u1/u3k feedback-refit comparison: 1.988% -> 2.117%, shown as 1.99% -> 2.12%, N=10,800 per policy. It is the same temporal comparison detailed on slide four, not separate evidence and not a measured conversion effect of affinity alone. No metrics were fabricated.

@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-19 | P1 | Visual performance progression with matched reference markers | Codex / codex/pitch-3min | DONE: three zero-based bars, same-window reference markers; source and mixed-start limitation documented; slide visually reviewed | Documented practice snapshots only; no final result |
 | T-PITCH-18 | P1 | Rebuild rejected-ideas/final-approach slide and improve closing title | Codex / codex/pitch-3min | DONE: third slide now discarded ideas vs final linear approach; closing title Los agentes aceleran / Nosotros decidimos; renders and notes regenerated | Presentation only |
 | T-PITCH-17 | P1 | Remove remaining bottom sentence from slide two | Codex / codex/pitch-3min | DONE: removed green bottom sentence; HTML/SVG/preview regenerated | Presentation only |
 | T-PITCH-16 | P1 | Tighten cover spacing, remove slide-two clarification line, clarify implementation stage | Codex / codex/pitch-3min | DONE: cover subtitle moved up, requested line removed, workflow now says implementar la idea; three changed slides visually checked | Presentation only |

@@ -15,9 +15,9 @@ Observamos en el historial que los compradores repetían gustos por atributos de
 
 También aprendimos descartando. Los modelos más complejos y las interacciones probadas no mejoraron la validación. El grafo no repitió su ventaja, y el orden de las visitas no añadió una mejora confirmada. Nos quedamos con un modelo lineal, rápido y fácil de inspeccionar. Lo entrenamos con clics y compras, dando triple peso a las compras. Combina gustos, actividad de la sesión, calidad y tendencias. En la final fijamos los pesos, mientras los datos de la tienda siguen actualizándose.
 
-## 4. Cada versión, con su contexto. — 1:25–2:00
+## 4. De perseguir la referencia a superarla. — 1:25–2:00
 
-Aquí están las cifras de dos versiones, con sus muestras y su referencia. El margen pasó de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. Son ocho bloques de práctica, no un A/B aleatorizado. Las tablas completas están disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.
+De menos del uno por ciento a superar la referencia. Las marcas naranjas son la referencia de cada ventana. Esto es práctica, no el resultado de la final.
 
 ## 5. RawTree: del dato a la acción. — 2:00–2:35
 
@@ -29,7 +29,7 @@ Usamos Claude para programar y Codex para investigar señales y contrastar hipó
 
 ## Cómo contarlo
 
-Guion: 354 palabras. Plan completo: 180 segundos.
+Guion: 330 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

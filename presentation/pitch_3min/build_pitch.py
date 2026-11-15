@@ -147,10 +147,9 @@ ES_NOTES[2] = (
     "Combina gustos, actividad de la sesión, calidad y tendencias. "
     "En la final fijamos los pesos, mientras los datos de la tienda siguen actualizándose.")
 ES_NOTES[3] = (
-    "Aquí están las cifras de dos versiones, con sus muestras y su referencia. "
-    "El margen pasó de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. "
-    "Son ocho bloques de práctica, no un A/B aleatorizado. "
-    "Las tablas completas están disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.")
+    "De menos del uno por ciento a superar la referencia. "
+    "Las marcas naranjas son la referencia de cada ventana. "
+    "Esto es práctica, no el resultado de la final.")
 ES_SOURCES[1] = (
     "I-092/E-093: feedback 14 nov 11:09–13:05 UTC, 21.691 peticiones; conocidos, productos sin relación previa y fuera de recent_views. "
     "Compras por 10.000 exposiciones: afinidad <0,10: 0,6; afinidad 0,20–0,25: 89,7. "
@@ -162,6 +161,8 @@ ES_SOURCES[2] = (
     "Los brazos difieren en home, pero mantienen los mismos pesos del grafo en páginas. "
     "R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.")
 ES_SOURCES[3] = (
+    "Inicio: presentation/guion.md, marcador api/state del 14 nov 13:50 UTC, equipo 0,91%, referencia 2,03%, N=10.785. "
+    "Media mixta de versiones y caída, no resultado aislado del primer modelo. "
     "presentation/cifras.md, javi/jury-final: 8 bloques, 4 por política, 10.800 peticiones por política. "
     "Medias de conversiones documentadas: u1 1,98825 y referencia 1,94425; u3k 2,117 y referencia 1,9055. "
     "Margen documentado +0,044 frente a +0,212 pp. Valores mostrados redondeados; comparación temporal, no aleatorizada.")
@@ -262,22 +263,28 @@ text(s, 780, 515, "Aprende de clics y compras\nLas compras pesan ×3 en el entre
 text(s, 780, 610, "Combina gustos, sesión, calidad y tendencias", 27, width=710)
 text(s, 780, 705, "Pesos fijos. Datos de la tienda actualizados.", 28, C["green"], True)
 
-s = slide("Datos por versión / comparación con contexto", "Cada versión, con su contexto.", 35, "", "")
-text(s, 70, 143, "Cada versión,\ncon su contexto.", 78, bold=True)
-text(s, 1100, 158, "+0,17", 110, C["green"], True)
-text(s, 1110, 290, "puntos de margen", 28, C["muted"])
-text(s, 75, 355, "Reajustamos con nuestro feedback. Comparamos con la referencia de cada ventana.", 27, C["muted"])
-rect(s, 70, 432, 1460, 249, C["card"], 22)
-columns=[100,570,790,1050,1310]
-for x,label in zip(columns,["Versión","Peticiones","Conversión","Referencia","Margen"]):
-    text(s, x, 457, label, 22, C["muted"], True)
-for y, vals, col in [
-    (514, ["u1 · anterior","10.800","1,988%","1,944%","+0,044 pp"], C["muted"]),
-    (590, ["u3k · reajustada","10.800","2,117%","1,906%","+0,212 pp"], C["green"]),
+s = slide("Nuestra evolución / conversión", "De perseguir la referencia a superarla.", 35, "", "")
+text(s, 70, 138, "De perseguir la referencia\na superarla.", 72, bold=True)
+rect(s, 1010, 93, 22, 22, C["green"], 5)
+text(s, 1046, 89, "Equipo", 23)
+rect(s, 1160, 102, 35, 5, C["orange"])
+text(s, 1210, 89, "Referencia de la ventana", 23)
+bottom, scale = 745, 175
+for v in [0, 1, 2]:
+    y=bottom-v*scale
+    rect(s, 165, y, 1270, 2, C["line"])
+    text(s, 82, y-15, f"{v}%", 23, C["muted"])
+for x, value, reference, label, period in [
+    (280, .91, 2.03, "Inicio", "14 nov · media del equipo"),
+    (740, 1.98825, 1.94425, "u1", "15 nov · práctica"),
+    (1200, 2.117, 1.9055, "u3k", "15 nov · reajuste"),
 ]:
-    for x,value in zip(columns,vals):
-        text(s, x, y, value, 29 if x<1310 else 27, col, True)
-text(s, 75, 715, "Margen = conversión − referencia", 28, bold=True)
+    height=value*scale
+    rect(s, x, bottom-height, 170, height, C["green"], 16)
+    text(s, x-5, bottom-height-65, f"{value:.2f}%".replace(".",","), 47, C["green"], True)
+    rect(s, x-35, bottom-reference*scale, 240, 6, C["orange"], 3)
+    text(s, x+40, 770, label, 30, bold=True)
+    text(s, x-50, 815, period, 21, C["muted"])
 
 s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 35,
     "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "

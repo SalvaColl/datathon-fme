@@ -715,11 +715,11 @@
     ]
   },
   {
-    "kicker": "Datos por versi\u00f3n / comparaci\u00f3n con contexto",
-    "title": "Cada versi\u00f3n, con su contexto.",
+    "kicker": "Nuestra evoluci\u00f3n / conversi\u00f3n",
+    "title": "De perseguir la referencia a superarla.",
     "seconds": 35,
-    "notes": "Aqu\u00ed est\u00e1n las cifras de dos versiones, con sus muestras y su referencia. El margen pas\u00f3 de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. Son ocho bloques de pr\u00e1ctica, no un A/B aleatorizado. Las tablas completas est\u00e1n disponibles para preguntas. No atribuimos al modelo final una media que mezcla versiones.",
-    "source": "presentation/cifras.md, javi/jury-final: 8 bloques, 4 por pol\u00edtica, 10.800 peticiones por pol\u00edtica. Medias de conversiones documentadas: u1 1,98825 y referencia 1,94425; u3k 2,117 y referencia 1,9055. Margen documentado +0,044 frente a +0,212 pp. Valores mostrados redondeados; comparaci\u00f3n temporal, no aleatorizada.",
+    "notes": "De menos del uno por ciento a superar la referencia. Las marcas naranjas son la referencia de cada ventana. Esto es pr\u00e1ctica, no el resultado de la final.",
+    "source": "Inicio: presentation/guion.md, marcador api/state del 14 nov 13:50 UTC, equipo 0,91%, referencia 2,03%, N=10.785. Media mixta de versiones y ca\u00edda, no resultado aislado del primer modelo. presentation/cifras.md, javi/jury-final: 8 bloques, 4 por pol\u00edtica, 10.800 peticiones por pol\u00edtica. Medias de conversiones documentadas: u1 1,98825 y referencia 1,94425; u3k 2,117 y referencia 1,9055. Margen documentado +0,044 frente a +0,212 pp. Valores mostrados redondeados; comparaci\u00f3n temporal, no aleatorizada.",
     "shapes": [
       {
         "kind": "rect",
@@ -746,7 +746,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "DATOS POR VERSI\u00d3N / COMPARACI\u00d3N CON CONTEXTO"
+          "NUESTRA EVOLUCI\u00d3N / CONVERSI\u00d3N"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -755,272 +755,297 @@
       {
         "kind": "text",
         "x": 70,
-        "y": 143,
+        "y": 138,
         "w": 1465,
-        "h": 197.64,
+        "h": 183.35999999999999,
         "lines": [
-          "Cada versi\u00f3n,",
-          "con su contexto."
+          "De perseguir la referencia",
+          "a superarla."
         ],
-        "size": 78,
+        "size": 72,
         "color": "F5F7FA",
         "bold": true
       },
       {
-        "kind": "text",
-        "x": 1100,
-        "y": 158,
-        "w": 435,
-        "h": 142.9,
-        "lines": [
-          "+0,17"
-        ],
-        "size": 110,
+        "kind": "rect",
+        "x": 1010,
+        "y": 93,
+        "w": 22,
+        "h": 22,
         "color": "61E4B1",
-        "bold": true
+        "radius": 5
       },
       {
         "kind": "text",
-        "x": 1110,
-        "y": 290,
-        "w": 425,
-        "h": 45.32,
+        "x": 1046,
+        "y": 89,
+        "w": 489,
+        "h": 39.37,
         "lines": [
-          "puntos de margen"
+          "Equipo"
         ],
-        "size": 28,
-        "color": "A6B5C8",
+        "size": 23,
+        "color": "F5F7FA",
         "bold": false
       },
       {
+        "kind": "rect",
+        "x": 1160,
+        "y": 102,
+        "w": 35,
+        "h": 5,
+        "color": "FFAC86",
+        "radius": 0
+      },
+      {
         "kind": "text",
-        "x": 75,
-        "y": 355,
-        "w": 1460,
-        "h": 44.129999999999995,
+        "x": 1210,
+        "y": 89,
+        "w": 325,
+        "h": 39.37,
         "lines": [
-          "Reajustamos con nuestro feedback. Comparamos con la referencia de cada ventana."
+          "Referencia de la ventana"
         ],
-        "size": 27,
+        "size": 23,
+        "color": "F5F7FA",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 165,
+        "y": 745,
+        "w": 1270,
+        "h": 2,
+        "color": "304154",
+        "radius": 0
+      },
+      {
+        "kind": "text",
+        "x": 82,
+        "y": 730,
+        "w": 1453,
+        "h": 39.37,
+        "lines": [
+          "0%"
+        ],
+        "size": 23,
         "color": "A6B5C8",
         "bold": false
       },
       {
         "kind": "rect",
-        "x": 70,
-        "y": 432,
-        "w": 1460,
-        "h": 249,
-        "color": "192638",
-        "radius": 22
+        "x": 165,
+        "y": 570,
+        "w": 1270,
+        "h": 2,
+        "color": "304154",
+        "radius": 0
       },
       {
         "kind": "text",
-        "x": 100,
-        "y": 457,
-        "w": 1435,
-        "h": 38.18,
+        "x": 82,
+        "y": 555,
+        "w": 1453,
+        "h": 39.37,
         "lines": [
-          "Versi\u00f3n"
+          "1%"
         ],
-        "size": 22,
+        "size": 23,
         "color": "A6B5C8",
-        "bold": true
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 165,
+        "y": 395,
+        "w": 1270,
+        "h": 2,
+        "color": "304154",
+        "radius": 0
       },
       {
         "kind": "text",
-        "x": 570,
-        "y": 457,
-        "w": 965,
-        "h": 38.18,
+        "x": 82,
+        "y": 380,
+        "w": 1453,
+        "h": 39.37,
         "lines": [
-          "Peticiones"
+          "2%"
         ],
-        "size": 22,
+        "size": 23,
         "color": "A6B5C8",
-        "bold": true
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 280,
+        "y": 585.75,
+        "w": 170,
+        "h": 159.25,
+        "color": "61E4B1",
+        "radius": 16
       },
       {
         "kind": "text",
-        "x": 790,
-        "y": 457,
-        "w": 745,
-        "h": 38.18,
+        "x": 275,
+        "y": 520.75,
+        "w": 1260,
+        "h": 67.93,
         "lines": [
-          "Conversi\u00f3n"
+          "0,91%"
         ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1050,
-        "y": 457,
-        "w": 485,
-        "h": 38.18,
-        "lines": [
-          "Referencia"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1310,
-        "y": 457,
-        "w": 225,
-        "h": 38.18,
-        "lines": [
-          "Margen"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 100,
-        "y": 514,
-        "w": 1435,
-        "h": 46.51,
-        "lines": [
-          "u1 \u00b7 anterior"
-        ],
-        "size": 29,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 570,
-        "y": 514,
-        "w": 965,
-        "h": 46.51,
-        "lines": [
-          "10.800"
-        ],
-        "size": 29,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 790,
-        "y": 514,
-        "w": 745,
-        "h": 46.51,
-        "lines": [
-          "1,988%"
-        ],
-        "size": 29,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1050,
-        "y": 514,
-        "w": 485,
-        "h": 46.51,
-        "lines": [
-          "1,944%"
-        ],
-        "size": 29,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1310,
-        "y": 514,
-        "w": 225,
-        "h": 44.129999999999995,
-        "lines": [
-          "+0,044 pp"
-        ],
-        "size": 27,
-        "color": "A6B5C8",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 100,
-        "y": 590,
-        "w": 1435,
-        "h": 46.51,
-        "lines": [
-          "u3k \u00b7 reajustada"
-        ],
-        "size": 29,
+        "size": 47,
         "color": "61E4B1",
         "bold": true
       },
       {
-        "kind": "text",
-        "x": 570,
-        "y": 590,
-        "w": 965,
-        "h": 46.51,
-        "lines": [
-          "10.800"
-        ],
-        "size": 29,
-        "color": "61E4B1",
-        "bold": true
+        "kind": "rect",
+        "x": 245,
+        "y": 389.75000000000006,
+        "w": 240,
+        "h": 6,
+        "color": "FFAC86",
+        "radius": 3
       },
       {
         "kind": "text",
-        "x": 790,
-        "y": 590,
-        "w": 745,
-        "h": 46.51,
+        "x": 320,
+        "y": 770,
+        "w": 1215,
+        "h": 47.699999999999996,
         "lines": [
-          "2,117%"
+          "Inicio"
         ],
-        "size": 29,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1050,
-        "y": 590,
-        "w": 485,
-        "h": 46.51,
-        "lines": [
-          "1,906%"
-        ],
-        "size": 29,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1310,
-        "y": 590,
-        "w": 225,
-        "h": 44.129999999999995,
-        "lines": [
-          "+0,212 pp"
-        ],
-        "size": 27,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 715,
-        "w": 1460,
-        "h": 45.32,
-        "lines": [
-          "Margen = conversi\u00f3n \u2212 referencia"
-        ],
-        "size": 28,
+        "size": 30,
         "color": "F5F7FA",
         "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 230,
+        "y": 815,
+        "w": 1305,
+        "h": 36.989999999999995,
+        "lines": [
+          "14 nov \u00b7 media del equipo"
+        ],
+        "size": 21,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 740,
+        "y": 397.05625,
+        "w": 170,
+        "h": 347.94375,
+        "color": "61E4B1",
+        "radius": 16
+      },
+      {
+        "kind": "text",
+        "x": 735,
+        "y": 332.05625,
+        "w": 800,
+        "h": 67.93,
+        "lines": [
+          "1,99%"
+        ],
+        "size": 47,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "rect",
+        "x": 705,
+        "y": 404.75624999999997,
+        "w": 240,
+        "h": 6,
+        "color": "FFAC86",
+        "radius": 3
+      },
+      {
+        "kind": "text",
+        "x": 780,
+        "y": 770,
+        "w": 755,
+        "h": 47.699999999999996,
+        "lines": [
+          "u1"
+        ],
+        "size": 30,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 690,
+        "y": 815,
+        "w": 845,
+        "h": 36.989999999999995,
+        "lines": [
+          "15 nov \u00b7 pr\u00e1ctica"
+        ],
+        "size": 21,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 1200,
+        "y": 374.525,
+        "w": 170,
+        "h": 370.475,
+        "color": "61E4B1",
+        "radius": 16
+      },
+      {
+        "kind": "text",
+        "x": 1195,
+        "y": 309.525,
+        "w": 340,
+        "h": 67.93,
+        "lines": [
+          "2,12%"
+        ],
+        "size": 47,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "rect",
+        "x": 1165,
+        "y": 411.5375,
+        "w": 240,
+        "h": 6,
+        "color": "FFAC86",
+        "radius": 3
+      },
+      {
+        "kind": "text",
+        "x": 1240,
+        "y": 770,
+        "w": 295,
+        "h": 47.699999999999996,
+        "lines": [
+          "u3k"
+        ],
+        "size": 30,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1150,
+        "y": 815,
+        "w": 385,
+        "h": 36.989999999999995,
+        "lines": [
+          "15 nov \u00b7 reajuste"
+        ],
+        "size": 21,
+        "color": "A6B5C8",
+        "bold": false
       }
     ]
   },

@@ -2,7 +2,7 @@
 
 **Versión actual: pitch.html**, en español y sin dependencias de red. El hilo es observación → decisión → prueba → resultado por versión. Conserva el flujo del plazo de tres segundos y el uso de RawTree/Tinybird. **D** abre las tablas de apoyo, que también están en **datos_versiones.html**. El guion actualizado está en **GUION_ES.md**. Los PDF/PPTX conservan una revisión anterior.
 
-Seis diapositivas y un guion de **354 palabras**. Sin pies ni numeración: cada ejemplo conecta observación y decisión. Claude se acredita para programación y Codex para investigación. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
+Seis diapositivas y un guion de **330 palabras**. Sin pies ni numeración: cada ejemplo conecta observación y decisión. Claude se acredita para programación y Codex para investigación. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
 
 ## Published scoring weights
 
