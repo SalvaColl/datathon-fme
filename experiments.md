@@ -790,3 +790,16 @@ Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cu
 ## E-532 — Detector rápido repetido sobre todo el 14 nov (T-053)
 
 `python recsys/trend_fast_replay.py` (necesita los agregados por minuto; solo lectura): `trends.compute` + `trends.fast_hot` cada minuto de 09:40 a 00:50 UTC. Regla de 15 minutos: entra en el minuto 4–8 y sale en el 52–56. Rápido (3 minutos, alza 2,5, z 8, 50 vistas; se mantiene con alza 1,5 y z 3): entra en el minuto 2–3, sale en el 46–47, 43–44 de los 45 minutos cubiertos, 0 minutos marcados fuera de las 7 ráfagas.
+
+## E-540 — Vistas de peticiones anteriores (T-054, 15 nov 01:30 UTC)
+
+**OBSERVED DATA / LIVE FEEDBACK.** Las `recent_views` de una petición no aparecen en `shop.events` (la última vista de la petición coincide con la última vista orgánica del usuario en el 0,09% de 110k peticiones): son una fuente aparte que el writer solo usaba para la petición en curso.
+
+- Carrusel histórico (política antigua, exposición aleatorizada, 29 oct–14 nov, 5,1 M impresiones, páginas): producto sin historial orgánico del usuario, fuera de las vistas actuales y presente en las vistas de una petición anterior: 56,4 compras por 10k impresiones ponderadas por puesto frente a 12,6 (x4,5; 125 compras; 15,8 para la misma subcategoría sin haberlo visto). Plano por puesto. Por antigüedad: <24 h 80–86, 1–3 días 60, 3–10 días 45, >10 días 42. Por repeticiones: 1 → 46, 2 → 75. Como referencia, estar en las vistas actuales: 104.
+- En vivo, conocidos en páginas (14 nov desde 16:00 UTC, productos sin historial orgánico, vistas de 24 días de `history_sessions`): 65 frente a 31 por 10k (40 compras, 19 esperadas); fuera del contexto de la sesión 51 frente a 17,7; clics x1,7. Carritos pendientes: x1,15 (sin evidencia; la feature vale 0 en ellos).
+- En vivo, nuevos en páginas, visto en una petición anterior del mismo día: 369 frente a 65 por 10k (13 compras, 2,3 esperadas a igual puesto); clics x3,5. Solo se mostraba en el 10% de las peticiones con sesión previa.
+- Home: sin evidencia (1 compra); la política lo deja a 0.
+- Alcance: 99% de los conocidos tienen productos así (mediana 34 en 24 días); 43% de las páginas de nuevos y 61% de las de conocidos tienen una petición previa en el evento.
+- Descartado en la misma pasada: reposición de stock (64 → 68 compras orgánicas por millón de vistas globales, sin efecto), promociones de categoría (productos sin carrito 32 → 35 por 10k; carritos de la categoría x1,4, 60 compras).
+
+**Limitación:** el efecto en vivo está medido sobre lo que el modelo ya decidía mostrar; la dosis (peso 3,0 conocidos / 2,5 nuevos) es una conjetura a ajustar en caliente con el leaderboard. Vuelta atrás en caliente: `policy.unified_hotc.json`.

@@ -24,7 +24,7 @@ best first. No candidate lists: 5,100 products x 11 features is one numpy matrix
 No RawTree calls, no writes. Weights live in lfm_coef.json (refit: `python lfm_build.py --pull`).
 """
 from __future__ import annotations
-import json, math, zlib
+import json, math, sys, zlib
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -55,7 +55,14 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # shoppers (11% of the requests of a burst) bought hot products 11 times more often than the other products at the
          # same slot (30 buys vs 2.7 expected); everybody else 3 vs 1.9, no evidence (E-530). Lets a policy give them a
          # large dose and the rest a small one (`hot`); weight 0 in every committed file
-         "hotc"]
+         "hotc",
+         # T-054: the product was in the recent views of an EARLIER request of this shopper. Those views never reach
+         # shop.events, so until now the writer forgot them the moment the request was answered. Randomised history carousel
+         # (24 days, 5.1 M impressions): 56 vs 12.6 purchases per 10k for products without organic history (x4.5, 125 buys,
+         # flat across slots); live 14 Nov: returning shoppers x2.1 (40 buys vs 19 expected), new shoppers x5.6 (13 vs 2.3)
+         # (E-540). Value = log1p(earlier requests of the last 30 days + PRV_TODAY x earlier requests since the event
+         # started), 0 for pending carts; home has its own weight block; weight 0 in every committed file
+         "prv"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -151,7 +158,10 @@ class Snap:
         return out
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None, mfu=None) -> np.ndarray:
+PRV_TODAY, PRV_CAP = 2.0, 8.0      # T-054: weight of a view in an earlier request of the event; cap on the total count
+
+
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None, mfu=None, prev=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -207,6 +217,13 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         X[:, 22] = S.hot                                                                        # every page: a burst reaches every shopper
         if rows: X[:, 25] = S.hot * np.isin(S.cat, S.cat[rows])                                 # T-053: the burst's category is in the recent views
     if getattr(S, "orate", None) is not None: X[:, 23] = S.orate; X[:, 24] = S.opop             # every page: a property of the product
+    if prev:                                            # T-054: {product: weighted count of EARLIER requests that had it in view}
+        for p, c in prev.items():
+            k = r(p)
+            if k is not None and c > 0: X[k, 26] = math.log1p(min(float(c), PRV_CAP))
+        if lc: X[lc, 26] = 0.0                          # pending carts keep their own order (live: x1.15, no evidence)
+        hk = [k for k in (r(p) for p in hist_cart) if k is not None]
+        if hk: X[hk, 26] = 0.0
     return X if idx is None else X[idx]
 
 
@@ -282,6 +299,10 @@ class LiveFit:
         self.ccode, self.sub_code, self.icode = {}, {}, {}      # category name -> code, subcategory -> code, product -> (cat, sub)
         self.urow, self.UC, self.US = {}, None, None            # user -> row of the history matrices
         self.lmix = {}                                          # today's views: user -> {product: views}
+        # T-054: recent views of the shopper's EARLIER requests (they never appear in shop.events).
+        self.prv_hist = {}                                      # user -> (products, counts): history_sessions, last 30 days
+        self.prv_day = {}                                       # user -> {product: requests of the event that had it in view}
+        self.prv_last = {}                                      # user -> (request_id, products) of the newest request added
         self.NC, self.NS = 16, 160                              # fixed widths, so codes stay valid when the catalog grows
         self.graph = None                                       # {product: [[neighbour, weight], ...]}, read once from GRAPH
         self.mf_u, self.mf_P, self.mf_Q, self.mf_items = None, None, None, None    # factorisation, read once from MF
@@ -437,6 +458,47 @@ class LiveFit:
             if c[1] >= 0: sv[c[1]] += n
         return cv, sv
 
+    # ---- T-054: views of earlier requests ----
+    def load_prev_hist(self, frame) -> int:
+        """frame: columns u, i, n (requests of the last 30 days of history_sessions with product i in the recent views)."""
+        out = {}
+        f = frame.sort_values("u", kind="stable")
+        us = f.u.values; items = f.i.values; ns = f.n.values
+        cut = np.r_[0, np.flatnonzero(us[1:] != us[:-1]) + 1, len(us)]
+        for a, b in zip(cut[:-1], cut[1:]):
+            out[us[a]] = (tuple(sys.intern(str(x)) for x in items[a:b]), tuple(int(x) for x in ns[a:b]))
+        self.prv_hist = out
+        return len(out)
+
+    def add_request(self, u, rid, rv):
+        """One request of the event (refresher thread). A product counts once per request."""
+        items = tuple(dict.fromkeys(p for p in (rv or ()) if p))
+        if not items: return
+        d = self.prv_day.setdefault(u, {})
+        for p in items: d[p] = d.get(p, 0) + 1
+        self.prv_last[u] = (rid, items)
+
+    def prev_views(self, u, rid=None):
+        """{product: history requests + PRV_TODAY x event requests}, without the request being answered (`rid`): the
+        refresher may have stored it already, and its own views are `islast` / `oinrv`, not earlier ones."""
+        out = {}
+        h = self.prv_hist.get(u)
+        if h:
+            for p, n in zip(h[0], h[1]): out[p] = float(n)
+        d = self.prv_day.get(u)
+        if d:
+            last = self.prv_last.get(u)
+            own = set(last[1]) if (last and rid is not None and last[0] == rid) else ()
+            for p, n in list(d.items()):
+                n = n - 1 if p in own else n
+                if n > 0: out[p] = out.get(p, 0.0) + PRV_TODAY * n
+        return out
+
+    def wants_prv(self) -> bool:
+        k = FEATS.index("prv")
+        sets = [self.w] + [w for w, _ in list(self.alt.values())]
+        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
+
     def wants_hot(self) -> bool:
         """Does any weight set in use (committed or arm) give the burst feature a weight? If not, nobody asks for trends."""
         ks = (FEATS.index("hot"), FEATS.index("hotc"))
@@ -479,8 +541,10 @@ class LiveFit:
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
         m = getattr(self, "alt_lq", {}).get(model) if model else None      # T-028: this arm asks for the corrected quality
         page = req.get("page", "product")
+        prev = self.prev_views(req["user_id"], req.get("request_id")) if w[seg][FEATS.index("prv")] != 0.0 else None
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
-                     mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
+                     mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None,
+                     prev=prev)
         s = X @ w[seg] + b0[seg]
         if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
             # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc

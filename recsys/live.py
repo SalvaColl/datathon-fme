@@ -294,6 +294,11 @@ def initialize():
     except Exception as e: print('live_quality not installed, serving unchanged:', type(e).__name__, e, flush=True)
     try: LF = lfm.LiveFit.load(history)
     except Exception as e: print('lfm not loaded, lfm variants disabled:', type(e).__name__, e, flush=True)
+    # T-054: views of earlier requests over the last 30 days (download_prev_views.py). Absent file = event requests only.
+    try:
+        if LF is not None and (DATA / 'prev_views.parquet').exists():
+            print('prev views history:', LF.load_prev_hist(pd.read_parquet(DATA / 'prev_views.parquet')), 'users', flush=True)
+    except Exception as e: print('prev views history not loaded:', type(e).__name__, e, flush=True)
     # T-025 hook (home_arms): inert unless data/home_arms.json lists arms; only swaps slates of requests without recent_views.
     try: home_arms.install(globals())
     except Exception as e: print('home_arms not installed, serving unchanged:', type(e).__name__, e, flush=True)
@@ -358,6 +363,36 @@ def apply_events(rows, chunk=EVENT_CHUNK, pause=time.sleep):
                 if AP is not None: AP.add(r["u"], r["i"], r["v"])
                 if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"], r.get("ta"), r.get("tp"))
         if k + chunk < len(rows): pause(0.002)      # threading.Lock is not fair: yield so a waiting predict() gets in
+
+PRV_SINCE = os.environ.get("PRV_SINCE", "2026-11-14 07:00:00")      # start of the event's requests; NOT tied to EVENTS_SINCE
+PRV_SQL = """SELECT request_id::String rid, user_id::String u, ts::DateTime64(3)::String t, toJSONString(recent_views) rv
+      FROM shop.requests WHERE ts::DateTime64(3) > toDateTime64('{lo}',3){hi}"""
+PRV_OVERLAP_S = 5       # each incremental read goes back this far (rows can land late); request ids seen there are skipped
+
+def refresh_prev_views():
+    """T-054: feed LF with the recent views of every request of the event. They never appear in shop.events, so this is
+    the only source. First call = backfill by the hour (the store is rebuilt from RawTree at every start, nothing to
+    persist); later calls read from the watermark. Never raises; without it the `prv` feature is simply 0."""
+    if LF is None: return
+    try:
+        now = pd.Timestamp.now("UTC").tz_localize(None)
+        seen = state.setdefault("prv_seen", {})
+        for lo, hi in event_windows(state.setdefault("prv_ts", PRV_SINCE), now):
+            rows = query(PRV_SQL.format(lo=lo, hi=f" AND ts::DateTime64(3) <= toDateTime64('{hi}',3)" if hi else ""), timeout=60)
+            mx = max((r["t"] for r in rows), default=None)
+            for k in range(0, len(rows), 500):
+                for r in rows[k:k + 500]:
+                    if r["rid"] in seen or not r.get("rv") or r["rv"] == "[]": continue
+                    try: rv = [x["product_id"] for x in json.loads(r["rv"]) if isinstance(x, dict) and x.get("product_id")]
+                    except (ValueError, TypeError): continue
+                    LF.add_request(r["u"], r["rid"], rv)
+                if k + 500 < len(rows): time.sleep(0.002)          # let the serving loop run between chunks
+            if hi: state["prv_ts"] = hi
+            elif mx:
+                wm = str(pd.Timestamp(mx) - pd.Timedelta(seconds=PRV_OVERLAP_S))[:23]
+                state["prv_seen"] = seen = {r["rid"]: 1 for r in rows if r["t"] > wm} | {k: 1 for k in list(seen)[-2000:]}
+                state["prv_ts"] = max(wm, lo)
+    except Exception as e: print('prev views refresh failed', type(e).__name__, e, flush=True)
 
 def fb_window():
     """Our own carousel purchases never reach shop.events, so after a (re)start the first read takes ALL of them (a
@@ -537,6 +572,7 @@ def refresher():
                 with lock:
                     state.update(cat=cat, unavail=unavail, live=None, pools=pools, best=best)
             T = refresh_events()
+            refresh_prev_views()
             if AP is not None:
                 try: AP.refresh(query, cat, BASE["item"], T.item_frame(), organic_item=organic_frame(T))
                 except Exception as e: print('aff refresh failed', type(e).__name__, e, flush=True)
@@ -622,7 +658,7 @@ def lfm_slates(reqs, unavail, versions):
         with feature_lock: states = [LF.user_state(reqs[k]['user_id']) for k in idx]
         for k, st in zip(idx, states):
             r = reqs[k]; new = is_new(r); tag = lfm_route(lfm_arm(r['user_id']), new, r.get('page', 'product'), r['rv'])
-            req = dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new, device=r.get('device'), region=r.get('region'))
+            req = dict(user_id=r['user_id'], rv=r['rv'], page=r.get('page', 'product'), is_new_user=new, device=r.get('device'), region=r.get('region'), request_id=r.get('request_id'))
             try: s = LF.slate(req, st, AP.aff, exclude=unavail, model=tag)
             except Exception as e:
                 print('lfm slate error', type(e).__name__, e, flush=True); s = None
