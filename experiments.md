@@ -817,3 +817,22 @@ Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cu
 - Estimación (conjetura): +0,05 a +0,15 puntos de conversión total.
 
 Features `hcb` / `hcc` (peso 0 = inertes), fichero `data/hist_carousel.parquet` (`download_prev_views.py`). Política `policy.unified_hcb.json` (u1h = u1v + hcb 3,0 y hcc 0,8 en páginas de conocidos, hcb 1,5 en home). La dosis está en la escala de cs2r (chn 3,0) y no se ha pasado por repetición.
+
+## E-570 — Pesos de lfm reajustados contra la compra del carrusel (T-057, 15 nov 02:00–03:00 UTC) — OFFLINE ESTIMATE
+
+Datos: 143.809 peticiones servidas por el equipo (14 nov 11:25 – 15 nov 01:49 UTC), 1,44 M impresiones, 2.455 compras; señales de cada producto mostrado reconstruidas a fecha de la petición (`unified_eval.snapshots` + `lfm.features`). Scripts en `recsys/lab_t057/`.
+
+Método: logit condicional dentro de cada petición con compra (cuál de los 10 mostrados se compró), efecto de puesto libre, penalización centrada en la puntuación de u1 multiplicada por una escala ajustada (todo peso se juzga contra la puntuación que ya servimos), clics como segunda verosimilitud con peso 0,3. Validación temporal (entrenar antes del corte, evaluar después) con bootstrap por petición.
+
+Medido:
+- Conocidos en páginas (1.297 compras). En la escala de u1: aff10 2,13 → 6,2; chn/cl 3,0 → 1,85/2,0; ssub2/scat2 3,0 → 2,4/2,0; ucat 6 → 8,9; usub 1,3 → 4,5; islast 3,7 → 5,4; na 0,28 → 0,92; orate 1,6 → 1,94. Ganancia de verosimilitud frente a u1 en los cortes 17/19/21/23 h: +36 [18, 54], +23,5 [7, 40], +18 [5, 33], +10 [−1, 21]. `policy.rot_u2c.json` empata en esta medida (+42, +21, +18, +8).
+- Compras orgánicas (30 min) en el top 10, conocidos/página: u1 16,8%, u2c 17,8%, u3k 18,5% (+1,68 ± 0,33), u3n 19,2% (+2,40 ± 0,37). Compras de carrusel retenidas: u1 88,9%, u3k 92,6%, u3n 92,4%.
+- `newp` para conocidos en páginas: coeficiente 3,3–5,3 (escala u1) en las dos mitades del día; ganancia fuera de muestra +11,7 [6, 18], +7,3, +6,6, +8,0 [4, 13]. Dosis 1,5 = 1,5 lanzamientos por lista; 2,5 ya pierde compras de carrusel retenidas.
+- hcb/hcc/prv encima del reajuste: +1 a +3, sin significación (dosis ajustadas 1,56 / 0,69 / 1,15). hcb 3,0 sobre u1 (`rot_u1hb`): 0. hcb 1,5 en home: negativo en 3 de 4 cortes (−5 [−10, 0], −5 [−8, −1], −3 [−6, 0]; 26–61 compras).
+- Nuevos en páginas (994 compras): +7,5, +9,9, +7,4, +3,6 de verosimilitud; compras orgánicas en top 10 sin cambio (+0,35 ± 0,37). Home (154 compras): sin ganancia.
+
+Descartado: pesos separados para comprador fuerte (≥12% de carritos por vista) y resto; 22 interacciones y términos no lineales (ninguno pasa); variedad de la lista (categorías distintas −0,09 ± 0,04 estandarizado, confundido con sesiones enfocadas); `hotc` 9 (−19 [−35, −5] en nuevos).
+
+Límites: las listas las ordenaron nuestras políticas (el efecto de puesto libre lo corrige solo si es separable); la entrada al top 10 de productos nunca mostrados es extrapolación; `shop.history_sessions` no se usó (las señales de lfm no se pueden reconstruir a fecha sin fuga). Sin lectura en vivo al escribir esto.
+
+Políticas (JSON en caliente, sin reinicio): `policy.unified_u3k.json` (conocidos/página reajustado), `policy.unified_u3n.json` (+ newp 1,5; recomendada), `policy.unified_u3.json` (+ nuevos reajustados), `policy.unified_u4k.json` / `policy.unified_u4n.json` (+ hcb/hcc/prv).
