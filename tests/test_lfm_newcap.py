@@ -107,5 +107,87 @@ class NewcapTests(unittest.TestCase):
         finally: live.LF = saved
 
 
+class FakeSnap:
+    """Just what cap_launched / top_items read: ids, n and the launched flags."""
+    def __init__(self, ids, launched):
+        self.ids = list(ids); self.n = len(ids); self.newp = np.array([1.0 if p in launched else 0.0 for p in ids])
+
+
+def capped(ids, scores, launched, c, own=(), exclude=(), n=10):
+    S = FakeSnap(ids, launched); s = np.array(scores, dtype=float)
+    return S, s, lfm.top_items(S, lfm.cap_launched(S, s, c, exclude, own, n), n, exclude)
+
+
+class ServedOwnTests(unittest.TestCase):
+    """T-063: an own launched product uses the cap only when it is in the served list (cases E-RS13)."""
+    OLD = [f"O{k}" for k in range(12)]
+
+    def test_own_products_below_the_list_do_not_use_the_cap(self):
+        # cap 2; launched A/B at 100/99; ten old products 90..81; two own launched products at 1/0
+        ids = ["A", "B"] + self.OLD[:10] + ["X", "Y"]; sc = [100, 99] + list(range(90, 80, -1)) + [1, 0]
+        _, _, out = capped(ids, sc, {"A", "B", "X", "Y"}, 2, own={"X", "Y"})
+        self.assertEqual(out, ["A", "B"] + self.OLD[:8])
+
+    def test_served_own_products_use_the_cap(self):
+        ids = ["A", "B", "X"] + self.OLD; sc = [100, 99, 98] + list(range(90, 78, -1))
+        _, _, out = capped(ids, sc, {"A", "B", "X"}, 2, own={"X"})
+        self.assertEqual(out, ["A", "X"] + self.OLD[:8])                        # one own in the list: one place left
+        _, _, out = capped(ids + ["Y"], sc + [97], {"A", "B", "X", "Y"}, 2, own={"X", "Y"})
+        self.assertEqual(out, ["X", "Y"] + self.OLD[:8])                        # two own in the list: none left
+
+    def test_own_product_that_enters_through_the_gap_counts(self):
+        # dropping C lets the own product X (11th) into the list; then only one free launched product may stay
+        ids = ["A", "B", "C"] + self.OLD[:7] + ["X"] + self.OLD[7:]; sc = [100, 99, 98] + list(range(90, 83, -1)) + [80] + [70, 69, 68, 67, 66]
+        _, _, out = capped(ids, sc, {"A", "B", "C", "X"}, 2, own={"X"})
+        self.assertEqual(sum(p in {"A", "B", "C", "X"} for p in out), 2)
+        self.assertEqual(out, ["A"] + self.OLD[:7] + ["X", self.OLD[7]])
+
+    def test_all_launched_products_are_own(self):
+        ids = ["X", "Y", "Z"] + self.OLD; sc = [100, 99, 98] + list(range(90, 78, -1))
+        S, s, out = capped(ids, sc, {"X", "Y", "Z"}, 1, own={"X", "Y", "Z"})
+        self.assertEqual(out, ["X", "Y", "Z"] + self.OLD[:7])                   # never dropped, even above the cap
+        self.assertIs(lfm.cap_launched(S, s, 1, (), {"X", "Y", "Z"}), s)
+
+    def test_more_than_ten_own_products(self):
+        own = [f"X{k}" for k in range(12)]; ids = own + ["A"] + self.OLD; sc = list(range(200, 188, -1)) + [150] + list(range(90, 78, -1))
+        _, _, out = capped(ids, sc, set(own) | {"A"}, 2, own=set(own))
+        self.assertEqual(out, own[:10])
+
+    def test_stockout_of_an_own_product_frees_its_place(self):
+        ids = ["A", "B", "X"] + self.OLD; sc = [100, 99, 98] + list(range(90, 78, -1))
+        _, _, out = capped(ids, sc, {"A", "B", "X"}, 2, own={"X"}, exclude={"X"})
+        self.assertEqual(out, ["A", "B"] + self.OLD[:8])
+
+    def test_fewer_than_ten_old_products(self):
+        ids = ["A", "B", "C", "D"] + self.OLD[:5]; sc = [100, 99, 98, 97, 5, 4, 3, 2, 1]
+        S, s, out = capped(ids, sc, {"A", "B", "C", "D"}, 2)
+        self.assertEqual(out, ["A", "B"] + self.OLD[:5])                        # short list: LiveFit.slate then serves the uncapped one
+
+    def test_tie_at_the_border_keeps_the_first(self):
+        ids = ["A", "B", "C"] + self.OLD; sc = [100, 99, 99] + list(range(90, 78, -1))
+        _, _, out = capped(ids, sc, {"A", "B", "C"}, 2)
+        self.assertEqual(out, ["A", "B"] + self.OLD[:8])
+
+    def test_no_own_products_is_the_old_rule(self):
+        rng = np.random.default_rng(0); ids = [f"P{k}" for k in range(60)]; launched = set(ids[::3])
+        for c in range(0, 6):
+            s = rng.normal(size=60); S = FakeSnap(ids, launched)
+            out = lfm.cap_launched(S, s, c)
+            keep = sorted((k for k in range(60) if ids[k] in launched), key=lambda k: -s[k])[:c]
+            want = s.copy(); want[[k for k in range(60) if ids[k] in launched and k not in keep]] = -np.inf
+            self.assertTrue(np.array_equal(out, want))
+
+    def test_served_list_never_exceeds_the_cap_unless_own(self):
+        rng = np.random.default_rng(1); ids = [f"P{k}" for k in range(80)]
+        for _ in range(300):
+            launched = set(rng.choice(ids, 25, replace=False)); own = set(rng.choice(sorted(launched), int(rng.integers(0, 6)), replace=False))
+            c = int(rng.integers(0, 5)); s = rng.normal(size=80); S = FakeSnap(ids, launched)
+            out = lfm.top_items(S, lfm.cap_launched(S, s, c, (), own), 10)
+            free = [p for p in out if p in launched and p not in own]; mine = [p for p in out if p in own]
+            self.assertLessEqual(len(free), max(0, c - len(mine)))
+            base = lfm.top_items(S, s, 10)
+            self.assertTrue(set(p for p in base if p in own) <= set(out))       # own products of the uncapped list stay
+
+
 if __name__ == "__main__":
     unittest.main()
