@@ -826,3 +826,18 @@ Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer s
 - Cada tanda aporta más o menos lo mismo y la edad no la apaga (aportes por tanda con newp 1,0: 0,33 / 0,24 / 0,28 / 0,08 / 0,41), así que la exposición de una dosis fija crece con el número de tandas: x1,2 con 6 y x1,4 con 7 (extrapolación lineal, conjetura).
 - Tope `newcap` (clave del brazo, por segmento `known` / `new` / `home_known` / `home_new`; ausente = sin tope): `lfm.cap_launched` deja a −inf todos los lanzados menos los `c` mejores antes de elegir la lista; los que el comprador ha visto en la sesión o tiene en un carrito no se quitan y cuentan para el tope. Con las dosis de u3nkh (1,0 / 0,5 / 0,8): sin tope 1,35 / 0,89 / 1,41 por lista y 17% / 6% / 16% de listas con 3 o más; tope 2: 0,99 / 0,78 / 1,14 y 0,3% (solo productos propios); tope 1: 0,58 / 0,56 / 0,69. Con el triple de dosis (deriva exagerada): sin tope 4,1 / 4,1 / 8,9 por lista; tope 2: 1,7 / 1,9 / 2,0. El resto de la lista conserva su orden en las 5.006 peticiones; +0,2 ms por lista; ninguna lista inválida.
 - No hay medida de conversión del tope: es un seguro contra el fallo conocido de inundar la lista (np2, 4,3 por lista), no una mejora medida. El tope 2 ya cambia hoy el 25% de las listas de páginas de conocidos y el 18% de las de home de nuevos respecto a la política probada en vivo; el tope 3 cambia el 10% de las de páginas de conocidos, el 2,5% de las de home de conocidos y el 7% de las de home de nuevos (1,21 / 0,86 / 1,32 por lista) y deja pasar más deriva.
+
+## E-620 — Sombra del prior de atributos dentro de `orate` (T-062, 15 nov 07:20 UTC) — DIAGNÓSTICO, no conversión
+
+`python attr_prior_shadow.py policy.rot_ug1.json --n 3000 --since "2026-11-15 02:00:00"`: 3.122 peticiones respondidas entre las 02:00 y las 07:10 UTC, puntuadas con catálogo, stock, estado y conteos orgánicos a la fecha de cada petición por el camino del writer (`clean_lfm_arms` → `set_arms` → `LiveFit.slate`), una vez con `uf1` y otra con `ug1` (`uf1` + `oqa: ["new", "home_new"]`).
+
+| segmento | peticiones | válidas (ambos) | listas cambiadas | slot 1 cambiado | solape de 10 | lanzados por lista uf1 → ug1 |
+|---|---|---|---|---|---|---|
+| conocidos, home | 451 | 100 % | 0 % | 0 % | 10,00 | 0,67 → 0,67 |
+| conocidos, página | 1.765 | 100 % | 0 % | 0 % | 10,00 | 0,60 → 0,60 |
+| nuevos, home | 195 | 100 % | 35,9 % | 2,6 % | 9,81 | 1,10 → 1,17 |
+| nuevos, página | 711 | 100 % | 24,5 % | 1,5 % | 9,87 | 0,53 → 0,60 |
+
+- Latencia p50 / p99: 1,72 / 4,38 ms (uf1), 1,74 / 4,42 ms (ug1). Prior calculado para los 500 (02:00) y 600 (07:10) productos sin histórico, 0 en fallback.
+- Nivel: el prior de los lanzados vale 0,007 / 0,022 / 0,067 (p10 / p50 / p90), igual que el del catálogo histórico (0,007 / 0,022 / 0,080). La fórmula actual los deja a todos en 0,05, que no es la mediana del catálogo: la mediana de `(p+1)/(v+20)` histórica es 0,017 (0,053 es la tasa agregada). Hoy, por tanto, todo lanzado entra 1,07 en `orate` por encima de la mediana (+1,9 puntos de score con peso 1,8). Con la opción, el lanzado mediano baja 0,85 y solo los del decil alto suben: **la opción cambia el nivel medio de los lanzados además de ordenarlos**, y una prueba en vivo leería las dos cosas juntas.
+- Lo que no dice: nada sobre conversión. Cambia en torno a 0,15 productos por lista de usuario nuevo.
