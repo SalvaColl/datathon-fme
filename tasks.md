@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-18 | P1 | Rebuild rejected-ideas/final-approach slide and improve closing title | Codex / codex/pitch-3min | DONE: third slide now discarded ideas vs final linear approach; closing title Los agentes aceleran / Nosotros decidimos; renders and notes regenerated | Presentation only |
 | T-PITCH-17 | P1 | Remove remaining bottom sentence from slide two | Codex / codex/pitch-3min | DONE: removed green bottom sentence; HTML/SVG/preview regenerated | Presentation only |
 | T-PITCH-16 | P1 | Tighten cover spacing, remove slide-two clarification line, clarify implementation stage | Codex / codex/pitch-3min | DONE: cover subtitle moved up, requested line removed, workflow now says implementar la idea; three changed slides visually checked | Presentation only |
 | T-PITCH-15 | P1 | Concrete affinity story checked against observed purchase rates in own feedback | Codex / codex/pitch-3min | DONE: own-feedback rates 0.6 vs 89.7 per 10k exposures; group comparison labeled, no causal uplift claimed; slide visually reviewed | I-092/E-093; rates by affinity group, not policy uplift |

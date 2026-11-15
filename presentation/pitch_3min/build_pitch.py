@@ -77,8 +77,8 @@ ES_TEXT = {
     "144 stored metric snapshots": "144 registros de métricas",
     "PRACTICE / 15 NOV 04:00–08:00 CET · 43,182 OF 43,200 SERVED ON TIME": "PRÁCTICA / 15 NOV 04:00–08:00 CET · 43.182 DE 43.200 RESPUESTAS A TIEMPO",
     "How we worked / AI-assisted development": "Cómo trabajamos / agentes de programación",
-    "Agents accelerated. Evidence decided.": "La IA acelera. La evidencia decide.",
-    "Agents accelerated.\nEvidence decided.": "La IA acelera.\nLa evidencia decide.",
+    "Agents accelerated. Evidence decided.": "Los agentes aceleran. Nosotros decidimos.",
+    "Agents accelerated.\nEvidence decided.": "Los agentes aceleran.\nNosotros decidimos.",
     "Development tool": "Herramienta de desarrollo",
     "Implementation, integrations\nand experiments.": "Programar e integrar mejoras.",
     "Audits, evaluation\nand failure cases.": "Investigar y contrastar hipótesis.",
@@ -140,10 +140,12 @@ ES_NOTES[1] = (
     "Son grupos de productos expuestos, no un antes y después del cambio. "
     "El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.")
 ES_NOTES[2] = (
-    "También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. "
-    "No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. "
-    "Conservamos una base lineal, entrenada con productos mostrados: clics, compras con triple peso y posición. "
-    "Entrenamos antes y evaluamos después. La complejidad tenía que demostrar su valor.")
+    "También aprendimos descartando. Los modelos más complejos y las interacciones probadas no mejoraron la validación. "
+    "El grafo no repitió su ventaja, y el orden de las visitas no añadió una mejora confirmada. "
+    "Nos quedamos con un modelo lineal, rápido y fácil de inspeccionar. "
+    "Lo entrenamos con clics y compras, dando triple peso a las compras. "
+    "Combina gustos, actividad de la sesión, calidad y tendencias. "
+    "En la final fijamos los pesos, mientras los datos de la tienda siguen actualizándose.")
 ES_NOTES[3] = (
     "Aquí están las cifras de dos versiones, con sus muestras y su referencia. "
     "El margen pasó de 0,044 a 0,212 puntos: unos 0,17 puntos de diferencia. "
@@ -242,24 +244,23 @@ card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
 card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "Compras en vivo",
      "Por 10.000 exposiciones:\nAfinidad baja: 0,6 compras\nAfinidad alta: 89,7 compras")
 
-s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
-text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
-text(s, 810, 165, "¿Ayuda relacionar productos entre sí?", 25, C["green"], True)
-text(s, 810, 204, "Conversión · usuarios conocidos en páginas", 22, C["muted"])
-for x, label in [(830,"Ronda"),(1000,"Base"),(1175,"+ relaciones"),(1380,"Diferencia")]:
-    text(s, x, 235, label, 22, C["muted"])
-for y, vals, col in [
-    (292, ["01","1,57%","1,77%","+0,20 pp"], C["green"]),
-    (358, ["02","2,08%","1,67%","−0,41 pp"], C["orange"]),
+s = slide("Qué descartamos / con qué nos quedamos", "Menos complejidad. Más evidencia.", 35, "", "")
+text(s, 70, 143, "Menos complejidad.\nMás evidencia.", 78, bold=True)
+rect(s, 70, 365, 650, 415, C["card"], 22)
+text(s, 100, 395, "DESCARTAMOS", 21, C["orange"], True)
+for y, label, reason in [
+    (450, "Más complejidad e interacciones", "No mejoraron la validación."),
+    (555, "La variante con grafo", "Su ventaja no se repitió."),
+    (660, "El orden de las visitas", "Sin mejora adicional confirmada."),
 ]:
-    for x, value in zip([830,1000,1175,1380], vals):
-        text(s, x, y, value, 29 if x<1380 else 25, col if x==1380 else C["white"], True)
-text(s, 830, 429, "No repitió la mejora → descartamos esa variante", 24, C["orange"], True)
-rect(s, 70, 528, 1460, 112, C["card"], 16)
-text(s, 100, 551, "También descartamos", 24, C["green"], True)
-text(s, 100, 590, "Ni modelos más complejos ni el orden de las visitas mejoraron la validación", 27)
-rect(s, 70, 681, 1460, 74, C["line"], 13)
-text(s, 98, 701, "Elegimos un modelo lineal: aprende de clics y compras; se valida con datos posteriores", 26)
+    text(s, 100, y, label, 29, bold=True)
+    text(s, 100, y+42, reason, 25, C["muted"])
+rect(s, 745, 365, 785, 415, C["card"], 22)
+text(s, 780, 395, "NUESTRO ENFOQUE FINAL", 21, C["green"], True)
+text(s, 780, 449, "Un modelo lineal, rápido y explicable", 34, bold=True)
+text(s, 780, 515, "Aprende de clics y compras\nLas compras pesan ×3 en el entrenamiento.", 27, width=710)
+text(s, 780, 610, "Combina gustos, sesión, calidad y tendencias", 27, width=710)
+text(s, 780, 705, "Pesos fijos. Datos de la tienda actualizados.", 28, C["green"], True)
 
 s = slide("Datos por versión / comparación con contexto", "Cada versión, con su contexto.", 35, "", "")
 text(s, 70, 143, "Cada versión,\ncon su contexto.", 78, bold=True)

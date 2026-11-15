@@ -2,7 +2,7 @@
 
 **Versión actual: pitch.html**, en español y sin dependencias de red. El hilo es observación → decisión → prueba → resultado por versión. Conserva el flujo del plazo de tres segundos y el uso de RawTree/Tinybird. **D** abre las tablas de apoyo, que también están en **datos_versiones.html**. El guion actualizado está en **GUION_ES.md**. Los PDF/PPTX conservan una revisión anterior.
 
-Seis diapositivas y un guion de **335 palabras**. Sin pies ni numeración: cada ejemplo conecta observación y decisión. Claude se acredita para programación y Codex para investigación. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
+Seis diapositivas y un guion de **354 palabras**. Sin pies ni numeración: cada ejemplo conecta observación y decisión. Claude se acredita para programación y Codex para investigación. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
 
 ## Published scoring weights
 
@@ -23,10 +23,10 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 |---|---|---:|---|
 | 1. Diez productos. Tres segundos. | 0:00–0:15 | 8,3% | Qué señales merecían confianza |
 | 2. Observar. Cambiar. Comprobar. | 0:15–0:50 | 19,4% | Compras previas y afinidad: datos que motivaron señales |
-| 3. Una ronda no bastaba | 0:50–1:25 | 19,4% | Grafo, complejidad y señales que no justificaron promoción |
+| 3. Menos complejidad. Mas evidencia | 0:50–1:25 | 19,4% | Grafo, complejidad y señales que no justificaron promoción |
 | 4. Cada versión, con su contexto | 1:25–2:00 | 19,4% | Tabla u1/u3k con conversión, referencia y N |
 | 5. RawTree: del dato a la acción | 2:00–2:35 | 19,4% | SQL, submissions/feedback, métricas y trazabilidad |
-| 6. La IA acelera. La evidencia decide. | 2:35–3:00 | 13,9% | Claude/Codex, control humano y crédito breve |
+| 6. Los agentes aceleran. Nosotros decidimos. | 2:35–3:00 | 13,9% | Claude/Codex, control humano y crédito breve |
 
 ## Browser controls
 

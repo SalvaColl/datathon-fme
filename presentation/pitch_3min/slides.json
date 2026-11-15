@@ -486,10 +486,10 @@
     ]
   },
   {
-    "kicker": "Ideas descartadas / por qu\u00e9 repetimos las pruebas",
-    "title": "Una ronda no bastaba.",
+    "kicker": "Qu\u00e9 descartamos / con qu\u00e9 nos quedamos",
+    "title": "Menos complejidad. M\u00e1s evidencia.",
     "seconds": 35,
-    "notes": "Tambi\u00e9n descartamos ideas al repetir las pruebas. Un grafo gan\u00f3 0,20 puntos en una ronda, pero perdi\u00f3 0,41 en la siguiente. No lo promovimos. Los modelos m\u00e1s complejos tampoco mejoraron la validaci\u00f3n. Conservamos una base lineal, entrenada con productos mostrados: clics, compras con triple peso y posici\u00f3n. Entrenamos antes y evaluamos despu\u00e9s. La complejidad ten\u00eda que demostrar su valor.",
+    "notes": "Tambi\u00e9n aprendimos descartando. Los modelos m\u00e1s complejos y las interacciones probadas no mejoraron la validaci\u00f3n. El grafo no repiti\u00f3 su ventaja, y el orden de las visitas no a\u00f1adi\u00f3 una mejora confirmada. Nos quedamos con un modelo lineal, r\u00e1pido y f\u00e1cil de inspeccionar. Lo entrenamos con clics y compras, dando triple peso a las compras. Combina gustos, actividad de la sesi\u00f3n, calidad y tendencias. En la final fijamos los pesos, mientras los datos de la tienda siguen actualiz\u00e1ndose.",
     "source": "E-271: conocidos/p\u00e1gina, r3 1,57% (1.489) vs grafo 1,77% (1.521), 14 nov 17:50\u201318:20 UTC. E-272: r3 2,08% (1.539) vs grafo 1,67% (1.476), 18:25\u201318:55 UTC. Los brazos difieren en home, pero mantienen los mismos pesos del grafo en p\u00e1ginas. R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.",
     "shapes": [
       {
@@ -517,7 +517,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "IDEAS DESCARTADAS / POR QU\u00c9 REPETIMOS LAS PRUEBAS"
+          "QU\u00c9 DESCARTAMOS / CON QU\u00c9 NOS QUEDAMOS"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -528,266 +528,189 @@
         "x": 70,
         "y": 143,
         "w": 1465,
-        "h": 200.01999999999998,
+        "h": 197.64,
         "lines": [
-          "Una ronda",
-          "no bastaba."
+          "Menos complejidad.",
+          "M\u00e1s evidencia."
         ],
-        "size": 79,
+        "size": 78,
         "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 810,
-        "y": 165,
-        "w": 725,
-        "h": 41.75,
-        "lines": [
-          "\u00bfAyuda relacionar productos entre s\u00ed?"
-        ],
-        "size": 25,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 810,
-        "y": 204,
-        "w": 725,
-        "h": 38.18,
-        "lines": [
-          "Conversi\u00f3n \u00b7 usuarios conocidos en p\u00e1ginas"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 830,
-        "y": 235,
-        "w": 705,
-        "h": 38.18,
-        "lines": [
-          "Ronda"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1000,
-        "y": 235,
-        "w": 535,
-        "h": 38.18,
-        "lines": [
-          "Base"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1175,
-        "y": 235,
-        "w": 360,
-        "h": 38.18,
-        "lines": [
-          "+ relaciones"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 1380,
-        "y": 235,
-        "w": 155,
-        "h": 38.18,
-        "lines": [
-          "Diferencia"
-        ],
-        "size": 22,
-        "color": "A6B5C8",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 830,
-        "y": 292,
-        "w": 705,
-        "h": 46.51,
-        "lines": [
-          "01"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1000,
-        "y": 292,
-        "w": 535,
-        "h": 46.51,
-        "lines": [
-          "1,57%"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1175,
-        "y": 292,
-        "w": 360,
-        "h": 46.51,
-        "lines": [
-          "1,77%"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1380,
-        "y": 292,
-        "w": 155,
-        "h": 41.75,
-        "lines": [
-          "+0,20 pp"
-        ],
-        "size": 25,
-        "color": "61E4B1",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 830,
-        "y": 358,
-        "w": 705,
-        "h": 46.51,
-        "lines": [
-          "02"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1000,
-        "y": 358,
-        "w": 535,
-        "h": 46.51,
-        "lines": [
-          "2,08%"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1175,
-        "y": 358,
-        "w": 360,
-        "h": 46.51,
-        "lines": [
-          "1,67%"
-        ],
-        "size": 29,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 1380,
-        "y": 358,
-        "w": 155,
-        "h": 41.75,
-        "lines": [
-          "\u22120,41 pp"
-        ],
-        "size": 25,
-        "color": "FFAC86",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 830,
-        "y": 429,
-        "w": 705,
-        "h": 40.56,
-        "lines": [
-          "No repiti\u00f3 la mejora \u2192 descartamos esa variante"
-        ],
-        "size": 24,
-        "color": "FFAC86",
         "bold": true
       },
       {
         "kind": "rect",
         "x": 70,
-        "y": 528,
-        "w": 1460,
-        "h": 112,
+        "y": 365,
+        "w": 650,
+        "h": 415,
         "color": "192638",
-        "radius": 16
+        "radius": 22
       },
       {
         "kind": "text",
         "x": 100,
-        "y": 551,
+        "y": 395,
         "w": 1435,
-        "h": 40.56,
+        "h": 36.989999999999995,
         "lines": [
-          "Tambi\u00e9n descartamos"
+          "DESCARTAMOS"
         ],
-        "size": 24,
-        "color": "61E4B1",
+        "size": 21,
+        "color": "FFAC86",
         "bold": true
       },
       {
         "kind": "text",
         "x": 100,
-        "y": 590,
+        "y": 450,
         "w": 1435,
-        "h": 44.129999999999995,
+        "h": 46.51,
         "lines": [
-          "Ni modelos m\u00e1s complejos ni el orden de las visitas mejoraron la validaci\u00f3n"
+          "M\u00e1s complejidad e interacciones"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 492,
+        "w": 1435,
+        "h": 41.75,
+        "lines": [
+          "No mejoraron la validaci\u00f3n."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 555,
+        "w": 1435,
+        "h": 46.51,
+        "lines": [
+          "La variante con grafo"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 597,
+        "w": 1435,
+        "h": 41.75,
+        "lines": [
+          "Su ventaja no se repiti\u00f3."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 660,
+        "w": 1435,
+        "h": 46.51,
+        "lines": [
+          "El orden de las visitas"
+        ],
+        "size": 29,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 100,
+        "y": 702,
+        "w": 1435,
+        "h": 41.75,
+        "lines": [
+          "Sin mejora adicional confirmada."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 745,
+        "y": 365,
+        "w": 785,
+        "h": 415,
+        "color": "192638",
+        "radius": 22
+      },
+      {
+        "kind": "text",
+        "x": 780,
+        "y": 395,
+        "w": 755,
+        "h": 36.989999999999995,
+        "lines": [
+          "NUESTRO ENFOQUE FINAL"
+        ],
+        "size": 21,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 780,
+        "y": 449,
+        "w": 755,
+        "h": 52.46,
+        "lines": [
+          "Un modelo lineal, r\u00e1pido y explicable"
+        ],
+        "size": 34,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 780,
+        "y": 515,
+        "w": 710,
+        "h": 76.25999999999999,
+        "lines": [
+          "Aprende de clics y compras",
+          "Las compras pesan \u00d73 en el entrenamiento."
         ],
         "size": 27,
         "color": "F5F7FA",
         "bold": false
       },
       {
-        "kind": "rect",
-        "x": 70,
-        "y": 681,
-        "w": 1460,
-        "h": 74,
-        "color": "304154",
-        "radius": 13
+        "kind": "text",
+        "x": 780,
+        "y": 610,
+        "w": 710,
+        "h": 44.129999999999995,
+        "lines": [
+          "Combina gustos, sesi\u00f3n, calidad y tendencias"
+        ],
+        "size": 27,
+        "color": "F5F7FA",
+        "bold": false
       },
       {
         "kind": "text",
-        "x": 98,
-        "y": 701,
-        "w": 1437,
-        "h": 42.94,
+        "x": 780,
+        "y": 705,
+        "w": 755,
+        "h": 45.32,
         "lines": [
-          "Elegimos un modelo lineal: aprende de clics y compras; se valida con datos posteriores"
+          "Pesos fijos. Datos de la tienda actualizados."
         ],
-        "size": 26,
-        "color": "F5F7FA",
-        "bold": false
+        "size": 28,
+        "color": "61E4B1",
+        "bold": true
       }
     ]
   },
@@ -1319,7 +1242,7 @@
   },
   {
     "kicker": "C\u00f3mo trabajamos / agentes de programaci\u00f3n",
-    "title": "La IA acelera. La evidencia decide.",
+    "title": "Los agentes aceleran. Nosotros decidimos.",
     "seconds": 25,
     "notes": "Usamos Claude para programar y Codex para investigar se\u00f1ales y contrastar hip\u00f3tesis. El equipo control\u00f3 las pruebas y el despliegue. Cubrimos modelos, nuevas se\u00f1ales, evaluaci\u00f3n y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidi\u00f3 qu\u00e9 conservar. Nos quedamos con una idea: construir r\u00e1pido y comprobar con rigor.",
     "source": "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; no se inventan funciones individuales ni versiones concretas de los agentes.",
@@ -1362,8 +1285,8 @@
         "w": 1465,
         "h": 200.01999999999998,
         "lines": [
-          "La IA acelera.",
-          "La evidencia decide."
+          "Los agentes aceleran.",
+          "Nosotros decidimos."
         ],
         "size": 79,
         "color": "F5F7FA",

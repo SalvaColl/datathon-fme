@@ -11,9 +11,9 @@ Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomen
 
 Observamos en el historial que los compradores repetían gustos por atributos de las descripciones. Añadimos afinidad para dar más puntuación a productos que encajaran con esos gustos. Comprobamos que la señal también aparecía en nuestro feedback real: los productos con afinidad baja registraban 0,6 compras por diez mil exposiciones, frente a 89,7 con afinidad alta. Son grupos de productos expuestos, no un antes y después del cambio. El segmento tenía solo 36 compras: apoya la señal, pero no demuestra el aumento de conversión de la política.
 
-## 3. Una ronda no bastaba. — 0:50–1:25
+## 3. Menos complejidad. Más evidencia. — 0:50–1:25
 
-También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. Conservamos una base lineal, entrenada con productos mostrados: clics, compras con triple peso y posición. Entrenamos antes y evaluamos después. La complejidad tenía que demostrar su valor.
+También aprendimos descartando. Los modelos más complejos y las interacciones probadas no mejoraron la validación. El grafo no repitió su ventaja, y el orden de las visitas no añadió una mejora confirmada. Nos quedamos con un modelo lineal, rápido y fácil de inspeccionar. Lo entrenamos con clics y compras, dando triple peso a las compras. Combina gustos, actividad de la sesión, calidad y tendencias. En la final fijamos los pesos, mientras los datos de la tienda siguen actualizándose.
 
 ## 4. Cada versión, con su contexto. — 1:25–2:00
 
@@ -23,13 +23,13 @@ Aquí están las cifras de dos versiones, con sus muestras y su referencia. El m
 
 RawTree, creado por Tinybird, es la base de nuestro circuito. Leemos peticiones, eventos y cambios del catálogo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos métricas en scratch. Así podemos explicar cada decisión y detectar fallos. En práctica, el 99,96 % de las respuestas llegó a tiempo.
 
-## 6. La IA acelera. La evidencia decide. — 2:35–3:00
+## 6. Los agentes aceleran. Nosotros decidimos. — 2:35–3:00
 
 Usamos Claude para programar y Codex para investigar señales y contrastar hipótesis. El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. Nos quedamos con una idea: construir rápido y comprobar con rigor.
 
 ## Cómo contarlo
 
-Guion: 335 palabras. Plan completo: 180 segundos.
+Guion: 354 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.
