@@ -1,0 +1,1 @@
+{"variant": "lfm", "lfm_arms": [{"tag": "oqh", "file": "lfm_coef_r3.json", "w": {"known": {"lq": 0.24, "orate": 0.35, "opop": 0.3}, "new": {"lq": 0.33, "orate": 0.9, "opop": 0.2}}, "home": {"file": "lfm_coef_r3.json", "w": {"known": {"lq": 0.24, "orate": 0.5, "opop": 0.3}, "new": {"lq": 0.33, "orate": 0.5, "opop": 0.3}}}}]}
