@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-21 | P1 | Compact observation cards and plain-language rejected ideas | Codex / codex/pitch-3min | DONE: observation cards reduced from 340 to 265px; discarded ideas described in plain language; layouts rendered | Presentation only |
 | T-PITCH-20 | P1 | Rejected-ideas graveyard and visual model explanation | Codex / codex/pitch-3min | DONE: third slide has only three measured rejections; fourth shows signals -> weighted scoring -> valid ten; both rendered and visually reviewed | Presentation only; documented rejected variants |
 | T-PITCH-19 | P1 | Visual performance progression with matched reference markers | Codex / codex/pitch-3min | DONE: three zero-based bars, same-window reference markers; source and mixed-start limitation documented; slide visually reviewed | Documented practice snapshots only; no final result |
 | T-PITCH-18 | P1 | Rebuild rejected-ideas/final-approach slide and improve closing title | Codex / codex/pitch-3min | DONE: third slide now discarded ideas vs final linear approach; closing title Los agentes aceleran / Nosotros decidimos; renders and notes regenerated | Presentation only |

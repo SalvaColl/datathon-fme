@@ -236,24 +236,24 @@ text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
 
 s = slide("Observaciones que cambiaron el modelo", "Observar. Cambiar. Comprobar.", 35, "", "")
 text(s, 70, 143, "Observar. Cambiar.\nComprobar.", 78, bold=True)
-card(s, 70, 365, 470, 340, "01 · OBSERVAR", "Los gustos se repiten",
+card(s, 70, 365, 470, 265, "01 · OBSERVAR", "Los gustos se repiten",
      "En el historial, las compras se relacionaban con los atributos de productos vistos antes.")
-card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
+card(s, 565, 365, 470, 265, "02 · CAMBIAR", "Añadimos afinidad",
      "Dimos más puntuación a productos cuyos atributos encajaban con esos gustos.")
-card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "Compras en vivo",
+card(s, 1060, 365, 470, 265, "03 · COMPROBAR", "Compras en vivo",
      "Por 10.000 exposiciones:\nAfinidad baja: 0,6 compras\nAfinidad alta: 89,7 compras")
 
 s = slide("Ideas descartadas", "El cementerio de ideas.", 35, "", "")
 text(s, 70, 140, "El cementerio de ideas.", 83, bold=True)
 text(s, 75, 258, "Una idea prometedora tenía que sobrevivir a los datos.", 31, C["muted"])
 for y, num, idea, result in [
-    (365, "01", "Modelos más complejos", "Gradient boosting e interacciones:\nno mejoraron la validación."),
-    (515, "02", "Una señal, dos rondas", "Grafo: +0,20 puntos en una ronda;\n−0,41 en la siguiente. No se confirmó."),
-    (665, "03", "El orden de las visitas", "Las señales probadas no añadieron\nuna mejora confirmada."),
+    (365, "01", "Un modelo más complicado", "Más complejidad, pero no más aciertos\nen las pruebas."),
+    (515, "02", "Productos que otros ven juntos", "Parecía mejorar las compras.\nAl repetir la prueba, empeoró."),
+    (665, "03", "Usar el orden de las visitas", "Saber qué miró primero y qué después\nno mejoró las recomendaciones."),
 ]:
     rect(s, 70, y, 1460, 2, C["line"])
     text(s, 85, y+32, num, 55, C["orange"])
-    text(s, 205, y+36, idea, 37, bold=True)
+    text(s, 205, y+36, idea, 33, bold=True)
     text(s, 850, y+29, result, 28, C["muted"], width=650)
 
 s = slide("Nuestro modelo", "Cada señal suma. Cada comprador cuenta.", 35, "", "")
