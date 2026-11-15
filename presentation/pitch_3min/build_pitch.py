@@ -80,8 +80,8 @@ ES_TEXT = {
     "Agents accelerated. Evidence decided.": "La IA acelera. La evidencia decide.",
     "Agents accelerated.\nEvidence decided.": "La IA acelera.\nLa evidencia decide.",
     "Development tool": "Herramienta de desarrollo",
-    "Implementation, integrations\nand experiments.": "Programar los modelos\ne integrar las mejoras.",
-    "Audits, evaluation\nand failure cases.": "Investigar señales\ny contrastar hipótesis.",
+    "Implementation, integrations\nand experiments.": "Programar e integrar mejoras.",
+    "Audits, evaluation\nand failure cases.": "Investigar y contrastar hipótesis.",
     "Hypothesis → isolated code → tests → measured decision": "Hipótesis → código aislado → pruebas → decisión",
     "Build fast. Verify carefully.": "Construir rápido. Comprobar con rigor.",
 }
@@ -315,7 +315,7 @@ s = slide("How we worked / AI-assisted development", "Agents accelerated. Eviden
     "Team roster supplied by the user. Claude/Codex use is confirmed at team level; no unconfirmed per-person "
     "tool or workstream assignment is asserted. Examples of agent work are in tasks and branch histories. "
     "Practice conversion 2.159% remains in EVIDENCE.md, not presented as a final result.")
-text(s, 70, 149, "Agents accelerated. Evidence decided.", 68, bold=True)
+text(s, 70, 149, "Agents accelerated.\nEvidence decided.", 79, bold=True)
 card(s, 70, 395, 710, 235, "PROGRAMACIÓN", "Claude",
      "Implementation, integrations\nand experiments.")
 card(s, 800, 395, 730, 235, "INVESTIGACIÓN", "Codex",

@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-10 | P1 | Single-line Claude/Codex card descriptions; restore closing title | Codex / codex/pitch-3min | DONE: descriptions fit on one line; HTML/SVG and preview regenerated | Presentation only |
 | T-PITCH-09 | P1 | Single-line closing headline | Codex / codex/pitch-3min | DONE: regenerated HTML/SVG; font-width check confirms title fits on one line | Presentation only |
 | T-PITCH-08 | P1 | Clear challenge wording, historical-test explanation, lighter RawTree diagram and opening hook | Codex / codex/pitch-3min | DONE: six renders reviewed; generic recommendation wording, explicit historical metric, no block-count line or RawTree point subtexts; nonnumeric opening hook | Presentation only; temporal-comparison limitations retained in notes/data |
 | T-PITCH-07 | P1 | Remove bottom controls and timer; retain keyboard navigation | Codex / codex/pitch-3min | DONE: generated HTML checked for absent toolbar/timer and retained keyboard navigation | Presentation only |

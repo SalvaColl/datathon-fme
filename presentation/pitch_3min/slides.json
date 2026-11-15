@@ -1347,11 +1347,12 @@
         "x": 70,
         "y": 149,
         "w": 1465,
-        "h": 92.92,
+        "h": 200.01999999999998,
         "lines": [
-          "La IA acelera. La evidencia decide."
+          "La IA acelera.",
+          "La evidencia decide."
         ],
-        "size": 68,
+        "size": 79,
         "color": "F5F7FA",
         "bold": true
       },
@@ -1395,10 +1396,9 @@
         "x": 98,
         "y": 528,
         "w": 654,
-        "h": 71.5,
+        "h": 41.75,
         "lines": [
-          "Programar los modelos",
-          "e integrar las mejoras."
+          "Programar e integrar mejoras."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -1444,10 +1444,9 @@
         "x": 828,
         "y": 528,
         "w": 674,
-        "h": 71.5,
+        "h": 41.75,
         "lines": [
-          "Investigar se\u00f1ales",
-          "y contrastar hip\u00f3tesis."
+          "Investigar y contrastar hip\u00f3tesis."
         ],
         "size": 25,
         "color": "A6B5C8",
