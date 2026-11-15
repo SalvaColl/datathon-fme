@@ -75,7 +75,7 @@ class OrganicQualityTests(unittest.TestCase):
         lf.set_arms([{"tag": "h", "home": {"w": {"new": {"opop": 0.3}}}}]); self.assertTrue(lf.wants_oq())
 
     def test_policy_files_pass_the_writer_check(self):
-        for f in ("policy.rot_oq1.json", "policy.rot_oqh.json", "policy.rot_oq1cs.json"):
+        for f in ("policy.rot_oq1.json", "policy.rot_oqh.json", "policy.rot_oq1cs.json", "policy.rot_oq2.json", "policy.rot_mf1.json", "policy.rot_mf1cs.json"):
             conf = json.loads((Path(lfm.HERE) / f).read_text())
             self.assertEqual(live.clean_lfm_arms(conf["lfm_arms"]), conf["lfm_arms"]); self.assertNotIn("lq", conf["lfm_arms"][0])
 
