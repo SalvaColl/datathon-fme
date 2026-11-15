@@ -285,7 +285,7 @@
     "kicker": "Observaciones que cambiaron el modelo",
     "title": "Observar. Cambiar. Comprobar.",
     "seconds": 35,
-    "notes": "Las observaciones cambiaron el modelo. Mostramos productos ya comprados 1.118 veces: no hubo ninguna compra. Eso reforz\u00f3 la exclusi\u00f3n de compras anteriores. Tambi\u00e9n encontramos gustos en los atributos de las descripciones. En una prueba hist\u00f3rica, a\u00f1adir afinidad mejor\u00f3 el acierto en primer puesto del 47,2 al 51,9 %. Es una mejora de orden offline, no una cifra de conversi\u00f3n.",
+    "notes": "Un ejemplo completo: observamos que las compras se relacionaban con los atributos de productos que el usuario hab\u00eda visto antes. A\u00f1adimos esa afinidad al modelo para priorizar productos que encajaran con sus gustos. Despu\u00e9s lo comprobamos con 4.697 sesiones hist\u00f3ricas con compra: el producto comprado qued\u00f3 primero en el 51,9 % de los casos, frente al 47,2 % anterior. Es acierto de ordenaci\u00f3n offline, no conversi\u00f3n en vivo.",
     "source": "E-081/I-082: feedback del primer modelo, 14 nov 12:01\u201313:02 UTC, 0 compras en 1.118 exposiciones ya compradas. E-092: 4.697 sesiones hist\u00f3ricas con compra, hit@1 0,472 -> 0,519 al incorporar afinidad. Las dos m\u00e9tricas son distintas; ninguna es una comparaci\u00f3n causal de conversi\u00f3n del modelo final.",
     "shapes": [
       {
@@ -336,138 +336,178 @@
       {
         "kind": "rect",
         "x": 70,
-        "y": 380,
-        "w": 710,
-        "h": 310,
+        "y": 365,
+        "w": 470,
+        "h": 340,
         "color": "192638",
         "radius": 22
       },
       {
         "kind": "text",
-        "x": 100,
-        "y": 407,
-        "w": 1435,
-        "h": 35.8,
+        "x": 98,
+        "y": 389,
+        "w": 414,
+        "h": 33.42,
         "lines": [
-          "OBSERVACI\u00d3N EN VIVO"
+          "01 \u00b7 OBSERVAR"
         ],
-        "size": 20,
-        "color": "FFAC86",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 100,
-        "y": 453,
-        "w": 1435,
-        "h": 85.78,
-        "lines": [
-          "0 compras"
-        ],
-        "size": 62,
-        "color": "FFAC86",
-        "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 100,
-        "y": 535,
-        "w": 650,
-        "h": 41.75,
-        "lines": [
-          "en 1.118 exposiciones de productos ya comprados"
-        ],
-        "size": 25,
-        "color": "F5F7FA",
-        "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 100,
-        "y": 618,
-        "w": 1435,
-        "h": 42.94,
-        "lines": [
-          "No volver a recomendar lo comprado"
-        ],
-        "size": 26,
+        "size": 18,
         "color": "61E4B1",
         "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 98,
+        "y": 432,
+        "w": 414,
+        "h": 52.46,
+        "lines": [
+          "Los gustos se repiten"
+        ],
+        "size": 34,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 98,
+        "y": 498,
+        "w": 414,
+        "h": 101.25,
+        "lines": [
+          "Las compras se relacionaban con",
+          "los atributos de productos vistos",
+          "antes."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
       },
       {
         "kind": "rect",
-        "x": 800,
-        "y": 380,
-        "w": 730,
-        "h": 310,
+        "x": 565,
+        "y": 365,
+        "w": 470,
+        "h": 340,
         "color": "192638",
         "radius": 22
       },
       {
         "kind": "text",
-        "x": 830,
-        "y": 407,
-        "w": 705,
-        "h": 35.8,
+        "x": 593,
+        "y": 389,
+        "w": 414,
+        "h": 33.42,
         "lines": [
-          "HISTORIAL: SIN AFINIDAD \u2192 CON AFINIDAD"
+          "02 \u00b7 CAMBIAR"
         ],
-        "size": 20,
+        "size": 18,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 830,
-        "y": 453,
-        "w": 705,
-        "h": 76.25999999999999,
+        "x": 593,
+        "y": 432,
+        "w": 414,
+        "h": 52.46,
+        "lines": [
+          "A\u00f1adimos afinidad"
+        ],
+        "size": 34,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 593,
+        "y": 498,
+        "w": 414,
+        "h": 101.25,
+        "lines": [
+          "Dimos m\u00e1s puntuaci\u00f3n a los",
+          "productos cuyos atributos encajaban",
+          "con esos gustos."
+        ],
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 1060,
+        "y": 365,
+        "w": 470,
+        "h": 340,
+        "color": "192638",
+        "radius": 22
+      },
+      {
+        "kind": "text",
+        "x": 1088,
+        "y": 389,
+        "w": 414,
+        "h": 33.42,
+        "lines": [
+          "03 \u00b7 COMPROBAR"
+        ],
+        "size": 18,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1088,
+        "y": 432,
+        "w": 414,
+        "h": 52.46,
         "lines": [
           "47,2% \u2192 51,9%"
         ],
-        "size": 54,
-        "color": "61E4B1",
+        "size": 34,
+        "color": "F5F7FA",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 830,
-        "y": 535,
-        "w": 670,
-        "h": 71.5,
+        "x": 1088,
+        "y": 498,
+        "w": 414,
+        "h": 101.25,
         "lines": [
-          "Aciertos al poner primero el producto comprado.",
-          "Prueba con 4.697 sesiones del historial."
+          "Veces que el producto comprado",
+          "qued\u00f3 primero, en 4.697 sesiones",
+          "del historial."
         ],
         "size": 25,
-        "color": "F5F7FA",
+        "color": "A6B5C8",
         "bold": false
       },
       {
         "kind": "text",
-        "x": 830,
-        "y": 618,
-        "w": 705,
-        "h": 42.94,
+        "x": 75,
+        "y": 745,
+        "w": 1460,
+        "h": 47.699999999999996,
         "lines": [
-          "Aprender gustos a partir de atributos"
+          "Mismo modelo + afinidad \u2192 m\u00e1s aciertos en la prueba hist\u00f3rica"
         ],
-        "size": 26,
+        "size": 30,
         "color": "61E4B1",
         "bold": true
       },
       {
         "kind": "text",
         "x": 75,
-        "y": 735,
+        "y": 794,
         "w": 1460,
-        "h": 47.699999999999996,
+        "h": 41.75,
         "lines": [
-          "Observaci\u00f3n \u2192 hip\u00f3tesis \u2192 cambio medido"
+          "Medimos el orden de los productos, no la conversi\u00f3n en vivo."
         ],
-        "size": 30,
-        "color": "F5F7FA",
-        "bold": true
+        "size": 25,
+        "color": "A6B5C8",
+        "bold": false
       }
     ]
   },

@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-13 | P1 | One complete observe/change/check example using attribute affinity | Codex / codex/pitch-3min | DONE: three linked cards; historical hit@1 explicitly distinguished from conversion; slide rendered and visually checked | Presentation only; I-092/E-092 |
 | T-PITCH-12 | P1 | Remove third cover line | Codex / codex/pitch-3min | DONE: cover now reads Diez productos / Tres segundos; HTML, SVG, notes and preview regenerated | Presentation only |
 | T-PITCH-11 | P1 | Replace crystal-ball hook with three-second opening pause | Codex / codex/pitch-3min | DONE: cover, notes and preview updated; old hook absent from HTML | Presentation only |
 | T-PITCH-10 | P1 | Single-line Claude/Codex card descriptions; restore closing title | Codex / codex/pitch-3min | DONE: descriptions fit on one line; HTML/SVG and preview regenerated | Presentation only |

@@ -9,7 +9,7 @@ Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomen
 
 ## 2. Observar. Cambiar. Comprobar. — 0:15–0:50
 
-Las observaciones cambiaron el modelo. Mostramos productos ya comprados 1.118 veces: no hubo ninguna compra. Eso reforzó la exclusión de compras anteriores. También encontramos gustos en los atributos de las descripciones. En una prueba histórica, añadir afinidad mejoró el acierto en primer puesto del 47,2 al 51,9 %. Es una mejora de orden offline, no una cifra de conversión.
+Un ejemplo completo: observamos que las compras se relacionaban con los atributos de productos que el usuario había visto antes. Añadimos esa afinidad al modelo para priorizar productos que encajaran con sus gustos. Después lo comprobamos con 4.697 sesiones históricas con compra: el producto comprado quedó primero en el 51,9 % de los casos, frente al 47,2 % anterior. Es acierto de ordenación offline, no conversión en vivo.
 
 ## 3. Una ronda no bastaba. — 0:50–1:25
 
@@ -29,7 +29,7 @@ Usamos Claude para programar y Codex para investigar señales y contrastar hipó
 
 ## Cómo contarlo
 
-Guion: 308 palabras. Plan completo: 180 segundos.
+Guion: 317 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

@@ -134,11 +134,10 @@ ES_SOURCES = [
     "no se inventan funciones individuales ni versiones concretas de los agentes.",
 ]
 ES_NOTES[1] = (
-    "Las observaciones cambiaron el modelo. Mostramos productos ya comprados 1.118 veces: no hubo ninguna compra. "
-    "Eso reforzó la exclusión de compras anteriores. "
-    "También encontramos gustos en los atributos de las descripciones. "
-    "En una prueba histórica, añadir afinidad mejoró el acierto en primer puesto del 47,2 al 51,9 %. "
-    "Es una mejora de orden offline, no una cifra de conversión.")
+    "Un ejemplo completo: observamos que las compras se relacionaban con los atributos de productos que el usuario había visto antes. "
+    "Añadimos esa afinidad al modelo para priorizar productos que encajaran con sus gustos. "
+    "Después lo comprobamos con 4.697 sesiones históricas con compra: el producto comprado quedó primero en el 51,9 % de los casos, frente al 47,2 % anterior. "
+    "Es acierto de ordenación offline, no conversión en vivo.")
 ES_NOTES[2] = (
     "También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. "
     "No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. "
@@ -234,17 +233,14 @@ text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
 
 s = slide("Observaciones que cambiaron el modelo", "Observar. Cambiar. Comprobar.", 35, "", "")
 text(s, 70, 143, "Observar. Cambiar.\nComprobar.", 78, bold=True)
-rect(s, 70, 380, 710, 310, C["card"], 22)
-text(s, 100, 407, "OBSERVACIÓN EN VIVO", 20, C["orange"], True)
-text(s, 100, 453, "0 compras", 62, C["orange"], True)
-text(s, 100, 535, "en 1.118 exposiciones de productos ya comprados", 25, width=650)
-text(s, 100, 618, "No volver a recomendar lo comprado", 26, C["green"], True)
-rect(s, 800, 380, 730, 310, C["card"], 22)
-text(s, 830, 407, "HISTORIAL: SIN AFINIDAD → CON AFINIDAD", 20, C["green"], True)
-text(s, 830, 453, "47,2% → 51,9%", 54, C["green"], True)
-text(s, 830, 535, "Aciertos al poner primero el producto comprado.\nPrueba con 4.697 sesiones del historial.", 25, width=670)
-text(s, 830, 618, "Aprender gustos a partir de atributos", 26, C["green"], True)
-text(s, 75, 735, "Observación → hipótesis → cambio medido", 30, bold=True)
+card(s, 70, 365, 470, 340, "01 · OBSERVAR", "Los gustos se repiten",
+     "Las compras se relacionaban con los atributos de productos vistos antes.")
+card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
+     "Dimos más puntuación a los productos cuyos atributos encajaban con esos gustos.")
+card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "47,2% → 51,9%",
+     "Veces que el producto comprado quedó primero, en 4.697 sesiones del historial.")
+text(s, 75, 745, "Mismo modelo + afinidad → más aciertos en la prueba histórica", 30, C["green"], True)
+text(s, 75, 794, "Medimos el orden de los productos, no la conversión en vivo.", 25, C["muted"])
 
 s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
 text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
