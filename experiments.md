@@ -719,10 +719,18 @@ Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer 
 
 ## E-501 — Bot único por el camino del writer: validez, listas cambiadas y latencia (T-050)
 
-`python recsys/unified_eval.py check policy.unified.json ...` (`clean_lfm_arms` → `set_arms` → `LiveFit.slate`, estado a fecha de la petición). Primera pasada (4.111 peticiones desde las 17:00 UTC, versión sin carritos y versión con carritos a dosis 0,8): 100% válidas en todos los grupos; latencia por lista p50 1,3 ms, p95 5,0, p99 7,8, igual que r3. Cambia el puesto 1 en ~49% de las listas de nuevos en página. Pasada de la política final: ver el PR.
+`python recsys/unified_eval.py check policy.unified.json policy.rot_cs2r.json policy.unified_nocarts.json` (`clean_lfm_arms` → `set_arms` → `LiveFit.slate`, 4.111 peticiones desde las 17:00 UTC del 14 nov, estado a fecha de cada una; salida `/mnt/project-files/bot-unico/check_e501.json`).
+- **Válidas 100%** en los cuatro grupos y en ráfaga. Latencia por lista p50 1,24 ms, p95 2,4, p99 3,8 (r3: 1,26 / 2,4 / 3,9).
+- **Frente a r3:** cambia el puesto 1 en 56% de conocidos/página, 49% de nuevos/página, 31% de home conocidos y 41% de home nuevos; en común 5,5–7,2 de 10.
+- **Composición en conocidos/página (r3 → cs2r → u1):** carrito de la categoría de la sesión 12,1% → 24,7% → 19,7%; relleno 15,7% → 0,2% → 3,9%; categoría propia 22,6% → 2,9% → 12,2%. La calidad orgánica devuelve parte de lo que cs2r quitaba.
+- **Lanzados por lista:** conocidos/página 0,04 → 0,22; nuevos/página 0,01 → 0,32. **Productos de la subcategoría en ráfaga por lista, en ráfaga:** conocidos 0,08 → 0,78; nuevos 0,09 → 0,98.
 
+## E-502 — Ensayo en seco del writer y ensayo de la final con `policy.unified.json` (T-050)
 
-## E-520 ? Unified-bot correctness audit (T-052, 15 Nov 2026, Codex)
+- `RAWTREE_DRY_RUN=1 python live.py --dry-run` 330 s en la nube: `{"event": "policy"}` con el brazo u1, sin `policy_rejected`, 0 errores, `{"event": "hot"}` presente, 455 peticiones, bucle p50 292 ms / p95 484 ms, 0 caducadas tras el arranque.
+- `python tools/final_rehearsal.py --n 500`: 0 respuestas inválidas en los 8 escenarios (comprador nuevo, sin vistas, producto nuevo, metadatos rotos, cambio de categoría, choque de stock, RawTree sin responder); todas con etiqueta `v3-lfm-u1-*`; p99 por petición ≤ 6,6 ms.
+
+## E-520 - Unified-bot correctness audit (T-052, 15 Nov 2026, Codex)
 
 **Evidence: SYNTHETIC REGRESSIONS / CODE AUDIT, not a conversion experiment.** Branch `codex/unified-bot-audit`, base `16e14c6`. No writer started and no live policy changed.
 

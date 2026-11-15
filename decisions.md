@@ -347,7 +347,7 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
 - **Evidencia:** E-500 (offline; ninguna pieza tiene A/B propio). Confianza: calidad orgánica alta para ser offline (dos métodos independientes, E-490 y E-500); carritos de cs2r media; tendencias baja pero barata.
 
 
-## D-520 ? Unified-bot audit handoff (T-052; 15 Nov 2026)
+## D-520 - Unified-bot audit handoff (T-052; 15 Nov 2026)
 
 **IMPLEMENTED ON AN ISOLATED BRANCH; NOT DEPLOYED.** E-520 / I-520. `codex/unified-bot-audit` starts at `16e14c6`. Javi owns the writer and deployment. No policy templates, coefficients, labels, credentials, polling or POST logic change. The faster detector in I-521 is not included.
 

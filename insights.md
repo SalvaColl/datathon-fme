@@ -542,11 +542,11 @@ Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del 
 - **No corregido a propósito:** `make_pools` (popularidad `pop`, un recuento y no una tasa) y las features de producto del GBM v1 (`fe.featurize`), que no están en el camino de lfm.
 
 
-## I-520 ? Unified bot: keep organic launch counts; distrust optimistic replay hits (T-052)
+## I-520 - Unified bot: keep organic launch counts; distrust optimistic replay hits (T-052)
 
 **CONFIRMED CODE BUGS / SYNTHETIC REGRESSIONS, 15 Nov 2026.** E-520 fixes organic events lost when launch metadata arrives later, future-dependent burst normalization, a catalogue mapping that ignored later launches, and optimistic target ranks at tied scores. These affect cold-start input integrity and the credibility of E-500's offline evidence. Model weights and active policy are unchanged. Review `codex/unified-bot-audit`; deployment remains with Javi.
 
-## I-521 ? Faster trend detection is a separate challenger, not part of the bug fix
+## I-521 - Faster trend detection is a separate challenger, not part of the bug fix
 
 **OFFLINE ORGANIC FORECAST / SHADOW DIAGNOSTIC; UNCONFIRMED CONVERSION.** Codex, 15 Nov 2026. Compare existing `trends.compute(..., recent=3, base=36)` with `recent=1, base=36` (15 versus 5 minutes; same five-minute buckets, three-hour baseline, lift 2, z 6, 50 views and K=20). This also changes the median-share baseline blocks from 15 to 5 minutes through the existing function. Do not change the current policy globally on this evidence alone.
 
