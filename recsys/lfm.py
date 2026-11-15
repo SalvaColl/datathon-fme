@@ -583,6 +583,10 @@ class LiveFit:
         st = S.stale(req["user_id"])
         if st is not None:
             keep = [S.row[p] for p in list(hc) + list(lc) if p in S.row]
+            # T-056: a product bought in the history carousel is not "viewed and never wanted": it keeps its place when
+            # the arm weights `hcb` (live 14 Nov: 3 buys / 109 impressions for these pairs, the rate of the other hcb products)
+            hb = self.hcar.get(req["user_id"]) if w[seg][FEATS.index("hcb")] != 0.0 else None
+            if hb: keep += [S.row[p] for p in hb[0] if p in S.row]
             st[keep] = False; dead = dead | st
         b = [S.row[p] for p in bought if p in S.row]
         if b: dead[b] = True
