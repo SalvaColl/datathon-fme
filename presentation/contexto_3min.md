@@ -80,6 +80,22 @@ Esta es la parte central de la presentación. Cada decisión salió de una obser
 
 Latencia típica 1,2–1,4 segundos; el 95 % por debajo de 2,2 segundos en la final.
 
+## 4 bis. RawTree: cómo lo usamos (para el criterio "uso de RawTree" del jurado)
+
+RawTree no fue solo la tubería de entrada y salida. Estos son los usos reales, todos en el código o en lo medido, cada uno con su porqué.
+
+1. **Nuestro propio feedback como datos de entrenamiento.** RawTree guarda, para cada lista que servimos, qué se mostró, qué se clicó y qué se compró. Lo usamos para reajustar los pesos preguntando "de los diez que enseñamos, cuál se compró". *Por qué:* lo que se compra desde un carrusel no es lo que se compra navegando, y esa tabla es la única fuente que lo dice. Es el origen del +0,17 medido en vivo. Probablemente el uso más original.
+2. **Las señales del modelo se calculan sobre la tabla de eventos del stream.** La calidad de cada producto es sus compras por vista en el stream (no en el histórico), y el detector de modas compara las vistas por subcategoría de los últimos 15 minutos con las 3 horas anteriores. *Por qué:* los productos y las modas cambian durante el evento y el histórico no lo ve.
+3. **Lectura incremental, y medimos su retraso.** El proceso lee solo lo nuevo de peticiones, eventos y stock. Medimos cuánto tarda un carrito en llegar al modelo: es consultable en RawTree entre 0,4 y 0,8 segundos después de ocurrir, y entra en nuestro estado a los 12 segundos de mediana (21 en el peor 5 %), porque refrescamos cada 20 segundos. *Por qué:* el carrito es la señal que más vende; había que saber si llegaba a tiempo.
+4. **RawTree como herramienta de diagnóstico de nuestros propios fallos.** Comparando lo que enviamos con lo que el feedback dice que se mostró descubrimos que con dos procesos escribiendo nuestra lista solo llegaba al 37 % de los clientes. Con el mismo feedback medimos que el 3 % de las peticiones recibía lista genérica y lo bajamos al 0,15 %.
+5. **Vigilancia de solo lectura durante la final.** Desde otra máquina, una consulta por minuto sobre nuestro feedback: porcentaje a tiempo, respuestas inválidas y segundos sin enviar. Sin escribir nada y sin tocar el proceso que servía. *Por qué:* queríamos detectar una caída sin arriesgarnos a provocarla. Detectó el corte de red de 30 segundos.
+6. **Memoria propia en nuestra tabla libre.** Guardamos un resumen por bloque de 15 minutos (peticiones, a tiempo, latencia, compras, política activa): 144 filas, y volver a ejecutarlo no duplica nada. *Por qué:* la lectura por bloques es nuestro instrumento de medida y queríamos que quedara dentro de la plataforma, no en un portátil.
+7. **Una sola consulta SQL que sigue una petición de principio a fin.** Petición, señales calculadas solo con eventos anteriores a ella, la lista que enviamos y qué se compró. Tarda 1 segundo y sirve de demo: en el ejemplo guardado, el producto del puesto 1 (un champú que el cliente tenía en el carrito) es el que se compró.
+
+**Lo que no usamos, dicho tal cual:** no usamos embeddings. Las descripciones son frases de una lista fija de veinte, así que contar frases compartidas bastaba.
+
+**Matiz:** la comparación por bloques contra la referencia sale del marcador público de la plataforma, no de una consulta SQL nuestra.
+
 ## 5. CÓMO decidíamos qué entraba
 
 - **Regla:** una idea entra si tiene apoyo independiente (offline con corte temporal) y la lectura en vivo por bloques no va en contra. Una idea dudosa solo entra con señal clara en vivo.
@@ -122,7 +138,7 @@ Latencia típica 1,2–1,4 segundos; el 95 % por debajo de 2,2 segundos en la fi
 | 0:00–0:20 | El problema | Diez productos en tres segundos, tres veces por segundo; cuenta la probabilidad de compra y las compras reales son ruido. |
 | 0:20–0:55 | Por qué medir así | Con tráfico repartido, ±0,4 de ruido: no se decide nada. Bloques de 15 minutos contra la referencia en las mismas peticiones: 5 a 7 veces más fino. Todo lo demás depende de esto. |
 | 0:55–1:40 | Por qué este modelo | Primero dejar de desperdiciar huecos (lo ya comprado: cero ventas). Un modelo lineal porque el complejo predecía peor y el simple se cambia en caliente. Pesos por tipo de cliente porque compran por razones distintas. |
-| 1:40–2:15 | Cómo aprende en vivo | Los pesos se reajustan con las compras de nuestro propio carrusel: +0,17 medido con bloques alternos. Las modas se detectan en el stream. |
+| 1:40–2:15 | Cómo aprende en vivo, con RawTree | RawTree nos devuelve qué se compró de cada lista nuestra: con eso reajustamos los pesos (+0,17 medido con bloques alternos). Las modas y la calidad de producto se calculan sobre los eventos del stream. Una frase para el jurado: "usamos RawTree como datos de entrenamiento, como diagnóstico y como vigilancia, no solo como tubería". |
 | 2:15–2:45 | Qué falló | 29 ideas descartadas; multiplicadores que eran selección; la última pieza entró sin control. |
 | 2:45–3:00 | Resultado y cierre | De un punto por debajo de la referencia a 0,27 por encima; en la final, quintos, tres centésimas por debajo, y decimos qué parte sabemos explicar. |
 
@@ -143,5 +159,5 @@ Opcional si sobra una frase: lo ya comprado se mostró 1.118 veces y no vendió 
 - **¿Por qué lineal?** Porque lo medimos (el no lineal predecía peor offline) y porque se cambia en caliente y se explica peso a peso.
 - **¿Qué aporta cada pieza?** Solo lo sabemos del reajuste de pesos (+0,17). El resto entró junto y lo contamos como trayectoria, no como efecto de cada pieza.
 - **¿Por qué caísteis en la final?** Ver sección 2: la referencia subió 0,2, nosotros bajamos 0,08 en clientes nuevos en página, y no podemos separar política de población.
-- **¿Cómo usasteis RawTree?** Lectura incremental por SQL de peticiones, eventos y stock; las señales de moda se calculan sobre la tabla de eventos; guardamos un resumen de métricas por bloque de 15 minutos en nuestra tabla propia (144 filas); y hay una consulta que sigue una petición de principio a fin (petición, señales, nuestra lista, compra).
+- **¿Cómo usasteis RawTree?** Ver sección 4 bis: feedback propio como datos de entrenamiento, señales sobre los eventos del stream, retraso del carrito medido, diagnóstico de fallos, vigilancia de solo lectura en la final, resumen por bloques en nuestra tabla y una consulta que sigue una petición de principio a fin.
 - **¿Usasteis IA?** Sí, y por eso cada hipótesis, experimento y decisión está numerada en el repositorio, incluidos los descartes y los fallos.

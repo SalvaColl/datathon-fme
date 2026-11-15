@@ -228,3 +228,5 @@ Las diapositivas 3, 7, 9, 10 y 13 añaden cifras. Las marcadas "otros hilos" se 
 | 10 | Última pieza: 24 minutos en vivo sin bloque de control | Registro de despliegue (hilo de despliegue), 15 nov 07:32–07:56 UTC |
 | 13 | 30 segundos, 82 peticiones | Sección 12 |
 | 13 | 52 experimentos, 66 hallazgos, 33 decisiones, 29 descartes | Sección 9 |
+| 11 | Carrito: consultable a 0,4–0,8 s, en el estado a 12 s de mediana y 21 s en el p95 (refresco cada 20 s) | E-632 / nota A5 del PR 69, ensayo sin escritura en la nube |
+| 11 | Una consulta por minuto de solo lectura durante la final | `tools/watchdog.py --once` (PR 69), registro de vigilancia 10:35–11:00 UTC; antes, cada 5 minutos |
