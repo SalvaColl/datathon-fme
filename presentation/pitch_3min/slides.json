@@ -285,7 +285,7 @@
     "kicker": "Observaciones que cambiaron el modelo",
     "title": "Observar. Cambiar. Comprobar.",
     "seconds": 35,
-    "notes": "Un ejemplo completo: observamos que las compras se relacionaban con los atributos de productos que el usuario hab\u00eda visto antes. A\u00f1adimos esa afinidad al modelo para priorizar productos que encajaran con sus gustos. Despu\u00e9s lo comprobamos con 4.697 sesiones hist\u00f3ricas con compra: el producto comprado qued\u00f3 primero en el 51,9 % de los casos, frente al 47,2 % anterior. Es acierto de ordenaci\u00f3n offline, no conversi\u00f3n en vivo.",
+    "notes": "Un ejemplo completo: nuestras recomendaciones generaban feedback propio sobre clics y compras. Lo usamos para reajustar los pesos del modelo. Al comprobar el resultado, la conversi\u00f3n esperada pas\u00f3 del 1,99 al 2,12 %. Tambi\u00e9n comparamos con la referencia de cada ventana: el margen mejor\u00f3 unos 0,17 puntos. Son bloques temporales de pr\u00e1ctica, no una prueba aleatorizada. La tabla siguiente detalla esa comparaci\u00f3n.",
     "source": "E-081/I-082: feedback del primer modelo, 14 nov 12:01\u201313:02 UTC, 0 compras en 1.118 exposiciones ya compradas. E-092: 4.697 sesiones hist\u00f3ricas con compra, hit@1 0,472 -> 0,519 al incorporar afinidad. Las dos m\u00e9tricas son distintas; ninguna es una comparaci\u00f3n causal de conversi\u00f3n del modelo final.",
     "shapes": [
       {
@@ -362,7 +362,7 @@
         "w": 414,
         "h": 52.46,
         "lines": [
-          "Los gustos se repiten"
+          "Aprender del feedback"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -375,9 +375,9 @@
         "w": 414,
         "h": 101.25,
         "lines": [
-          "Las compras se relacionaban con",
-          "los atributos de productos vistos",
-          "antes."
+          "Vimos qu\u00e9 recomendaciones",
+          "recib\u00edan clics y cu\u00e1les terminaban",
+          "en compra."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -412,7 +412,7 @@
         "w": 414,
         "h": 52.46,
         "lines": [
-          "A\u00f1adimos afinidad"
+          "Reajustar el modelo"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -425,9 +425,9 @@
         "w": 414,
         "h": 101.25,
         "lines": [
-          "Dimos m\u00e1s puntuaci\u00f3n a los",
-          "productos cuyos atributos encajaban",
-          "con esos gustos."
+          "Actualizamos los pesos con nuestro",
+          "feedback para aprender de esos",
+          "resultados."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -462,7 +462,7 @@
         "w": 414,
         "h": 52.46,
         "lines": [
-          "47,2% \u2192 51,9%"
+          "1,99% \u2192 2,12%"
         ],
         "size": 34,
         "color": "F5F7FA",
@@ -473,11 +473,10 @@
         "x": 1088,
         "y": 498,
         "w": 414,
-        "h": 101.25,
+        "h": 71.5,
         "lines": [
-          "Veces que el producto comprado",
-          "qued\u00f3 primero, en 4.697 sesiones",
-          "del historial."
+          "Conversi\u00f3n esperada observada.",
+          "10.800 peticiones por versi\u00f3n."
         ],
         "size": 25,
         "color": "A6B5C8",
@@ -490,24 +489,11 @@
         "w": 1460,
         "h": 47.699999999999996,
         "lines": [
-          "Mismo modelo + afinidad \u2192 m\u00e1s aciertos en la prueba hist\u00f3rica"
+          "Margen frente a la referencia de cada ventana: +0,17 puntos"
         ],
         "size": 30,
         "color": "61E4B1",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 794,
-        "w": 1460,
-        "h": 41.75,
-        "lines": [
-          "Medimos el orden de los productos, no la conversi\u00f3n en vivo."
-        ],
-        "size": 25,
-        "color": "A6B5C8",
-        "bold": false
       }
     ]
   },

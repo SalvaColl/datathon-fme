@@ -99,6 +99,8 @@ This revision updates HTML/SVG/notes only at the user's request. Earlier PDF/Pow
 
 ## Observations, rejections and version data
 
+Latest slide two supersedes the affinity example with the documented u1/u3k feedback-refit comparison: 1.988% -> 2.117%, shown as 1.99% -> 2.12%, N=10,800 per policy. It is the same temporal comparison detailed on slide four, not separate evidence and not a measured conversion effect of affinity alone. No metrics were fabricated.
+
 Current slide two uses one complete I-092/E-092 example: observe recurring preference for description attributes, add attribute affinity to ranking, check historical hit@1 0.472 -> 0.519 over 4,697 purchased sessions. The earlier purchase-exclusion card is now only supporting data in the appendix. This is ranking accuracy conditioned on purchase, not live conversion. Current script: 317 words.
 
 Latest visual revision: slide footers, page numbers and tiny source references removed; full provenance remains here and in the D panel. Explanations use plain language and connect observations to decisions. User-confirmed tool split: Claude for coding, Codex for research. Current script: 307 words, six slides, 180-second plan. All six browser renders reviewed.

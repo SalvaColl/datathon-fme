@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-14 | P1 | Use documented conversion refit example in observe/change/check | Codex / codex/pitch-3min | DONE: conversion 1.99 -> 2.12 from documented u1/u3k blocks; notes retain temporal caveat; HTML/SVG/preview regenerated | Presentation only; same u1/u3k comparison as next slide |
 | T-PITCH-13 | P1 | One complete observe/change/check example using attribute affinity | Codex / codex/pitch-3min | DONE: three linked cards; historical hit@1 explicitly distinguished from conversion; slide rendered and visually checked | Presentation only; I-092/E-092 |
 | T-PITCH-12 | P1 | Remove third cover line | Codex / codex/pitch-3min | DONE: cover now reads Diez productos / Tres segundos; HTML, SVG, notes and preview regenerated | Presentation only |
 | T-PITCH-11 | P1 | Replace crystal-ball hook with three-second opening pause | Codex / codex/pitch-3min | DONE: cover, notes and preview updated; old hook absent from HTML | Presentation only |

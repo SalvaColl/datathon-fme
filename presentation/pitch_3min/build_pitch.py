@@ -134,10 +134,11 @@ ES_SOURCES = [
     "no se inventan funciones individuales ni versiones concretas de los agentes.",
 ]
 ES_NOTES[1] = (
-    "Un ejemplo completo: observamos que las compras se relacionaban con los atributos de productos que el usuario había visto antes. "
-    "Añadimos esa afinidad al modelo para priorizar productos que encajaran con sus gustos. "
-    "Después lo comprobamos con 4.697 sesiones históricas con compra: el producto comprado quedó primero en el 51,9 % de los casos, frente al 47,2 % anterior. "
-    "Es acierto de ordenación offline, no conversión en vivo.")
+    "Un ejemplo completo: nuestras recomendaciones generaban feedback propio sobre clics y compras. "
+    "Lo usamos para reajustar los pesos del modelo. "
+    "Al comprobar el resultado, la conversión esperada pasó del 1,99 al 2,12 %. "
+    "También comparamos con la referencia de cada ventana: el margen mejoró unos 0,17 puntos. "
+    "Son bloques temporales de práctica, no una prueba aleatorizada. La tabla siguiente detalla esa comparación.")
 ES_NOTES[2] = (
     "También descartamos ideas al repetir las pruebas. Un grafo ganó 0,20 puntos en una ronda, pero perdió 0,41 en la siguiente. "
     "No lo promovimos. Los modelos más complejos tampoco mejoraron la validación. "
@@ -233,14 +234,13 @@ text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
 
 s = slide("Observaciones que cambiaron el modelo", "Observar. Cambiar. Comprobar.", 35, "", "")
 text(s, 70, 143, "Observar. Cambiar.\nComprobar.", 78, bold=True)
-card(s, 70, 365, 470, 340, "01 · OBSERVAR", "Los gustos se repiten",
-     "Las compras se relacionaban con los atributos de productos vistos antes.")
-card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
-     "Dimos más puntuación a los productos cuyos atributos encajaban con esos gustos.")
-card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "47,2% → 51,9%",
-     "Veces que el producto comprado quedó primero, en 4.697 sesiones del historial.")
-text(s, 75, 745, "Mismo modelo + afinidad → más aciertos en la prueba histórica", 30, C["green"], True)
-text(s, 75, 794, "Medimos el orden de los productos, no la conversión en vivo.", 25, C["muted"])
+card(s, 70, 365, 470, 340, "01 · OBSERVAR", "Aprender del feedback",
+     "Vimos qué recomendaciones recibían clics y cuáles terminaban en compra.")
+card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Reajustar el modelo",
+     "Actualizamos los pesos con nuestro feedback para aprender de esos resultados.")
+card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "1,99% → 2,12%",
+     "Conversión esperada observada.\n10.800 peticiones por versión.")
+text(s, 75, 745, "Margen frente a la referencia de cada ventana: +0,17 puntos", 30, C["green"], True)
 
 s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
 text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)

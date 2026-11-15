@@ -9,7 +9,7 @@ Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomen
 
 ## 2. Observar. Cambiar. Comprobar. — 0:15–0:50
 
-Un ejemplo completo: observamos que las compras se relacionaban con los atributos de productos que el usuario había visto antes. Añadimos esa afinidad al modelo para priorizar productos que encajaran con sus gustos. Después lo comprobamos con 4.697 sesiones históricas con compra: el producto comprado quedó primero en el 51,9 % de los casos, frente al 47,2 % anterior. Es acierto de ordenación offline, no conversión en vivo.
+Un ejemplo completo: nuestras recomendaciones generaban feedback propio sobre clics y compras. Lo usamos para reajustar los pesos del modelo. Al comprobar el resultado, la conversión esperada pasó del 1,99 al 2,12 %. También comparamos con la referencia de cada ventana: el margen mejoró unos 0,17 puntos. Son bloques temporales de práctica, no una prueba aleatorizada. La tabla siguiente detalla esa comparación.
 
 ## 3. Una ronda no bastaba. — 0:50–1:25
 
@@ -29,7 +29,7 @@ Usamos Claude para programar y Codex para investigar señales y contrastar hipó
 
 ## Cómo contarlo
 
-Guion: 317 palabras. Plan completo: 180 segundos.
+Guion: 311 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.
