@@ -208,7 +208,7 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Corte del lector de feedback (T-066): las lecturas siguientes parten de la última lectura buena menos 10 min (`FB_OVERLAP_S`), así que un corte de cualquier duración se relee entero al volver. `fb refresh failed` en el log = la marca no avanza. Una fila que llegue más de 10 min después de su `ts` solo se recupera al reiniciar.
 - Interruptor opcional, sin reinicio una vez cargado el código de T-036: `"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}` en `data/policy.json`. Con él, solo las compras desde `day_start` alimentan las features de "comprado hoy"; las compras siguen excluidas siempre. `"carts": "day"` además pasa los carritos anteriores a carritos de histórico (no los borra). **No recomendado sin lectura del leaderboard**: en datos reales cambia el 42% de los slates (48% con `carts: day`) y no hay evidencia de que ayude (E-360).
 - Vuelta atrás: quitar `state_window` de `policy.json` (el writer lo aplica en el siguiente ciclo y lo escribe en el log como `{"event": "policy", "state_window": null}`).
-- **Compras anteriores a la final (T-063, `prior_purchases`)**. Solo existe con el código de T-063 cargado; un writer anterior ignora la clave sin avisar. Clave de primer nivel de `data/policy.json`, recargable en caliente, junto a `variant` y `lfm_arms`:
+- **Compras anteriores a la final (T-069, `prior_purchases`)**. Solo existe con el código de T-063 cargado; un writer anterior ignora la clave sin avisar. Clave de primer nivel de `data/policy.json`, recargable en caliente, junto a `variant` y `lfm_arms`:
   - ausente o `null`: comportamiento de siempre, nada se cuenta (por defecto).
   - `"prior_purchases": {"boundary": "2026-11-15 09:00:00"}` (o `"mode": "exclude"`): mismas respuestas que sin la clave; solo activa el diagnóstico en sombra.
   - `"prior_purchases": {"boundary": "2026-11-15 09:00:00", "mode": "allow"}`: las compras en vivo (flujo orgánico desde `EVENTS_SINCE` y nuestras compras del carrusel) cuya última fecha es anterior a `boundary` (UTC) dejan de excluirse en `lfm.scores` y en la guarda de envío (`live.user_bought`, que usan `repair_for` y `fallback_answers`). Compiten con su puntuación normal.
@@ -233,3 +233,62 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Lectura de una ventana: `python recsys/confirm_read.py --from "2026-11-15 00:10" --to "2026-11-15 01:40" --control <código> --challenger <código> --sd 6.0` (usar `--sd 5.5` para conocidos). Los códigos públicos de `r3p`, `cn1p` y `np1p` salen en el log del writer como eventos `label` al servir la primera petición de cada uno.
 - Vuelta atrás: política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json`.
 
+
+## Watchdog y reserva en otra máquina (T-069) — 2026-11-15
+
+Complementa la sección "Vigilancia y relevo durante la final" (PR 68, `tools/final_watch.py`: márgenes de las guardas de lanzados y de tendencias, retraso por tabla, orden manual del relevo). Aquí solo está lo que aquella no cubre: el veredicto OK / WARN / CRITICAL del watchdog y sus umbrales, cómo arrancar y promover un proceso de reserva, y cómo se prueba que el writer anterior ha parado. Si las dos secciones discrepan en el orden del relevo, manda la de PR 68.
+
+Evidencia: E-630..E-632. Decisión: D-630. Nada de esto toca al writer del Mac: el vigilante solo lee y el modo de espera es un proceso aparte que no escribe hasta que una persona lo promueve.
+
+**Vigilante (solo lectura; en una máquina que NO sea la del writer).**
+
+- Una pasada: `python3 tools/watchdog.py --once` (añadir `--json` para máquina). Código de salida 0 = OK, 1 = WARN, 2 = CRITICAL.
+- En continuo: `python3 tools/watchdog.py --watch 20` (una línea cada 20 s, más los motivos si los hay).
+- La lista de guardia se reconoce por su etiqueta pública: `--guard-labels m0312d` (por defecto). Si cambia `labels.json` o escribe otra máquina, la etiqueta cambia: mirar el evento `label` de `...-guard` en el log del writer y pasarla aquí.
+- Ventanas: `--window 5` (minutos recientes), `--baseline 45`, conversión `--conv-window 30` contra los 90 minutos anteriores. Los últimos 8 s se dejan fuera porque el feedback llega con retraso (E-630).
+
+| Señal | WARN | CRITICAL |
+|---|---|---|
+| Sin fila servida por el equipo (y sí llegan filas de reserva) | > 10 s | > 20 s (`writer_silent`) |
+| Sin ninguna fila de feedback | > 20 s (`feedback_stale`: fallo del feedback o de la consulta, no dice nada del writer) | — |
+| `missing` | > 1% en 5 min, o > 5% en el último minuto | > 5% en 2 minutos seguidos |
+| `invalid` | > 0,5% en 5 min, o > 2% en el último minuto | > 2% en 2 minutos seguidos |
+| Lista de guardia | > 2% en 5 min | > 20% en 2 minutos seguidos |
+| Latencia servida | p95 ≥ 2.400 ms o p99 ≥ 2.700 ms | p99 ≥ 2.900 ms |
+| Peticiones por minuto | < 120 | — |
+| Conversión | intervalo reciente entero por debajo del de referencia, **solo** con ≥ ~3.200 peticiones recientes (≈18 min) y ≥ 100 compras de referencia | nunca |
+
+La conversión nunca da CRITICAL y con 5 minutos (unas 900 peticiones, 18 compras) no puede dar ni aviso: la salida dice siempre la muestra mínima y si se alcanza. Normal medido (E-630): `missing` < 0,1%, guardia 0,1–0,6%, p99 2,3–2,5 s, última fila servida hace 1–2 s.
+
+**Qué protege a quién.** El candado `writer.lock` es local: solo impide dos writers en la MISMA máquina. Entre máquinas no hay exclusión: un segundo `live.py` en otro equipo arranca sin conflicto y responde las mismas peticiones, y un writer que vuelve de un corte de red o del reposo sigue escribiendo sin comprobar nada (E-631). Con dos writers nuestra lista llegó solo al 37% de los compradores (I-017). El writer del Mac no se reinicia antes de la final, así que hoy la exclusión entre máquinas es este procedimiento, no el código. En una segunda máquina se puede tener un proceso preparado, pero sin escribir.
+
+**Arrancar un proceso en espera** (en la segunda máquina, desde `recsys/`, con el mismo commit, la misma `data/policy.json` y la misma `data/labels.json` que el Mac; sin `labels.json` escribiría las etiquetas internas en el leaderboard):
+
+`nohup python live.py --standby --promote-token <palabra> >> data/standby.log 2>&1 &`
+
+Carga como un writer normal (unos 3–4 min), mantiene el estado al día, puntúa peticiones reales y **no envía nada**: en el log sale `ready STANDBY (not writing)`. No toma el candado local ni escribe en `scratch`. Arrancarlo es decisión de Javi (es un `live.py` sin `--dry-run`); mientras nadie lo promueva no puede escribir (lo impide también `post_batch`).
+
+**Promover (solo a mano; nada lo hace solo).** Ni el vigilante, ni un tiempo de espera, ni la caída del testigo promueven nada: solo un fichero `PROMOTE` escrito por una persona, y cada fichero vale para UN intento.
+
+1. El vigilante da `CRITICAL writer_silent` de forma sostenida (≥ 30 s). **Eso no prueba que el writer del Mac haya dejado de escribir**: un writer que solo ha perdido la red o cuyo portátil está en reposo está callado y vuelve a escribir en cuanto reconecta o despierta (E-631 b). Perder su latido o su conexión no es prueba de nada.
+2. **Probar que el writer anterior ha parado.** Solo valen estas dos pruebas:
+   - en el Mac, proceso matado y comprobado: `kill -INT <pid>` (si no sale, `kill -9 <pid>`) y `pgrep -fl live.py` **sin ninguna línea**; o
+   - el Mac apagado o sin red (wifi y cable fuera) **y mantenido así** mientras escriba el relevo. Si no se puede garantizar que seguirá así, no se promueve.
+   Si no hay ninguna de las dos (por ejemplo, nadie tiene acceso al Mac), **no promover**: es preferible la lista de reserva del organizador unos minutos que dos writers (37% de alcance, I-017).
+3. En la máquina en espera: `echo "<palabra>" > recsys/data/PROMOTE`.
+4. En `data/standby.log`: `{"event": "promoted", ...}` y `ready LIVE (promoted)`. Si sale `{"event": "promote_refused", "reason": ...}` el fichero queda gastado y no se reintenta solo: `another_writer_is_answering` = alguien respondió peticiones de hace 4–12 s (el Mac sigue vivo: volver al paso 2); `local_lock_held` = hay otro writer en esa misma máquina; `cannot_check_other_writer` = falló la consulta. Para volver a intentarlo hay que escribir el fichero otra vez.
+5. Vigilante: `writer_silent` desaparece en unos 10 s. Pasar la nueva etiqueta de guardia a `--guard-labels`.
+6. **Mientras el relevo escriba, el Mac no se arranca, no se reconecta y no se despierta con el proceso vivo.** Antes de devolverle la red: `pgrep -fl live.py` vacío.
+
+El fichero solo vale si se escribe después de arrancar el proceso (o de su último rechazo o cesión), si tiene menos de 120 s y si la primera palabra es la del arranque. La comprobación de "nadie responde" del paso 4 es una red de seguridad contra un despiste, no la prueba del paso 2: solo ve si alguien escribe AHORA. `echo "<palabra> FORCE" > recsys/data/PROMOTE` se la salta y desactiva la cesión automática: solo si esa consulta falla y el paso 2 está hecho.
+
+**Si el Mac vuelve a escribir mientras escribe el relevo** (no debería: paso 6). El relevo mira cada 3 s los envíos de las peticiones de hace 4–12 s; si hay 5 o más que no son suyos, deja de escribir, suelta el candado y vuelve a la espera (`{"event": "stepped_down", "reason": "foreign_writer:..."}`). Quedan unos 10–20 s de respuestas duplicadas y después un solo writer (el Mac). Es una retirada, nunca una promoción: para volver a escribir hace falta un fichero nuevo y repetir el paso 2. Desactivarla: `STANDBY_YIELD=0` al arrancar.
+
+**Vuelta atrás.**
+
+- Parar el relevo: `kill -INT <pid>` en su máquina (termina el bucle y suelta el candado) y `pgrep -fl live.py` vacío allí. Desde ese momento no escribe nadie hasta que arranque otro writer.
+- Durante la final no se hacen reinicios evitables ni ensayos de fallo contra el writer en vivo: si el Mac escribe bien, el relevo se queda en espera hasta el final y no se toca nada.
+- Volver al Mac después de haber promovido: primero parar el relevo y comprobarlo; después arrancar el Mac (`python live.py`, unos 4 min sin respuestas propias). Para acortar el hueco, el Mac puede cargar antes en espera (`live.py --standby --promote-token <otra>`), y se promueve a mano cuando el relevo esté parado y comprobado. `--takeover` no sirve entre máquinas: solo ve writers de la suya.
+- Código: sin `--standby` y sin `WRITER_LEASE=1`, `live.py` se comporta exactamente como antes (`GATE` es `None` y `failover.py` ni se importa).
+
+**Testigo remoto (opcional, apagado; no usar en la final).** Con `WRITER_LEASE=1` un writer escribe una fila `{"kind": "writer_lease", "token": <ms del reloj del servidor>, "holder": ...}` en `team_26.scratch`, relee el máximo cada 3 s y deja de escribir si hay un token mayor; si lleva más de 20 s sin confirmarlo (`WRITER_LEASE_MAX_STALE`, reloj de pared: cubre el reposo del portátil) lo relee antes de volver a escribir. Solo excluye si TODOS los writers lo llevan activado, y hace depender la escritura de que `scratch` responda. Está probado con tests y una fila de prueba (E-631), no con dos writers reales.

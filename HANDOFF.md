@@ -1,5 +1,41 @@
 # Relevo — estado a 14 nov 2026, 14:50 UTC
 
+## Estado a 15 nov 2026, 08:15 UTC (T-069) — leer esto antes que lo de abajo
+
+Lo de más abajo es del 14 nov y está superado. Calendario verificado en `api/state`: final de 09:00 a 11:00 UTC del 15 nov (10:00–12:00 CET).
+
+- **Qué sirve:** un único writer en el Mac de Javi, código `f782509` (no es el `main` actual), política en caliente por `data/policy.json`. Ronda de bloques de 15 minutos hasta las 08:35 UTC (uf1, uf1n, uf2, uf2n); a las 08:36 queda una sola política, sin rotador. Lo lleva el hilo de despliegue; el registro real es `recsys/data/policy_changes.log` en el Mac (no está en el repositorio).
+- **Exclusión de escritor único:** `writer.lock` es un `flock` local. `--takeover` solo vale dentro de la misma máquina. Entre máquinas no hay exclusión: ver la sección "Watchdog y reserva en otra máquina (T-069)" de `runbook.md`.
+- **Vigilancia:** `python3 tools/watchdog.py --once` desde cualquier máquina que no sea la del writer (solo lectura).
+- **Guardia y reserva:** 0,15% y 0,05% de las peticiones desde las 03:00 UTC (E-633). No hay rendimiento que recuperar ahí.
+- **Vuelta atrás de política, validada (PR 63):** uf2 → uf1 → uf0 → u3k → `policy.unified.json` → `policy.rot_cs2r.json` → `policy.unified_rollback.json` (r3).
+- **Brazos:** la nota del equipo es la media ponderada por tráfico de lo que se sirve (I-332, aritmética, no regla del organizador). En la final, una sola política; el corte de control `baseline-ctrl` solo existe con `--ab` y no se usa.
+- **Cold:** `is_new_user` o alguna vista reciente de un producto lanzado durante el evento (`challenge.md`). Normalización: 100 × (equipo − baseline) / (oráculo − baseline); el oráculo no es público.
+
+### Estado de cada propuesta del catálogo de ideas del 15 nov
+
+| # | Estado | Evidencia |
+|---|---|---|
+| A1, A6 prior de lanzados y fuerza del encogimiento | Preparada, apagada | PR 60; sombra sobre 3.122 peticiones: cambia el 24,5% de las listas de nuevos en página y el 1,5% de los primeros puestos. Necesita relevo de código |
+| A2 medir guardia y reparación | Hecha | E-633 |
+| A3 writer cerca de la API | Descartada | E-633, E-631 |
+| A4 cold primero en cola | Descartada | No hay cola: 0,05% de peticiones sin respuesta; el peso extra de cold no es verificable (oráculo no público) |
+| A5 frescura de carritos | Medida, sin retraso material | E-632: del evento a consultable p50 0,4–0,8 s; al estado p50 12 s, p95 21 s (cadencia de 20 s del refresher) |
+| A7 prior de horario en ráfagas | Descartada | No se fija el reloj: la final anuncia tendencias nuevas; el detector rápido ya corre |
+| A8 vuelta de stock | No probada | 771 eventos `back_in_stock`; sin evidencia para priorizarla hoy |
+| A9 desempate por precio | No probada | Solo desempate oficial; I-206 |
+| A10 aprendizaje en sombra | No hecha | Después de fiabilidad; material de jurado cubierto por PR 61 |
+| A11 cambio de régimen | Ensayado | E-640 (PR 63): catálogo antiguo muerto, estado vacío, corte del 25% de lanzados |
+| B1 `newp` en conocidos en página | En lectura en vivo | Rondas e5/e6 y bloques uf1n/uf2n; decide el hilo de despliegue a las 08:36 UTC |
+| B2 uf1 frente a uf0 | En vivo con uf1 | Apoyo fuera de muestra en tres cortes (hilo de pesos cold); sin ablación en vivo aislada |
+| B3–B6 `hot`, `hotc`, `prv`, `hcb`, detector | `hotc` y `hcb` descartadas en vivo; `prv` 0,8 en prueba (uf2); detector rápido activo | Registro del hilo de despliegue; no todo está en `experiments.md` |
+| B7 rival `v5tcs` | Leído | 2,45% en 2.043 peticiones (2 h hasta las 07:25 UTC); sus brazos no cubren las mismas peticiones, no es comparable ni accionable |
+| C1 un solo portátil | Preparada, sin activar | Watchdog y modo `--standby` con promoción manual; no se arranca un segundo writer |
+| C2 catálogo antiguo inactivo | Hecha | E-640: 100% válidas |
+| C3 congelar brazos | Decisión del hilo de despliegue | Una política desde las 08:36 UTC. Compras reales: unas 225 por hora, 450 en la final |
+| C4 alarma por segmento | Hecha sin vuelta atrás automática | El watchdog avisa; la conversión nunca dispara nada con menos de ~3.200 peticiones. Volver atrás lo decide una persona |
+| D1–D3 jurado | Hecha | PR 61 |
+
 Leer antes `AGENTS.md`. Este documento dice qué corre en vivo, cómo cambiarlo y qué queda por hacer antes de la final (domingo 15 nov, 10:00–12:00 CET, leaderboard oculto).
 
 ## Arreglo pendiente de desplegar: precios del snapshot de lfm (T-042, 14 nov 23:00 UTC)
