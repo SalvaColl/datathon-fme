@@ -4,7 +4,6 @@ Every scenario rebuilds the serving state with the writer's own functions (the s
 queries) on a frozen refresher, measures live.predict() and, where the answer depends on it, the real send path
 (serving.serve + live.send_answers(dry=True)), then puts the original state back."""
 import json
-import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +13,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def regime(live, rows, run, rng):
+def regime(live, rows, rng, files=()):
     from serving import serve
     lf = live.LF
     # ---- freeze the refresher and the stock thread: a cycle in flight must not overwrite a scenario ----
@@ -194,7 +193,7 @@ def regime(live, rows, run, rng):
 
         try:
             # ---- 5. launched-product cliff: new_products() gives None above 25% of the catalogue ----
-            files = [sys.argv[k + 1] for k, a in enumerate(sys.argv) if a == '--cliff-policy']
+            pass
             old = [str(p) for p in rng.permutation(sorted(set(q0) & set(cat0.index) - unav0 - stock0))]
             oqh0 = dict(live.OQ_HIST) if live.OQ_HIST else None
             need = lambda share: max(0, int(np.ceil(share * len(cat0) - len(launched0))))

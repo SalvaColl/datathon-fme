@@ -46,7 +46,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    n = int(sys.argv[sys.argv.index('--n') + 1]) if '--n' in sys.argv else 1500
+    argv = list(sys.argv)                                                 # live.py reads sys.argv, replaced below
+    n = int(argv[argv.index('--n') + 1]) if '--n' in argv else 1500
     import requests
     real_post = requests.Session.post
     def guarded_post(self, url, *a, **k):
@@ -66,8 +67,8 @@ def main():
     while live.state['pools'] is None or not (live.LF and live.LF.ok) or live.state['live'] is None or not live.state['stock_checked']: time.sleep(0.5)
     if not (live.DATA / 'policy.json').exists():
         arms = [{'tag': 'r3', 'file': 'lfm_coef_r3.json'}]; live.LF.set_arms(arms); live.POLICY['lfm_arms'] = arms
-    if '--policy' in sys.argv and not (live.DATA / 'policy.json').exists():
-        conf = json.loads((ROOT / sys.argv[sys.argv.index('--policy') + 1]).read_text())
+    if '--policy' in argv and not (live.DATA / 'policy.json').exists():
+        conf = json.loads((ROOT / argv[argv.index('--policy') + 1]).read_text())
         live.POLICY['lfm_arms'] = []; live.LF.set_arms([]); live.publish_policy(live.check_policy(conf))     # the writer's own validation path
     print('ready after', round(time.time() - t, 1), 's | policy', json.dumps(live.POLICY), flush=True)
 
@@ -128,9 +129,9 @@ def main():
     time.sleep(3)
     total += run('stale refresh', [dict(r) for r in rows])
     live.query = real_query
-    if '--regime' in sys.argv:
+    if '--regime' in argv:
         from final_regime import regime
-        total += regime(live, rows, run, rng)
+        total += regime(live, rows, rng, [argv[k + 1] for k, a in enumerate(argv) if a == '--cliff-policy'])
     print('TOTAL invalid answers:', total, '| stock last refreshed', round(time.monotonic() - live.state['stock_checked'], 1), 's ago during the stale scenario')
     return total
 
