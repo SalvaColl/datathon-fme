@@ -13,7 +13,7 @@ Nuestro método fue observar, cambiar y comprobar. Por ejemplo: descubrimos que 
 
 ## 3. El cementerio de ideas. — 0:50–1:25
 
-Pero muchas ideas acabaron aquí. Probamos gradient boosting e interacciones: más complejidad, sin mejores resultados. También relacionamos productos vistos en la misma sesión. Parecía evidente que ayudaría, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aportó una mejora confirmada. La intuición proponía; los datos decidían.
+Pero muchas ideas acabaron aquí. Probamos modelos demasiado complejos, como gradient boosting, e interacciones entre señales: más complejidad, sin mejores resultados. También relacionamos productos vistos en la misma sesión. Parecía evidente que ayudaría, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aportó una mejora confirmada. La intuición proponía; los datos decidían.
 
 ## 4. Cada señal suma. Cada comprador cuenta. — 1:25–2:00
 
@@ -29,7 +29,7 @@ Usamos Claude para programar e integrar mejoras, y Codex para investigar señale
 
 ## Cómo contarlo
 
-Guion: 337 palabras. Plan completo: 180 segundos.
+Guion: 343 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.

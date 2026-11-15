@@ -489,7 +489,7 @@
     "kicker": "Ideas descartadas",
     "title": "El cementerio de ideas.",
     "seconds": 35,
-    "notes": "Pero muchas ideas acabaron aqu\u00ed. Probamos gradient boosting e interacciones: m\u00e1s complejidad, sin mejores resultados. Tambi\u00e9n relacionamos productos vistos en la misma sesi\u00f3n. Parec\u00eda evidente que ayudar\u00eda, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aport\u00f3 una mejora confirmada. La intuici\u00f3n propon\u00eda; los datos decid\u00edan.",
+    "notes": "Pero muchas ideas acabaron aqu\u00ed. Probamos modelos demasiado complejos, como gradient boosting, e interacciones entre se\u00f1ales: m\u00e1s complejidad, sin mejores resultados. Tambi\u00e9n relacionamos productos vistos en la misma sesi\u00f3n. Parec\u00eda evidente que ayudar\u00eda, pero la mejora no se mantuvo al repetir la prueba. Y saber el orden de las visitas tampoco aport\u00f3 una mejora confirmada. La intuici\u00f3n propon\u00eda; los datos decid\u00edan.",
     "source": "E-271: conocidos/p\u00e1gina, r3 1,57% (1.489) vs grafo 1,77% (1.521), 14 nov 17:50\u201318:20 UTC. E-272: r3 2,08% (1.539) vs grafo 1,67% (1.476), 18:25\u201318:55 UTC. Los brazos difieren en home, pero mantienen los mismos pesos del grafo en p\u00e1ginas. R-24/E-260: GBM sin mejora; lfm_build.py: entrenamiento base.",
     "shapes": [
       {
@@ -578,7 +578,7 @@
         "w": 1330,
         "h": 51.269999999999996,
         "lines": [
-          "Modelos m\u00e1s complejos"
+          "Modelos demasiado complejos"
         ],
         "size": 33,
         "color": "F5F7FA",
@@ -591,7 +591,7 @@
         "w": 650,
         "h": 78.64,
         "lines": [
-          "Gradient boosting e interacciones:",
+          "Gradient boosting e interacciones entre se\u00f1ales:",
           "no mejoraron las pruebas."
         ],
         "size": 28,

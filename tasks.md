@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-25 | P1 | Clarify complex-model and signal-interaction wording | Codex / codex/pitch-3min | DONE: Modelos demasiado complejos and interacciones entre señales in slide/script; rendered and visually checked | Presentation/notes only |
 | T-PITCH-24 | P1 | Spanish three-minute speaking script aligned with final six-slide story | Codex / codex/pitch-3min | DONE: 337 words, explicit 3-second pause, six notes matching workflow/rejections/model/RawTree/AI; first slide hook only | Script/notes only; no visual changes |
 | T-PITCH-23 | P1 | Name tested complex approaches and clarify session co-view idea | Codex / codex/pitch-3min | DONE: gradient boosting/interactions named; co-view described as products seen in same session, no consistent improvement confirmed; artifacts regenerated | Presentation only |
 | T-PITCH-22 | P1 | Descending fill for ten ranked recommendation tiles | Codex / codex/pitch-3min | DONE: 100% to 0% fill in ten steps, readable number badges; HTML/SVG/preview regenerated | Presentation only; illustrative ranking |
