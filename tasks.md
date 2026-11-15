@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-01 | P1 | Three-minute jury pitch: six editable slides, browser presentation, timed speaker notes and verified scoring/evidence map; presentation files only | Codex / codex/pitch-3min | DONE: English 369-word script/180-second plan; six slides visually reviewed, PDF six pages, PPTX XML/relationships checked; presentation/pitch_3min/ | Final handoff and documented evidence; public practice hour verified; no serving or policy changes |
 | T-052 | P0 | Audit the unified bot: preserve organic counts across catalogue-refresh races; remove future-data trend normalization and optimistic tie scoring from its evaluator; focused regressions and handoff | Codex / codex/unified-bot-audit (from main 16e14c6) | IMPLEMENTED/TESTED: E-520; revisado y recalculado en E-522 (rama javi/unified-audit-integration): E-500 no cambia, pérdida de eventos ≤0,08%; entra en el próximo reinicio planificado; not deployed | Serving owner Javi reviews/deploys; existing venv only |
 | T-001 | P0 | Official spec + starter files reviewed, schemas and score in `challenge.md` | Doc owner / docs refresh | **DONE (public sources only)** | Actual team API access not tested |
 | T-002 | P0 | Run baseline `starter/recommender.py`, verify live feedback `served_by='team'`, p95, `.env` safe | TBD / TBD | READY | TEAM_ID/key; available Python env |
