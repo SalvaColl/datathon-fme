@@ -866,3 +866,21 @@ Solo los carritos pendientes mostrados a conocidos en listas con 2 o más carrit
 - No hecho: histórico aleatorizado (su respuesta es otra: 98% de sus compras son recompras) y carritos fuera del top 10 (el hilo de pesos ya midió con u3k compras de carrusel retenidas 88,9% → 92,6% y orgánicas en el top 10 +1,68 ± 0,33).
 
 Conclusión: no hay un modelo de "qué carrito" que mejore a u3k; el orden de carritos de u3k es claramente mejor que el de u1 y esa es la mejora disponible.
+
+## E-573 — Un modelo de gusto mejor encima de u3k (T-057, 15 nov 05:05 UTC) — OFFLINE, mismo marco que E-570
+
+Logit condicional dentro de la petición con puesto y la puntuación de u3k como covariable; ganancia de verosimilitud fuera de muestra (desde las 19:00 UTC) frente a solo puesto. Páginas de conocidos: u3k solo +85,0 [59,1, 113,1] (712 peticiones de prueba).
+
+| Candidato (histórico de 60 días, puntuación normalizada por usuario) | Coeficiente | u3k + candidato |
+|---|---|---|
+| Factorización con 16 / 64 / 128 factores (vistas + 3 carritos + 6 compras) | −0,01 / 0,00 / +0,01 ± 0,01 | 85,1 / 85,0 / 85,6 |
+| Factorización 64 solo con carritos y compras | +0,01 ± 0,01 | 85,4 |
+| Vecinos producto a producto (coseno sobre usuarios; todos, 50 más cercanos, solo carrito y compra) | −0,03 ± 0,04 / +0,02 ± 0,01 / +0,02 ± 0,02 | 85,3 / 86,8 / 84,6 |
+| Afinidad de frases con carritos y compras en vez de vistas | +1,40 ± 0,52 | 86,6 |
+| Afinidad al par exacto de frases / frases dentro de la categoría | +0,71 ± 1,50 / +0,27 ± 0,98 | 84,8 / 85,0 |
+| Marca dentro de la subcategoría | +0,01 ± 0,05 | 84,6 |
+| Lo que compran los compradores fuertes (tasa, tasa menos la de todos, cuota en la subcategoría) | −0,40 ± 0,10 / −1,12 ± 0,29 / −0,11 ± 0,03 | 90,1 / 90,6 / 89,7 |
+
+Compradores fuertes (12%+) y home dan lo mismo. El único que mueve algo, la popularidad entre compradores fuertes, sale con signo negativo y es un sustituto de "producto lanzado" (correlación −0,57: un lanzado no tiene histórico): con `newp` en el modelo queda en −0,09 ± 0,39, y `newp` en +1,06 ± 0,28 (≈ 3,4 en la escala de pesos de u3k), solo en peticiones con un lanzado a la vista; en el resto de páginas de conocidos todo es cero (u3k 56,5, con cualquier candidato 56,3–58,4). Es el mismo hallazgo que el `newp` de u3n, no una señal nueva.
+
+Conclusión: ninguna estimación más fina del gusto añade sobre u3k. Coincide con E-311: el gusto del simulador es de atributos (categoría, subcategoría, dos frases) y lfm ya lo estima con esas mismas variables; factores latentes y vecinos solo reconstruyen eso con más ruido. Nada entregado.
