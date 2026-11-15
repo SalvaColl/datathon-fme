@@ -68,11 +68,15 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         rc = d["reference"].get("cold_conversion")
         if sh and rc is not None and 0 < sh < 1:
             nc = lambda conv, cold: (conv - cold * sh) / (1 - sh)
-            rows[-1].update(cold_share=round(sh, 3), noncold_diff=round(nc(t["conversion"], t["cold_conversion"]) - nc(d["reference"]["conversion"], rc), 3))
-        else: rows[-1].update(cold_share=None, noncold_diff=None)
+            rows[-1].update(cold_share=round(sh, 3), noncold_diff=round(nc(t["conversion"], t["cold_conversion"]) - nc(d["reference"]["conversion"], rc), 3),
+                            ref_noncold=round(nc(d["reference"]["conversion"], rc), 3))
+        else: rows[-1].update(cold_share=None, noncold_diff=None, ref_noncold=None)
         kc = (kcodes or {}).get(rows[-1]["variant"])          # public code of this variant's row for returning shoppers on pages
         kr = next((v for v in t.get("versions", []) if v["model_version"] == kc), None) if kc else None
         rows[-1]["known"] = None if kr is None else round(kr["conversion"], 3); rows[-1]["known_requests"] = None if kr is None else kr["requests"]
+        # returning shoppers on pages: their row minus the reference's non-cold conversion of the same window (drift), and their cold part
+        rows[-1]["known_adj"] = None if kr is None or rows[-1]["ref_noncold"] is None else round(kr["conversion"] - rows[-1]["ref_noncold"], 3)
+        rows[-1]["known_cold"] = None if kr is None or not kr.get("cold_requests") else round(kr["cold_conversion"], 3)
     good = [r for r in rows if r["on_time"] >= min_on_time]
     per = {}
     for name in dict.fromkeys(seq):
@@ -101,7 +105,7 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
     if factors:                     # factorial read: OLS of the block value on the factors (0/1) plus a burst indicator
         import numpy as np
         fx = {}
-        for col in ("diff", "noncold_diff", "cold_diff"):
+        for col in ("diff", "noncold_diff", "cold_diff", "known_adj", "known_cold"):
             b = [r for r in good if r.get(col) is not None and r["variant"] in set(seq)]
             names = list(factors); X = [[1.0] + [float(r["variant"] in factors[f]) for f in names] + [float(r["burst"])] for r in b]
             X = np.array(X); y = np.array([r[col] for r in b])
@@ -112,7 +116,8 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
             fx[col] = dict(blocks=len(b), residual_sd=round(s2 ** 0.5, 3))
             for j, f in enumerate(names, 1):
                 se = max(s2, 0.08 ** 2 if col == "diff" else 0.0) ** 0.5 * cov[j, j] ** 0.5      # floor: 0.08 pt per block on the total
-                fx[col][f] = dict(effect=round(float(beta[j]), 3), se=round(float(se), 3), z=round(float(beta[j] / se), 2))
+                fx[col][f] = dict(effect=round(float(beta[j]), 3), se=round(float(se), 3), z=round(float(beta[j] / se), 2),
+                                 ci95=[round(float(beta[j] - 1.96 * se), 3), round(float(beta[j] + 1.96 * se), 3)])
     res = dict(factorial=fx, kind="time rotation, team row minus reference per block; not a user-split A/B", block_min=block_min, seq=seq, champion=champion,
                per_variant=per, paired=paired, paired_all_neighbours=paired_all, paired_known_row=paired_known, paired_cold=paired_cold,
                champion_burst_vs_calm={k: stats([r["diff"] for r in good if r["variant"] == champion and r["burst"] == (k == "burst")]) for k in ("burst", "calm")}, left_out=[r for r in rows if r not in good], blocks=rows)
