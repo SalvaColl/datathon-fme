@@ -84,13 +84,22 @@ VERSION_L = "v3-lfm-r1"            # live-fitted model (T-018); served with a se
 VERSION_T = "v3-attr-r1"
 VERSION_TA = "v3-attr-aff-r1"
 VARIANTS = ("v1", "qrank", "ab_qrank", "aff", "qrank_aff", "ab_aff", "ab_qrank_aff", "attr", "attr_aff", "ab_attr", "ab_attr_aff", "lfm", "ab_lfm")
-POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "lfm_arms": [], "state_window": None}
+POLICY = {"variant": next((v for v in VARIANTS[1:] if "--" + v.replace("_", "-") in sys.argv), "v1"), "qrank_arms": [], "lfm_arms": [], "state_window": None, "prior_purchases": None}
 # T-036: day / phase window of the lfm shopper state, e.g. {"state_window": {"day_start": "2026-11-15 00:00:00", "carts": "persistent"}}.
 # Absent or invalid = no day window (everything since EVENTS_SINCE counts as today). Purchases stay excluded either way.
 def clean_state_window(raw):
     if not isinstance(raw, dict) or not isinstance(raw.get('day_start'), str) or set(raw) - {'day_start', 'carts'}: return None
     w = {'day_start': raw['day_start'], 'carts': raw.get('carts', 'persistent')}
     try: lfm.LiveFit({k: dict(w={}, b=0.0) for k in ('known', 'new')}).set_window(**w)
+    except Exception: return None
+    return w
+# T-063: {"prior_purchases": {"boundary": "2026-11-15 09:00:00", "mode": "exclude" | "allow"}}. Live purchases before the
+# boundary: "exclude" keeps them out (as always) and only counts them in the shadow diagnosis; "allow" lets them back in.
+# Absent or null = no boundary, behaviour before T-063. Hot-reloadable; nothing is erased in either direction.
+def clean_prior_purchases(raw):
+    if not isinstance(raw, dict) or not isinstance(raw.get('boundary'), str) or set(raw) - {'boundary', 'mode'}: return None
+    w = {'boundary': raw['boundary'], 'mode': raw.get('mode', 'exclude')}
+    try: lfm.LiveFit({k: dict(w={}, b=0.0) for k in ('known', 'new')}).set_prior(**w)
     except Exception: return None
     return w
 # T-021: tuning arms for lfm requests, read by the leaderboard per model_version ("v3-lfm-<tag>-k|-n|-kh|-nh"):
@@ -243,15 +252,33 @@ def check_policy(conf):
     win = clean_state_window(raw) if raw is not None else None
     if raw is not None and win is None: raise PolicyRejected('invalid state_window')
     if win != POLICY['state_window'] and LF is not None: new['state_window'] = win
+    raw = conf.get('prior_purchases')
+    pri = clean_prior_purchases(raw) if raw is not None else None
+    if raw is not None and pri is None: raise PolicyRejected('invalid prior_purchases')
+    if pri != POLICY['prior_purchases'] and LF is not None: new['prior_purchases'] = pri
     return new
 def publish_policy(new):
     """Install a candidate that check_policy() accepted. Weights first (a request never sees an arm without its
     weights), then the routing keys in one dict update."""
     if 'lfm_weights' in new: LF.alt, LF.alt_lq, LF.alt_x, LF.alt_cap = new.pop('lfm_weights')
     if 'state_window' in new: LF.set_window(**(new['state_window'] or {}))
+    if 'prior_purchases' in new: prior_report(final=True); LF.set_prior(**(new['prior_purchases'] or {}))
     POLICY.update(new)
-    for k in ('variant', 'qrank_arms', 'lfm_arms', 'state_window'):
+    for k in ('variant', 'qrank_arms', 'lfm_arms', 'state_window', 'prior_purchases'):
         if k in new: print(json.dumps({'event': 'policy', k: new[k]}), flush=True)
+PRIOR_LOG = {'t': 0.0}
+def prior_report(final=False, every=300.0):
+    """T-063: one log line with the shadow counters of the prior purchases, at most every five minutes (and once more,
+    with final=True, just before the configuration changes). Silent without a boundary. Never raises."""
+    try:
+        lf = LF
+        if lf is None or lf.prior_start is None: return
+        now = time.monotonic()
+        if not final and now - PRIOR_LOG['t'] < every: return
+        PRIOR_LOG['t'] = now
+        print(json.dumps(dict(event='prior_purchases', boundary=lf.prior_start, mode='allow' if lf.prior_allow else 'exclude',
+                              final=final, **dict(lf.prior_stats))), flush=True)
+    except Exception: pass
 def read_policy():
     try:
         text = (DATA / 'policy.json').read_text()
@@ -408,14 +435,25 @@ def refresh_prev_views():
                 state["prv_ts"] = max(wm, lo)
     except Exception as e: print('prev views refresh failed', type(e).__name__, e, flush=True)
 
-def fb_window():
+FB_OVERLAP_S = 600      # every incremental feedback read goes back this far from the last successful one (late rows)
+
+def utcnow(): return pd.Timestamp.now("UTC").tz_localize(None)
+
+def fb_window(hi=None):
     """Our own carousel purchases never reach shop.events, so after a (re)start the first read takes ALL of them (a
     shopper who bought through us is much less likely to buy the product again: organizer note, 14 Nov). Later reads
-    take the last 10 minutes, which also covers a slow refresh cycle."""
-    return " AND f.ts::DateTime64(3) > now() - INTERVAL 10 MINUTE" if state.get("fb_full") else ""
+    start at the upper bound of the last read that was fetched AND applied (state["fb_ts"]) minus FB_OVERLAP_S: a
+    reader outage of any length is read again from where it began, instead of losing everything older than 10 minutes.
+    The old `now() - 10 min` bound stays as an OR, so a read never covers less than it did (also with a skewed local
+    clock). Rows that land more than FB_OVERLAP_S after their own ts are only recovered by the next start."""
+    up = f" AND f.ts::DateTime64(3) <= toDateTime64('{hi}',3)" if hi else ""
+    wm = state.get("fb_ts")
+    if not wm: return up
+    lo = str(pd.Timestamp(wm) - pd.Timedelta(seconds=FB_OVERLAP_S))[:23]
+    return f" AND (f.ts::DateTime64(3) > toDateTime64('{lo}',3) OR f.ts::DateTime64(3) > now() - INTERVAL 10 MINUTE)" + up
 
 def refresh_events():
-    now = pd.Timestamp.now("UTC").tz_localize(None)
+    now = utcnow()
     for lo, hi in event_windows(state["ev_ts"], now):
         rows = query(EVENT_SQL.format(lo=lo, hi=f" AND ts::DateTime64(3) <= toDateTime64('{hi}',3)" if hi else ""), timeout=60)
         apply_events(rows)
@@ -423,8 +461,7 @@ def refresh_events():
         if hi: state["ev_ts"] = hi
         elif rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
-        fb = query(f"SELECT r.user_id::String u, f.purchased::String i, f.ts::DateTime64(3)::String t FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window())
-        state["fb_full"] = True
+        fb = query(f"SELECT r.user_id::String u, f.purchased::String i, f.ts::DateTime64(3)::String t FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window(fb_hi := str(utcnow())[:23]))
         for r in fb:
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
                 fb_seen[r["u"]].add(r["i"])
@@ -433,6 +470,7 @@ def refresh_events():
                     # LIVE.add only, never to LIVE.add_organic (its carousel impressions are in nobody's view counts).
                     LIVE.add(r["u"], r["i"], 0, 0, 1); BOUGHT[r["u"]].add(r["i"])
                     if LF is not None: LF.add(r["u"], r["i"], 0, 0, 1, tp=r.get("t"))
+        state["fb_ts"] = fb_hi      # only here: fetched and applied (an empty answer counts); a failure keeps the old mark
     except Exception as e: print("fb refresh failed", e)
     return LIVE
 
@@ -740,7 +778,10 @@ def user_bought(u):
     for _ in range(2):
         try:
             b = set(BOUGHT.get(u, ()))
-            if LF is not None: b |= set(LF.hbought.get(u, ())) | set(LF.lbought.get(u, ()))
+            if LF is not None:
+                b |= set(LF.lbought.get(u, ()))
+                if getattr(LF, 'prior_allow', False) and b: b -= LF.prior_bought(u)      # T-063: prior purchases are servable in "allow" mode
+                b |= set(LF.hbought.get(u, ()))
             return b
         except RuntimeError: continue      # a set changed size under us (refresher thread): try once more
         except Exception: break
@@ -968,6 +1009,7 @@ def main():
                 seen.update(expired_ids)
                 expired = serve(reqs, score, fallback_answers, deliver, urgent_age=URGENT_AGE)
                 if reqs:
+                    prior_report()
                     print(json.dumps(dict(event='loop', n=len(reqs), expired=expired,
                         loop_ms=round(1000*(time.perf_counter()-started), 1),
                         stock_age_s=round(time.monotonic()-state['stock_checked'], 2))), flush=True)
