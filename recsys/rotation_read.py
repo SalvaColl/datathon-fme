@@ -48,7 +48,7 @@ def in_burst(a, step, bursts):
     return False
 
 
-def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None):
+def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None, factors=None):
     step = block_min * 60; champion = champion or seq[0]
     end = min(until or 1 << 62, int(time.time()) // 300 * 300)
     rows = []
@@ -60,6 +60,16 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
                          reference=round(d["reference"]["conversion"], 3), diff=round(t["conversion"] - d["reference"]["conversion"], 3),
                          cold=round(t["cold_conversion"], 3), cold_diff=round(t["cold_conversion"] - d["reference"].get("cold_conversion", 0), 3),
                          on_time=round(t["on_time"], 2), versions=len(t.get("versions", []))))
+        # non-cold slice: every team gets the same requests, so the cold share comes from any team whose version rows cover its traffic
+        sh = None
+        for x in d["teams"]:
+            n = sum(v["requests"] for v in x.get("versions", []))
+            if x.get("requests") and n >= 0.99 * x["requests"]: sh = sum(v.get("cold_requests", 0) for v in x["versions"]) / n; break
+        rc = d["reference"].get("cold_conversion")
+        if sh and rc is not None and 0 < sh < 1:
+            nc = lambda conv, cold: (conv - cold * sh) / (1 - sh)
+            rows[-1].update(cold_share=round(sh, 3), noncold_diff=round(nc(t["conversion"], t["cold_conversion"]) - nc(d["reference"]["conversion"], rc), 3))
+        else: rows[-1].update(cold_share=None, noncold_diff=None)
         kc = (kcodes or {}).get(rows[-1]["variant"])          # public code of this variant's row for returning shoppers on pages
         kr = next((v for v in t.get("versions", []) if v["model_version"] == kc), None) if kc else None
         rows[-1]["known"] = None if kr is None else round(kr["conversion"], 3); rows[-1]["known_requests"] = None if kr is None else kr["requests"]
@@ -87,7 +97,23 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         key = name + "_minus_" + champion
         paired[key] = stats(v, SD_FLOOR); paired_all[key] = stats(w, SD_FLOOR)
         paired_known[key] = stats(kn); paired_cold[key] = stats(co)       # secondary: row of returning shoppers on pages (no reference), cold minus reference cold
-    res = dict(kind="time rotation, team row minus reference per block; not a user-split A/B", block_min=block_min, seq=seq, champion=champion,
+    fx = None
+    if factors:                     # factorial read: OLS of the block value on the factors (0/1) plus a burst indicator
+        import numpy as np
+        fx = {}
+        for col in ("diff", "noncold_diff", "cold_diff"):
+            b = [r for r in good if r.get(col) is not None and r["variant"] in set(seq)]
+            names = list(factors); X = [[1.0] + [float(r["variant"] in factors[f]) for f in names] + [float(r["burst"])] for r in b]
+            X = np.array(X); y = np.array([r[col] for r in b])
+            if X[:, -1].min() == X[:, -1].max(): X = X[:, :-1]
+            if len(b) <= X.shape[1] + 1: fx[col] = dict(blocks=len(b)); continue
+            beta, *_ = np.linalg.lstsq(X, y, rcond=None); res_ = y - X @ beta
+            s2 = float(res_ @ res_) / (len(b) - X.shape[1]); cov = np.linalg.inv(X.T @ X)
+            fx[col] = dict(blocks=len(b), residual_sd=round(s2 ** 0.5, 3))
+            for j, f in enumerate(names, 1):
+                se = max(s2, 0.08 ** 2 if col == "diff" else 0.0) ** 0.5 * cov[j, j] ** 0.5      # floor: 0.08 pt per block on the total
+                fx[col][f] = dict(effect=round(float(beta[j]), 3), se=round(float(se), 3), z=round(float(beta[j] / se), 2))
+    res = dict(factorial=fx, kind="time rotation, team row minus reference per block; not a user-split A/B", block_min=block_min, seq=seq, champion=champion,
                per_variant=per, paired=paired, paired_all_neighbours=paired_all, paired_known_row=paired_known, paired_cold=paired_cold,
                champion_burst_vs_calm={k: stats([r["diff"] for r in good if r["variant"] == champion and r["burst"] == (k == "burst")]) for k in ("burst", "calm")}, left_out=[r for r in rows if r not in good], blocks=rows)
     print(json.dumps(res, indent=1))
@@ -98,8 +124,9 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--start", required=True); ap.add_argument("--block-min", type=int, default=15); ap.add_argument("--seq", required=True)
-    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
+    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--factors", help='main effects: "hcb=u1hb,u2hb;dose=u2c,u2hb"'); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
     g = ap.parse_args()
     b = None if g.bursts is None else [int(x[:2]) * 60 + int(x[3:5]) for x in g.bursts.split(",") if x]
     main(epoch(g.start), g.block_min, g.seq.split(","), epoch(g.until) if g.until else None, g.out, g.champion, g.min_on_time, bursts=b,
-         kcodes=dict(x.split("=") for x in g.k_codes.split(",")) if g.k_codes else None)
+         kcodes=dict(x.split("=") for x in g.k_codes.split(",")) if g.k_codes else None,
+         factors={f.split("=")[0]: set(f.split("=")[1].split(",")) for f in g.factors.split(";")} if g.factors else None)
