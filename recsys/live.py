@@ -52,6 +52,20 @@ def urgent_age(raw=None, default=2.2):
     except (TypeError, ValueError): v = default
     return min(2.4, max(1.5, v))
 URGENT_AGE = urgent_age(os.environ.get('URGENT_AGE'))
+def connect_retry_age(raw=None, default=2.0):
+    """T-047: oldest request age (s) up to which a batch whose POST failed with ConnectTimeout gets its ONE retry.
+    0 disables the retry (CONNECT_RETRY_AGE=0). Clamped to 0-2.2: beyond that a normal POST (p99 0.52 s on 14 Nov)
+    plus the connect allowance no longer fits inside the 3 s deadline."""
+    try: v = float(raw) if raw not in (None, '') else default
+    except (TypeError, ValueError): v = default
+    return min(2.2, max(0.0, v)) if math.isfinite(v) else default
+CONNECT_RETRY_AGE = connect_retry_age(os.environ.get('CONNECT_RETRY_AGE'))
+def never_sent(exc):
+    """True only for requests' ConnectTimeout: the TCP/TLS connection was never established, so no byte of the request
+    left this process and the server cannot have accepted it (requests documents it as safe to retry). ReadTimeout,
+    the Timeout base class, ConnectionError (resets, refused, DNS, proxy, TLS errors: some of them can happen after the
+    body was written), HTTP errors and anything unknown stay ambiguous."""
+    return isinstance(exc, requests.exceptions.ConnectTimeout)
 AB = "--ab" in sys.argv  # 50/50 by user hash: half baseline (control), half model, ONE writer
 VERSION = "v1-gbm-cand-r1"
 VERSION_Q = "v2-qrank-r1"
@@ -95,7 +109,7 @@ def clean_lfm_arms(raw):
         if not isinstance(a, dict): continue
         tag, main = str(a.get('tag', '')), spec(a)
         home = spec(a['home']) if 'home' in a else None       # fused arm: other weights on home requests ({} = committed)
-        lqm = a.get('lq')                                      # T-028/T-034: "cold" | "cold_new" = corrected quality for today's products
+        lqm = a.get('lq')                                      # T-028/T-034/T-047: "cold" | "cold_new" | "cold_known" = corrected quality for today's products
         xp = a.get('explore')                                  # T-039: true = exploration arm (last slot from ranks 11..60); "new" / "known" = only for that kind of shopper
         rc = a.get('recart')                                   # T-046: true = re-cart bonus (LiveFit.set_arms); anything else but absent rejects the list
         if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True):
@@ -107,17 +121,20 @@ def clean_lfm_arms(raw):
     # only difference is the quality of new products, and the arm's untouched traffic is served and labelled as that control
     # Promotion form (D-340): when EVERY arm is "cold_new" (one promoted arm alone, or tuner rounds built on it) there is no
     # trial of the quality itself, so no control is needed and each arm keeps its own tag for every cohort.
-    if arms and all(a.get('lq') == 'cold_new' for a in arms): return arms
-    return arms if all(a.get('lq') != 'cold_new' or lfm_control(a, arms) for a in arms) else []
+    # T-047: "cold_known" (returning shoppers only) follows the same two rules; the two selective modes are never mixed
+    # in a promotion form (every arm must carry the SAME mode).
+    if arms and any(all(a.get('lq') == m for a in arms) for m in lfm.LQ_COHORT): return arms
+    return arms if all(a.get('lq') not in lfm.LQ_COHORT or lfm_control(a, arms) for a in arms) else []
 def lfm_control(arm, arms):
     """The arm of `arms` without "lq" whose weight spec equals `arm`'s (None if there is none)."""
     spec = {k: v for k, v in arm.items() if k not in ('tag', 'lq')}
     return next((c for c in arms if 'lq' not in c and {k: v for k, v in c.items() if k != 'tag'} == spec), None)
 def lfm_route(arm, new, page, rv):
     """Tag that answers (and labels) a request of a user hashed to `arm`. A "cold_new" arm only owns new shoppers on
-    product/category pages with recent views; everything else is the control's, so no duplicate label is created."""
+    product/category pages with recent views ("cold_known", T-047: returning shoppers on those pages); everything else
+    is the control's, so no duplicate label is created. Same rule as the scoring: lfm.lq_target."""
     if arm is None: return None
-    if arm.get('lq') == 'cold_new' and not lfm.lq_target('cold_new', new, page, rv):
+    if arm.get('lq') in lfm.LQ_COHORT and not lfm.lq_target(arm['lq'], new, page, rv):
         ctl = lfm_control(arm, POLICY['lfm_arms'])
         if ctl is not None: return ctl['tag']
     return arm['tag']
@@ -336,6 +353,7 @@ def apply_events(rows, chunk=EVENT_CHUNK, pause=time.sleep):
         with feature_lock:
             for r in rows[k:k + chunk]:
                 LIVE.add(r["u"], r["i"], r["v"], r["a"], r["p"])
+                LIVE.add_organic(r["i"], r["v"], r["a"], r["p"])      # T-047: shop.events is the only organic source
                 if r["p"]: BOUGHT[r["u"]].add(r["i"])
                 if AP is not None: AP.add(r["u"], r["i"], r["v"])
                 if LF is not None: LF.add(r["u"], r["i"], r["v"], r["a"], r["p"], r.get("ta"), r.get("tp"))
@@ -362,6 +380,8 @@ def refresh_events():
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
                 fb_seen[r["u"]].add(r["i"])
                 with feature_lock:
+                    # T-047: a carousel purchase is user state and an exclusion, NOT an organic purchase: it goes to
+                    # LIVE.add only, never to LIVE.add_organic (its carousel impressions are in nobody's view counts).
                     LIVE.add(r["u"], r["i"], 0, 0, 1); BOUGHT[r["u"]].add(r["i"])
                     if LF is not None: LF.add(r["u"], r["i"], 0, 0, 1, tp=r.get("t"))
     except Exception as e: print("fb refresh failed", e)
@@ -387,20 +407,43 @@ class LiveTables(dict):
         super().__init__(item=_Lookup(["it_v", "it_a", "it_p"]), usub=_Lookup(["us_v", "us_p"]), ucat=_Lookup(["uc_v", "uc_p"]),
                          utot=_Lookup(["ut_v", "ut_p"]), uit=_Lookup(["ui_v", "ui_a", "ui_p"]))
         self._cat, self._sk = None, {}
-    def add(self, u, i, v, a, p):
+        # T-047: organic-only product counts (views, carts, purchases of shop.events). "item" above also receives the
+        # purchases of our own carousel (refresh_events), whose impressions are not views: a purchases/view rate must
+        # be computed from this accumulator. Not a dict entry on purpose: fe.featurize and the tables' consumers
+        # never see it. Rebuilt from the stream on every start, like "item"; never touched by the feedback read.
+        self.organic = _Lookup(["it_v", "it_a", "it_p"])
+    def _place(self, i):
         c = fe.C
         if c is not self._cat:      # new catalogue object (every refresh): product -> (sub, category) as a plain dict
             self._sk = dict(zip(c.index, zip(c["sub"], c["category"]))); self._cat = c
-        sk = self._sk.get(i)
+        return self._sk.get(i)
+    def add_organic(self, i, v, a, p):
+        """One (user, product) delta of shop.events. Same catalogue gate as add(), so the two accumulators differ
+        exactly by the carousel purchases: item.it_p - organic.it_p = feedback purchases, views and carts are equal."""
+        if self._place(i) is not None: self.organic.add(i, (v, a, p))
+    def organic_item_frame(self):
+        """Per-product ORGANIC counts so far (it_v, it_a, it_p), or None: the input of every quality / rate estimate."""
+        d = self.organic.d
+        return pd.DataFrame.from_dict(d, orient="index", columns=self.organic.cols) if d else None
+    def add(self, u, i, v, a, p):
+        sk = self._place(i)
         if sk is None: return
         s, k = sk
         self["item"].add(i, (v, a, p)); self["uit"].add((u, i), (v, a, p)); self["usub"].add((u, s), (v, p))
         self["ucat"].add((u, k), (v, p)); self["utot"].add(u, (v, p))
     def item_frame(self):
+        """Per-product counts of everything we know: organic stream PLUS purchases of our own carousel (it_p). For
+        popularity lists and model features; for a purchases/view rate use organic_item_frame() (T-047)."""
         d = self["item"].d
         return pd.DataFrame.from_dict(d, orient="index", columns=self["item"].cols) if d else None
 
 LIVE = LiveTables(); fb_seen = {}
+
+def organic_frame(T):
+    """T-047: the organic-only product counts of `T` (LiveTables). An object without them (older test doubles) gives its
+    item_frame(), which is what every caller received before."""
+    f = getattr(T, 'organic_item_frame', None)
+    return f() if f is not None else T.item_frame()
 
 def make_pools(cat, unavail, T):
     it = BASE["item"].copy()
@@ -453,7 +496,7 @@ def cold_lq_for_arms(cat, T):
     ready or on any error, and then those arms serve exactly the incumbent quality. Refresher thread only: no query."""
     try:
         if CLQ is None or QR is None or not LF.alt_lq or not CLQ.ready: return None
-        out = CLQ.corrections(QR.q, QR.lq, cat, BASE["item"], T.item_frame(), AP.cold.desc, lq0=LF.lq0)
+        out = CLQ.corrections(QR.q, QR.lq, cat, BASE["item"], organic_frame(T), AP.cold.desc, lq0=LF.lq0)   # T-047: organic counts only
         if CLQ.last != COLD_LOG.get('last'):
             COLD_LOG['last'] = dict(CLQ.last); print(json.dumps(dict(event='cold_lq', **CLQ.last)), flush=True)
         return out or None
@@ -474,10 +517,10 @@ def refresher():
                     state.update(cat=cat, unavail=unavail, live=None, pools=pools, best=best)
             T = refresh_events()
             if AP is not None:
-                try: AP.refresh(query, cat, BASE["item"], T.item_frame())
+                try: AP.refresh(query, cat, BASE["item"], T.item_frame(), organic_item=organic_frame(T))
                 except Exception as e: print('aff refresh failed', type(e).__name__, e, flush=True)
             if ATP is not None:
-                try: ATP.refresh(query, cat, unavail, T.item_frame(), sync=AP is None)
+                try: ATP.refresh(query, cat, unavail, organic_frame(T), sync=AP is None)   # T-047: attr_model reads these as organic totals
                 except Exception as e: print('attr refresh failed', type(e).__name__, e, flush=True)
             if LF is not None and AP is not None:
                 try: LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat))
@@ -727,19 +770,38 @@ def send_answers(reqs, answers, journal, seen, dry=False):
     if not batch:
         return
     started = time.perf_counter()
-    remaining = min(3-age(r) for r in reqs if r['request_id'] in {a['request_id'] for a in batch})
+    ids = {a['request_id'] for a in batch}
+    oldest = lambda: max(age(r) for r in reqs if r['request_id'] in ids)
+    attempts, retry = 1, None
     try:
-        post_batch(batch, remaining)
+        post_batch(batch, 3-oldest())
     except Exception as exc:
-        journal.finish([a['request_id'] for a in batch], 'uncertain')
-        print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
-                              post_ms=round(1000*(time.perf_counter()-started), 1))), flush=True)
         # A timeout can mean accepted-but-acknowledgement-lost. Never blindly retry.
-        return
+        # T-047, the one exception: ConnectTimeout = the connection was never established, nothing was sent. The SAME
+        # claimed payload gets ONE more POST if the oldest request is still young enough, with the deadline budget
+        # measured again right now (the failed connect used up to 0.3 s). Whatever the second attempt raises,
+        # ConnectTimeout included, is final.
+        if never_sent(exc):
+            first_ms, seconds = round(1000*(time.perf_counter()-started), 1), oldest()
+            retry = 'ok' if 0 < CONNECT_RETRY_AGE and seconds <= CONNECT_RETRY_AGE else 'no_budget'
+            if retry == 'ok':
+                attempts = 2
+                print(json.dumps(dict(event='push_retry', n=len(batch), first_ms=first_ms, oldest_age_ms=round(1000*seconds, 1))), flush=True)
+                try:
+                    post_batch(batch, 3-seconds)
+                    exc = None
+                except Exception as second:
+                    exc = second
+        if exc is not None:
+            journal.finish([a['request_id'] for a in batch], 'uncertain')
+            print(json.dumps(dict(event='push_uncertain', n=len(batch), error=type(exc).__name__,
+                                  post_ms=round(1000*(time.perf_counter()-started), 1), attempts=attempts,
+                                  **({'retry': retry} if retry else {}))), flush=True)
+            return
     journal.finish([a['request_id'] for a in batch], 'acknowledged')
     print(json.dumps(dict(event='push_ack', n=len(batch),
         post_ms=round(1000*(time.perf_counter()-started), 1),
-        oldest_age_ms=round(1000*max(age(r) for r in reqs), 1))), flush=True)
+        oldest_age_ms=round(1000*max(age(r) for r in reqs), 1), **({'attempts': 2} if attempts == 2 else {}))), flush=True)
 
 
 STOP = threading.Event()          # set by SIGINT/SIGTERM: finish the current loop, release the lock, exit

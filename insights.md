@@ -531,3 +531,12 @@ Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del 
 - **Weakness:** dos ráfagas con datos (Bike Helmets, Game Consoles). Para usuarios fuera de contexto solo 5 compras en 300 impresiones ponderadas (1,5 esperadas): que el efecto sea global es HYPOTHESIS.
 - **Corrige:** R-02 (258 impresiones, 0 compras: sin potencia) y R-18 (brazo `trend` de home probado 17:05–17:35 UTC, sin ráfaga activa).
 - **Use:** feature `hot` de lfm y brazo `t15` (D-440).
+
+### I-470 — Las compras de nuestro carrusel inflaban la tasa orgánica de los productos lanzados (fallo de entrada, T-047)
+- **Status / date / owner:** SUPPORTED (OBSERVED DATA + código) — 2026-11-15 00:15 UTC — Javi (agente, T-047, rama `javi/organic-quality-retry`).
+- **Qué pasaba:** `refresh_events()` apunta cada compra del feedback privado con `LIVE.add(u, i, 0, 0, 1)`; `cold_lq_for_arms()` pasaba `LIVE.item_frame()` al `Corrector`, y `LiveQuality` lee sus cuentas como orgánicas. Una compra hecha en el carrusel subía el numerador de compras por vista sin que sus impresiones entraran en el denominador. El mismo dato llegaba al hook `live_quality` (qrank), a `attr_model`, a las tasas de `cold_items` y a `home_arms` (todos apagados hoy).
+- **Tamaño (dato del encargo, 14 nov 23:10 UTC):** 400 lanzamientos con 7.291 compras orgánicas; el feedback añadía 33 compras en 11 lanzamientos. Inflación de la calidad sin recorte en los afectados: mediana ×1,029, máximo ×1,089. Solo afecta a brazos con `"lq"`.
+- **Arreglo:** acumulador aparte `LIVE.organic`, que solo escribe la ingestión de `shop.events`. Las compras del carrusel siguen en `LIVE.add`: exclusión de comprados, estado del usuario y lista de popularidad no cambian.
+- **Weakness:** es una corrección de entrada, no una mejora de conversión demostrada. La inflación crecería en la final si un brazo de calidad empuja lanzamientos (más compras del carrusel sobre los mismos productos): se realimentaba.
+- **Use:** toda tasa de compras por vista nueva debe leer `live.organic_frame(T)`, nunca `T.item_frame()`. Las features `orate`/`opop` de T-049 salen de aquí.
+- **No corregido a propósito:** `make_pools` (popularidad `pop`, un recuento y no una tasa) y las features de producto del GBM v1 (`fe.featurize`), que no están en el camino de lfm.

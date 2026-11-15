@@ -142,7 +142,7 @@ def install(g):
 
     def make_pools(cat, unavail, T, *a, **k):
         out = o_pools(cat, unavail, T, *a, **k)
-        try: rebuild(cat, unavail, g["BASE"]["item"] if g.get("BASE") else None, T.item_frame() if T is not None else None)
+        try: rebuild(cat, unavail, g["BASE"]["item"] if g.get("BASE") else None, getattr(T, "organic_item_frame", T.item_frame)() if T is not None else None)   # T-047: organic rates
         except Exception: _err("rebuild")
         return out
 

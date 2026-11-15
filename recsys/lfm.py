@@ -64,8 +64,10 @@ def in_segment(device, region): return device == "android" and region in SEG_REG
 AFF_CAP, NEUTRAL = 0.35, 0.10
 
 
-LQ_MODES = ("cold", "cold_new")    # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm);
-                                   # "cold" = returning and new shoppers, "cold_new" = new shoppers only (T-034)
+LQ_MODES = ("cold", "cold_new", "cold_known")   # arm key "lq" (T-028): corrected quality for products launched today (cold_lq_arm);
+                                   # "cold" = returning and new shoppers, "cold_new" = new shoppers only (T-034),
+                                   # "cold_known" = returning shoppers only (T-047)
+LQ_COHORT = {"cold_new": True, "cold_known": False}   # selective modes -> the is_new_user value they treat
 X_HI = 60                          # exploration arm: the last slot is drawn from ranks 11..60
 X_MODES = ("new", "known")         # arm key "explore": true = every shopper, "new" / "known" = only that kind of shopper
 LQ_PAGES = ("product", "category")   # ...only on these pages and only with recent views; home is never touched
@@ -73,7 +75,8 @@ LQ_PAGES = ("product", "category")   # ...only on these pages and only with rece
 
 def lq_target(mode, is_new_user, page, rv) -> bool:
     """Does a request get the corrected quality under arm mode `mode`? The single rule for scoring and for routing."""
-    return mode in LQ_MODES and bool(rv) and page in LQ_PAGES and (mode == "cold" or bool(is_new_user))
+    if mode not in LQ_MODES or not rv or page not in LQ_PAGES: return False
+    return mode == "cold" or LQ_COHORT[mode] == bool(is_new_user)
 
 
 RC = "@recart"                     # arm key "recart": true (T-046). Marker entry of LiveFit.alt, see set_arms()

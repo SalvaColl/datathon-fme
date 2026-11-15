@@ -34,9 +34,9 @@ class AffPolicy:
     # ---- refresher thread ----
     def add(self, u, i, v): self.aff.add(u, i, v)
 
-    def refresh(self, query, cat, base_item, live_item=None):
+    def refresh(self, query, cat, base_item, live_item=None, organic_item=None):
         self.cold.sync(query); self.aff.sync_products()
-        self.cold_tables = self.cold.tables(cat, base_item, live_item)
+        self.cold_tables = self.cold.tables(cat, base_item, live_item, organic_item)
 
     # ---- serving thread ----
     def candidates(self, req, cat, unavail, category=None):
