@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-052 | P0 | Audit the unified bot: preserve organic counts across catalogue-refresh races; remove future-data trend normalization and optimistic tie scoring from its evaluator; focused regressions and handoff | Codex / codex/unified-bot-audit (from main 16e14c6) | IMPLEMENTED/TESTED: E-520; 360 tests OK (8 skipped), 1000/1000 selector parity; not deployed | Serving owner Javi reviews/deploys; existing venv only |
 | T-001 | P0 | Official spec + starter files reviewed, schemas and score in `challenge.md` | Doc owner / docs refresh | **DONE (public sources only)** | Actual team API access not tested |
 | T-002 | P0 | Run baseline `starter/recommender.py`, verify live feedback `served_by='team'`, p95, `.env` safe | TBD / TBD | READY | TEAM_ID/key; available Python env |
 | T-003 | P0 | RawTree client, polling ledger, batch writer, stock refresh, valid-ten guard, retries and restarts | TBD / TBD | READY | T-002 working instance; **single writer** |

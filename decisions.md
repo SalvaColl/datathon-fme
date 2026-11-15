@@ -345,3 +345,12 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
 - **Necesita reinicio con relevo** desde esta rama (features `orate`/`opop`, conteos solo orgánicos, reintento de ConnectTimeout). Con código anterior `policy.json` con `orate` se rechaza entero y sigue la política anterior (PR #42).
 - **Lectura sugerida:** equipo − referencia en los primeros bloques de 15 minutos contra los últimos bloques de cs2r; volver a cs2r si cae con claridad (dos bloques seguidos peores que el peor de cs2r) o si a tiempo baja de 97%.
 - **Evidencia:** E-500 (offline; ninguna pieza tiene A/B propio). Confianza: calidad orgánica alta para ser offline (dos métodos independientes, E-490 y E-500); carritos de cs2r media; tendencias baja pero barata.
+
+
+## D-520 ? Unified-bot audit handoff (T-052; 15 Nov 2026)
+
+**IMPLEMENTED ON AN ISOLATED BRANCH; NOT DEPLOYED.** E-520 / I-520. `codex/unified-bot-audit` starts at `16e14c6`. Javi owns the writer and deployment. No policy templates, coefficients, labels, credentials, polling or POST logic change. The faster detector in I-521 is not included.
+
+Interfaces: `lfm.top_items(snapshot, scores, n=10, exclude=())` extracts the existing writer selector for shared evaluation. Organic product counts no longer require category metadata to arrive first; products remain ineligible until catalogue/stock checks allow them. The evaluator's 10-minute burst proxy is causal and refreshes its mapping for later launches. Recompute E-500 retrieval evidence before relying on those numbers.
+
+Review/apply the fix commit on the deployment branch and run `python -m unittest discover -s tests -q` plus `python tools/bench_unified_audit.py --base 16e14c6`. Validate on a non-writer machine. Serving code changes require the usual single-writer handoff at a planned restart; copying policy.json alone cannot load Python fixes. Roll back by reverting this fix commit on the deployment branch and using the same handoff procedure, while retaining the approved champion policy. No independent online conversion gain or production latency measurement is claimed.

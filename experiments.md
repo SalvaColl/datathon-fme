@@ -720,3 +720,28 @@ Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer 
 ## E-501 — Bot único por el camino del writer: validez, listas cambiadas y latencia (T-050)
 
 `python recsys/unified_eval.py check policy.unified.json ...` (`clean_lfm_arms` → `set_arms` → `LiveFit.slate`, estado a fecha de la petición). Primera pasada (4.111 peticiones desde las 17:00 UTC, versión sin carritos y versión con carritos a dosis 0,8): 100% válidas en todos los grupos; latencia por lista p50 1,3 ms, p95 5,0, p99 7,8, igual que r3. Cambia el puesto 1 en ~49% de las listas de nuevos en página. Pasada de la política final: ver el PR.
+
+
+## E-520 ? Unified-bot correctness audit (T-052, 15 Nov 2026, Codex)
+
+**Evidence: SYNTHETIC REGRESSIONS / CODE AUDIT, not a conversion experiment.** Branch `codex/unified-bot-audit`, base `16e14c6`. No writer started and no live policy changed.
+
+Reproduced before fixing:
+- Organic events for a launch absent from the latest catalogue were discarded by `LiveTables.add_organic`. The event cursor then advances, so a later catalogue refresh cannot recover them. Organic product counters now retain those trusted stream events independently of category metadata; slate eligibility still requires the catalogue and stock checks. Per-user category tables retain their existing gate.
+- `unified_eval.bursts` used the whole-day median, including later buckets. Appending future data changed past burst flags in a regression. It now uses only the preceding three hours, excluding the current bucket, with three prior 10-minute buckets required. The evaluator remains a coarse proxy; it is not the production detector.
+- Its burst cache used only the first catalogue's product mapping, dropping later launches from trend calculations. It now refreshes that mapping when it changes.
+- Target ranks used `count(score > target_score) + 1`, crediting every tied product with the best rank. A synthetic 80-way tie falsely reported 100% hit@10 and hit@3; corrected results are 12.5% and 3.75%. Evaluation now shares the deployed top-N selector, including tie order and stock-shock repair. The serving selector algorithm itself is preserved.
+
+Validation:
+```text
+python -m unittest discover -s tests -q
+Ran 360 tests: OK (skipped=8)
+
+python tools/bench_unified_audit.py --base 16e14c6
+seed=520; 5,400 products; 1,000 cases
+identical slates=1,000; valid=1,000
+selector p95/p99 ms: before 5.9802/6.9490; after 6.1438/7.2054
+```
+The benchmark alternates call order and includes tied scores, non-finite exclusions and stock shocks. It measures synthetic selection only, not inference or network latency. Test portability fixes close a reopened SQLite handle before temporary-directory cleanup and compare paths using POSIX separators on Windows.
+
+**Limitations:** E-500 target-retrieval tables must be recomputed; none were rerun against team caches here. Organic purchase retrieval is a proxy for carousel response; feedback is exposure-biased; repeated users/purchase targets make naive standard errors optimistic. The coarse trend proxy cannot validate exact detection latency. No measured online conversion uplift, full-slate counterfactual estimate or production end-to-end p95/p99 is claimed.

@@ -540,3 +540,18 @@ Entradas nuevas, solo añadidas. Cifras "modelo oculto" = fila por versión del 
 - **Weakness:** es una corrección de entrada, no una mejora de conversión demostrada. La inflación crecería en la final si un brazo de calidad empuja lanzamientos (más compras del carrusel sobre los mismos productos): se realimentaba.
 - **Use:** toda tasa de compras por vista nueva debe leer `live.organic_frame(T)`, nunca `T.item_frame()`. Las features `orate`/`opop` de T-049 salen de aquí.
 - **No corregido a propósito:** `make_pools` (popularidad `pop`, un recuento y no una tasa) y las features de producto del GBM v1 (`fe.featurize`), que no están en el camino de lfm.
+
+
+## I-520 ? Unified bot: keep organic launch counts; distrust optimistic replay hits (T-052)
+
+**CONFIRMED CODE BUGS / SYNTHETIC REGRESSIONS, 15 Nov 2026.** E-520 fixes organic events lost when launch metadata arrives later, future-dependent burst normalization, a catalogue mapping that ignored later launches, and optimistic target ranks at tied scores. These affect cold-start input integrity and the credibility of E-500's offline evidence. Model weights and active policy are unchanged. Review `codex/unified-bot-audit`; deployment remains with Javi.
+
+## I-521 ? Faster trend detection is a separate challenger, not part of the bug fix
+
+**OFFLINE ORGANIC FORECAST / SHADOW DIAGNOSTIC; UNCONFIRMED CONVERSION.** Codex, 15 Nov 2026. Compare existing `trends.compute(..., recent=3, base=36)` with `recent=1, base=36` (15 versus 5 minutes; same five-minute buckets, three-hour baseline, lift 2, z 6, 50 views and K=20). This also changes the median-share baseline blocks from 15 to 5 minutes through the existing function. Do not change the current policy globally on this evidence alone.
+
+Past-only minute-resolution replay, shop.events 14 Nov 09:00 through 15 Nov 00:25 UTC (80,553 minute/subcategory rows); 48 sampled comparisons against the actual production compute function agreed. Across Cutting Boards, Bike Helmets, Game Consoles, Face Cream and Vitamins, onset delays old/new were 7/3, 8/3, 5/2, 4/2 and 6/2 minutes. Coverage was 195/225 versus 213/225 burst-minutes; post-burst signalling summed over these five episodes was 50 versus 17 minutes. The later after-midnight Vitamins tail reproduced the shorter expiry. Product/subcategory mapping was verified stable for all 5,400 products. No product IDs, named categories or burst timetable are needed by the candidate detector.
+
+Shadow replay on the **cs2r base at 05a862c**, with hot weight 1.5 for product/category pages and unchanged home overrides: 3,744 sampled requests, all three paths valid; fast/slow slates differed in 1.04%, and fast/no-hot in 5.48%. Local fast-arm scoring p95/p99 7.15/22.54 ms (includes replay user-profile work, excludes network). This was before the unified organic-quality policy arrived: it does not validate that newer policy, its known-user hot weight 3.0, or conversion.
+
+If pursued, clone the latest champion and change only the detector window, with separate immutable masks per arm built from one background query. A fast empty/error mask must be neutral, never fall back to a stale slow mask. Preserve all coefficients. Use actual served-policy epochs, same-window reference, one challenger, and confirmation on a new detected episode. Continue streaming updates after the pre-final parameter freeze. Keep this experiment separate from E-520.

@@ -3,7 +3,7 @@ import io
 import json
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import closing, redirect_stdout
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -100,8 +100,10 @@ class RetryTests(unittest.TestCase):
         self.assertEqual((log[-1]['attempts'], log[-1]['error']), (2, 'ReadTimeout'))
         self.ages = {'0': 0.6}; self.calls = []; self.script = [(0.3, None)]
         live.send_answers(self.reqs, self.answers, self.j, set())                     # the same request offered again (next poll, or after a restart)
-        j2 = Journal(Path(self.tmp.name) / 'j.db'); self.addCleanup(j2.close)
-        self.assertEqual(self.calls, []); self.assertTrue(j2.contains('0')); self.assertFalse(j2.claim(self.answers[0]))
+        # addCleanup runs after tearDown, which already deletes the directory: close the reopened database first
+        # so Windows can remove its file, too.
+        with closing(Journal(Path(self.tmp.name) / 'j.db')) as j2:
+            self.assertEqual(self.calls, []); self.assertTrue(j2.contains('0')); self.assertFalse(j2.claim(self.answers[0]))
 
     def test_at_most_one_accepted_submission_over_every_two_step_outcome(self):
         """A fake server that accepts whatever reaches it: an attempt 'reaches' it unless it failed with ConnectTimeout."""

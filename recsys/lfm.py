@@ -238,6 +238,19 @@ def organic_quality(ids, oq, hist=None):
         print("lfm organic quality off:", type(e).__name__, e, flush=True); return None, None
 
 
+def top_items(S, s, n=10, exclude=()):
+    """The writer's top-N selection, including its tie order and stock-shock repair. Shared with offline target
+    evaluation: a tied score does not put every tied product into the ten available slots. Does not mutate scores."""
+    if S.n == 0 or n <= 0: return []
+    top = np.argpartition(-s, min(n + 20, S.n - 1))[: n + 20]
+    top = top[np.argsort(-s[top])]
+    out = [S.ids[k] for k in top if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
+    if len(out) < n and exclude:
+        # Stock may have moved since the snapshot: look past the first thirty candidates.
+        out = [S.ids[k] for k in np.argsort(-s) if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
+    return out
+
+
 class LiveFit:
     def __init__(self, coef: dict, history: pd.DataFrame | None = None):
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
@@ -484,13 +497,7 @@ class LiveFit:
 
     def slate(self, req, state, aff_obj, n=10, exclude=(), model=None):
         S, s = self.scores(req, state, aff_obj, model)
-        top = np.argpartition(-s, min(n + 20, S.n - 1))[: n + 20]
-        top = top[np.argsort(-s[top])]
-        out = [S.ids[k] for k in top if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
-        if len(out) < n and exclude:
-            # More than 20 of the 30 best are in `exclude` (stock moved since the snapshot was built, e.g. a slow
-            # catalogue refresh during a stock shock): look further down instead of handing the request to the old path.
-            out = [S.ids[k] for k in np.argsort(-s) if np.isfinite(s[k]) and S.ids[k] not in exclude][:n]
+        out = top_items(S, s, n, exclude)
         xm = getattr(self, "alt_x", {}).get(model) if model else None
         if len(out) == n and x_target(xm, req.get("is_new_user"), req.get("page", "product"), req.get("rv")):
             out = self._explore(req, S, s, out, exclude)

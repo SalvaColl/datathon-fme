@@ -93,6 +93,20 @@ class IngestionTests(unittest.TestCase):
         self.assertAlmostEqual(self.rate(live.organic_frame(live.LIVE)), (6 + 1.5) / (51 + 100), places=12)
         self.assertGreater(self.rate(live.organic_frame(live.LIVE)), before)
 
+    def test_launch_before_catalogue_refresh_keeps_counts_after_cursor_advances(self):
+        fe.set_catalog(self.cat.drop(index="new_b"))
+        self.s.event(21, "launch_user", "new_b", "view")
+        self.s.event(22, "launch_user", "new_b", "add_to_cart")
+        self.s.event(23, "launch_user", "new_b", "purchase")
+        live.refresh_events()
+        self.assertEqual(self.organic("new_b"), (31, 1, 1))
+        self.assertIn("new_b", live.BOUGHT["launch_user"])
+        cursor = live.state["ev_ts"]
+        fe.set_catalog(self.cat)
+        live.refresh_events(); live.refresh_events()
+        self.assertEqual(live.state["ev_ts"], cursor)
+        self.assertEqual(self.organic("new_b"), (31, 1, 1))
+
     def test_the_two_tables_differ_exactly_by_the_deduplicated_carousel_purchases(self):
         self.s.buy_from_carousel(20, "c0", "new_a"); self.s.buy_from_carousel(21, "c0", "new_a")      # same shopper and product twice
         self.s.buy_from_carousel(21, "c1", "new_a"); self.s.buy_from_carousel(21, "v0", "new_a")      # v0 also bought it organically

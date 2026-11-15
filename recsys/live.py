@@ -418,9 +418,11 @@ class LiveTables(dict):
             self._sk = dict(zip(c.index, zip(c["sub"], c["category"]))); self._cat = c
         return self._sk.get(i)
     def add_organic(self, i, v, a, p):
-        """One (user, product) delta of shop.events. Same catalogue gate as add(), so the two accumulators differ
-        exactly by the carousel purchases: item.it_p - organic.it_p = feedback purchases, views and carts are equal."""
-        if self._place(i) is not None: self.organic.add(i, (v, a, p))
+        """Product counts from shop.events do not need category metadata. A launch can arrive after refresh_catalog()
+        but before refresh_events(); dropping it here would lose its counts permanently when ev_ts advances. Retain
+        those counts now; snapshots still control product existence/stock before any recommendation can include it.
+        Carousel purchases never call this method. Per-user category tables keep their separate metadata gate."""
+        self.organic.add(i, (v, a, p))
     def organic_item_frame(self):
         """Per-product ORGANIC counts so far (it_v, it_a, it_p), or None: the input of every quality / rate estimate."""
         d = self.organic.d

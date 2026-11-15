@@ -50,14 +50,18 @@ COH = ("known/page", "new/page", "known/home", "new/home")
 
 def bursts(item10, sub_of, lift=2.0, min_views=150):
     """{closed 10-minute bucket end -> set of hot subcategories}: share of the views of the last 10 minutes at least `lift`
-    times the subcategory's median share over the day. A stand-in for trends.py (which needs the raw stream as of each
-    instant); it flags the same bursts (45 minutes from :30 of odd UTC hours) with the same ~10-minute lag."""
+    times its median share in the PRECEDING three hours, with at least 30 minutes of baseline. Current/future buckets
+    never enter that baseline. This remains a 10-minute proxy, not the production detector's 5-minute-bucket replay;
+    it must not be used to select a detector window or claim exact onset/expiry timing."""
     it = item10.assign(sub=item10.i.map(sub_of)).dropna(subset=["sub"])
     t = it.pivot_table(index="b", columns="sub", values="v", aggfunc="sum", fill_value=0)
-    share = t.div(t.sum(axis=1), axis=0); med = share.median()
+    share = t.div(t.sum(axis=1).replace(0, np.nan), axis=0)
+    med = share.rolling("3h", closed="left", min_periods=3).median()
     out = {}
     for b, row in share.iterrows():
-        hot = [s for s in row.index if row[s] >= lift * max(med[s], 1e-4) and t.at[b, s] >= min_views]
+        baseline = med.loc[b]
+        hot = [s for s in row.index if pd.notna(baseline[s]) and
+               row[s] >= lift * max(baseline[s], 1e-4) and t.at[b, s] >= min_views]
         if hot: out[b] = set(hot)
     return out
 
@@ -75,10 +79,14 @@ def snapshots(R, qrank, LF, aff, d, H, it, hot_on=True):
     """Yield (group of requests, cat, unavail, S, newp) with LF's snapshot built as of the group's 10-minute bucket."""
     C = R.Catalogue(); QR = qrank.Ranker.load(HERE / "data" / "qrank.joblib"); hc = LF.snap.hc; hset = set(H)
     d = d.assign(ver=[C.version(t) for t in d.ts], bucket=d.ts.dt.floor("10min"))
-    B = None
+    B, burst_subs = None, None
     for (ver, bucket), g in d.groupby(["ver", "bucket"], sort=True, dropna=False):
         cat, unavail, desc = C.asof(None if pd.isna(ver) else ver)
-        if B is None: B = bursts(it, cat["sub"].to_dict())
+        sub_of = cat["sub"].to_dict()
+        if B is None or sub_of != burst_subs:
+            # A catalogue at the first request does not contain later launches. Rebuild the causal proxy when
+            # its metadata changes, otherwise those products' organic events disappear from every later burst.
+            B = bursts(it, sub_of); burst_subs = sub_of
         QR.set_catalog(cat, unavail); newp = set(cat.index) - set(QR.q)
         today = it[it.b <= bucket].groupby("i")[["v", "p"]].sum(); oq = dict(H)
         for i, v, p in zip(today.index, today.v.values, today.p.values):
@@ -134,8 +142,11 @@ def targets(grid=None, out=None, base="r3", horizon_min=30):
                             c = h.get(p); k = S.row.get(p) if c else None
                             if k is not None: s[k] += max(0.0, w[seg][FI["chn"]] * math.log1p(c) - w[seg][FI["cl"]])
                 s[dead] = -np.inf
+                top = lfm.top_items(S, s)
+                # Count only products the writer would actually select, including ties at positions 3 and 10.
+                positions = {S.row[p]: rank for rank, p in enumerate(top, start=1)} if len(top) == 10 else {}
                 for j, (kind, k) in enumerate(tg):
-                    ranks[j].append(int((s > s[k]).sum()) + 1 if np.isfinite(s[k]) else 9999)
+                    ranks[j].append(positions.get(k, 9999))
             for j, (kind, k) in enumerate(tg):
                 ty = "cart" if (X[k, FI["chn"]] > 0 or X[k, FI["cl"]] > 0) else "newp" if S.ids[k] in newp else "other"
                 t8 = CV.TYPES[int(CV.types_of(X, S, np.array([k]), S.row.get(r.rv[-1]) if r.rv else None, mix)[0][0])]
