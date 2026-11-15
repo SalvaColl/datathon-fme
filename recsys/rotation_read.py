@@ -48,7 +48,7 @@ def in_burst(a, step, bursts):
     return False
 
 
-def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None, factors=None, step_at=None):
+def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None, factors=None, step_at=None, ktop=False):
     step = block_min * 60; champion = champion or seq[0]
     end = min(until or 1 << 62, int(time.time()) // 300 * 300)
     rows = []
@@ -73,6 +73,7 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         else: rows[-1].update(cold_share=None, noncold_diff=None, ref_noncold=None)
         kc = (kcodes or {}).get(rows[-1]["variant"])          # public code of this variant's row for returning shoppers on pages
         kr = next((v for v in t.get("versions", []) if v["model_version"] == kc), None) if kc else None
+        if kr is None and ktop and t.get("versions"): kr = max(t["versions"], key=lambda v: v["requests"])      # the largest row of the block
         rows[-1]["known"] = None if kr is None else round(kr["conversion"], 3); rows[-1]["known_requests"] = None if kr is None else kr["requests"]
         # returning shoppers on pages: their row minus the reference's non-cold conversion of the same window (drift), and their cold part
         rows[-1]["known_adj"] = None if kr is None or rows[-1]["ref_noncold"] is None else round(kr["conversion"] - rows[-1]["ref_noncold"], 3)
@@ -130,10 +131,10 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--start", required=True); ap.add_argument("--block-min", type=int, default=15); ap.add_argument("--seq", required=True)
-    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--step-at", help="UTC time of a change common to every arm (a level shift), e.g. \"2026-11-15 03:20\""); ap.add_argument("--factors", help='main effects: "hcb=u1hb,u2hb;dose=u2c,u2hb"'); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
+    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--k-top", action="store_true", help="returning shoppers on pages = the row with most requests of each block (when codes change mid-epoch)"); ap.add_argument("--step-at", help="UTC time of a change common to every arm (a level shift), e.g. \"2026-11-15 03:20\""); ap.add_argument("--factors", help='main effects: "hcb=u1hb,u2hb;dose=u2c,u2hb"'); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
     g = ap.parse_args()
     b = None if g.bursts is None else [int(x[:2]) * 60 + int(x[3:5]) for x in g.bursts.split(",") if x]
     main(epoch(g.start), g.block_min, g.seq.split(","), epoch(g.until) if g.until else None, g.out, g.champion, g.min_on_time, bursts=b,
          kcodes=dict(x.split("=") for x in g.k_codes.split(",")) if g.k_codes else None,
-         step_at=epoch(g.step_at) if g.step_at else None,
+         step_at=epoch(g.step_at) if g.step_at else None, ktop=g.k_top,
          factors={f.split("=")[0]: set(f.split("=")[1].split(",")) for f in g.factors.split(";")} if g.factors else None)
