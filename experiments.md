@@ -817,3 +817,52 @@ Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cu
 - Estimación (conjetura): +0,05 a +0,15 puntos de conversión total.
 
 Features `hcb` / `hcc` (peso 0 = inertes), fichero `data/hist_carousel.parquet` (`download_prev_views.py`). Política `policy.unified_hcb.json` (u1h = u1v + hcb 3,0 y hcc 0,8 en páginas de conocidos, hcb 1,5 en home). La dosis está en la escala de cs2r (chn 3,0) y no se ha pasado por repetición.
+
+## E-570 — Precio, descuentos y señales sin cruzar (T-057, 15 nov 03:00 UTC) — OFFLINE, feedback propio 14 nov 10:00 – 15 nov 01:45 UTC
+
+Método: 1,44 M impresiones servidas (2.457 compras) con las features de lfm reconstruidas a fecha de cada petición; logit condicional dentro de la petición (quita el tipo de usuario) con efectos de puesto, las features de u1 libres y la puntuación de u1 servida como covariable; ajuste antes de las 19:00 UTC y verosimilitud después. Los multiplicadores en bruto se dan solo para explicar por qué engañaban.
+
+| Señal | En bruto | Controlado | Veredicto |
+|---|---|---|---|
+| Sensibilidad al precio del usuario (media del precio relativo a su subcategoría en sus vistas / carritos del histórico; rasgo estable: correlación entre mitades 0,53 / 0,74) | usuarios baratos 47 → 11 compras por 10k de barato a caro; usuarios caros 43 → 106 | precio × rasgo +0,26 ± 0,08 (carritos), +0,51 ± 0,19 (vistas); fuera de muestra +3,9 [−2,1, +10,2]; productos sin tocar +0,07 ± 0,07 | real y pequeña: sus carritos ya la llevan. No se implementa |
+| Producto ya mostrado antes al usuario sin clic | −0,39 ± 0,06 sin efecto de usuario | −0,04 ± 0,12 dentro de la petición | era el tipo de usuario. Descartada |
+| Clic anterior en nuestro carrusel | 22 compras | conocidos −0,49 ± 0,28, nuevos +0,52 ± 0,31 | sin evidencia |
+| Latencia de la respuesta | 2,1% por debajo de 0,8 s, 1,4% a 2,0–2,3 s | entre lotes −0,12 ± 0,07 por segundo en compras (los lotes lentos ya llevan listas peores según el modelo); dentro del lote (parte aleatoria) −0,21 ± 0,07 en compras y −0,02 ± 0,04 en clics | incoherente entre clics y compras; sin margen que recortar con el bucle a 0,1 s. No es palanca |
+| Promoción activa (categoría entera al −20%, 2 h sí / 1 h no; el histórico no tiene ninguna variación de precio) | carritos en promoción 77 frente a 94 por 10k | conocidos +0,03 ± 0,35 (carritos +0,27 ± 0,36), nuevos −0,10 ± 0,45 | el carrusel no responde al descuento. Descartada |
+| Página de producto frente a página de categoría | iguales (1,59% / 1,67% conocidos) | 9 interacciones, ninguna a más de 2 errores estándar | descartada |
+| Hora × categoría, hora × marca (histórico orgánico) | correlación entre mitades 0,06–0,46, SD 1–5% (subcategoría 10% con correlación 0,12) | — | no hay estructura |
+| Precio / calidad / afinidad del carrito (interacciones) | — | ninguna estable; fuera de muestra −1,1 [−8,5, +6,2] | descartada |
+| **Lo que compra el segmento (dispositivo × región) por subcategoría y marca** | histórico orgánico: correlación entre mitades 0,71, SD 0,26 | usuarios nuevos en páginas: gsub +1,33 ± 0,21 compras, +0,80 ± 0,13 clics; tabla de otro segmento −0,13 ± 0,23; <19 h +1,76 ± 0,32, ≥19 h +0,96 ± 0,27. Conocidos +0,39 ± 0,21 | real, y vale poco: ver abajo |
+
+Tamaño de la señal de segmento: dentro de una lista su desviación típica es 0,19 logit, así que solo reordena casi empates. Reordenando los 10 mostrados con el modelo ajustado como verdad, +2,1% de las compras de nuevos en páginas (≈ +0,013 puntos de conversión total, +0,04 en cold). En compras orgánicas posteriores (`unified_eval.py targets`, base u1, 2.568 objetivos de nuevos en páginas): dosis baja (gsub 0,6 / gbrand 0,3) org@10 +0,31 ± 0,25; dosis media −0,04 ± 0,30; alta −0,16 ± 0,36; durante ráfagas −0,56 ± 0,43 / −1,45 ± 0,51 / −2,12 ± 0,60. En home de nuevos la dosis media pierde compras de carrusel (−9 ± 3,5 puntos de fb@10, 66 compras) y las frases solo tienen 1,7 ± 0,8 con 66 compras: sin evidencia, peso 0.
+
+Por qué no hay palanca grande aquí: lo que mueve la compra en el carrusel son señales de varios logits entre el usuario y el producto concreto (carrito, vista de la sesión, vista de peticiones anteriores, compra en el carrusel histórico). Precio, descuento, segmento, hora y página son de segundo orden en el simulador (décimas de logit) y solo cambian el orden entre casi empates.
+
+Código: features `gsub` / `gbrand` / `gphr` (peso 0 = inertes), `lfm_seg_build.py` → `lfm_seg.json` (30 segmentos), `policy.unified_seg.json` (u1g = u1 + gsub 0,6 / gbrand 0,3 solo en páginas de nuevos; opcional, no justifica un reinicio por sí sola).
+
+## E-571 — Señales usuario × producto precalculadas (T-057, 15 nov 03:40 UTC) — OFFLINE, mismo método que E-570
+
+Todas contra la puntuación de u1 dentro de la petición, con puesto, ajuste antes de las 19:00 UTC y verosimilitud después. Páginas de conocidos (1.297 compras), compradores fuertes (carritos por vista ≥ 12%, 1.122), home de conocidos (88) y nuevos en páginas (996).
+
+| Señal | Coeficiente (compras, páginas de conocidos) | Fuera de muestra | Veredicto |
+|---|---|---|---|
+| Compra conjunta producto a producto con lo que el usuario compró en 60 días (PMI medio; en el histórico los pares tienen estructura más allá de la subcategoría, correlación entre mitades 0,44) | +0,09 ± 0,10 (residuo sobre subcategoría +0,17 ± 0,11; otro usuario −0,05 ± 0,07) | −0,2 [−2,0, +2,2] | nada |
+| Lo que compran quienes tuvieron en carrito lo mismo que él | −0,02 ± 0,08 | −0,2 [−1,8, +1,7] | nada |
+| Fidelidad de marca dentro de la categoría (compras / carritos / vistas) | +0,06 ± 0,05 / +0,07 ± 0,06 / 0,00 ± 0,08 | +0,2 [−1,4, +2,1] | nada |
+| Sustituto de un carrito pendiente (misma subcategoría y marca / solo subcategoría) | −0,11 ± 0,17 / +0,10 ± 0,12 (nuevos +0,39 ± 0,18 / +0,29 ± 0,14) | −3,7 [−7,3, +0,1] (nuevos −0,9 [−6,7, +5,8]) | nada |
+| Sustituto de la última vista (misma marca, precio a ±15%, más barato) | −0,01 ± 0,26, −0,51 ± 0,27, −0,21 ± 0,19 | incluido arriba | nada |
+| Vistas históricas del producto en carrito | +0,37 ± 0,29 | −8,1 [−14,6, −2,3] | nada |
+
+Compradores fuertes y home dan lo mismo. Coincide con E-311 (factores latentes usuario × producto no añaden: el simulador es de atributos, sin identidad de producto) y explica qué sí funcionó: carrito, vista de la sesión, vista de peticiones anteriores y compra en el carrusel histórico son registros del propio usuario con ese producto exacto, no inferencias desde otros usuarios o desde productos parecidos. No quedan registros directos sin usar en los datos (vistas orgánicas sin carrito están muertas, compras excluidas, impresiones previas sin efecto).
+
+## E-572 — Orden entre carritos pendientes (T-057, 15 nov 04:10 UTC) — OFFLINE, mismo marco que E-570
+
+Solo los carritos pendientes mostrados a conocidos en listas con 2 o más carritos: 47.458 listas de página, 811 compras de carrito (62% de las compras de conocidos en páginas). Logit condicional "qué carrito de la lista se compra", con puesto; ganancia de verosimilitud fuera de muestra (459 peticiones desde las 19:00 UTC) frente a un modelo solo de puesto.
+
+- Orden de u1 entre carritos: +18,5 [7,5, 28,3]. Orden de u3k: +35,3 [19,9, 49,1]. Con las dos puntuaciones juntas u1 queda en −0,06 ± 0,05 y u3k en 0,32 ± 0,04. En clics +14,5 frente a +43,9. Compradores fuertes (20%+): +10,2 frente a +23,7. u1 y u3k ponen el mismo carrito arriba en el 76,5% de las listas.
+- Rasgos del carrito encima de u3k, uno a uno: antigüedad del añadido −0,02 ± 0,03, última interacción −0,02 ± 0,03, añadido hoy +0,03 ± 0,12, horas desde el añadido de hoy +0,03 ± 0,06, vistas históricas +0,03 ± 0,11, añadido 2+ veces 0,00 ± 0,11, promoción activa −0,49 ± 0,47, categoría de la sesión −0,13 ± 0,17, en vistas recientes +0,27 ± 0,22, ráfaga −0,44 ± 0,66, precio +0,10 ± 0,05, afinidad / cuota de categoría / calidad / mf sin efecto. Ninguno mejora fuera de muestra.
+- Con algo de señal, todos ya cubiertos por otras políticas o pequeños: lanzado +0,95 ± 0,36 (es el `newp` de u3n), comprado en el carrusel histórico +0,31 ± 0,17 (hcb de u3hb / u4k; en bruto 504 frente a 67 por 10k, casi todo ya está en la puntuación), precio × sensibilidad del usuario +0,24 ± 0,11, carritos de la misma categoría en la lista −0,30 ± 0,12. Los tres primeros juntos: +39,9 frente a +35,3 de u3k solo, intervalos solapados. El modelo con los 24 rasgos libres sobreajusta (+12,6).
+- Tamaño: reordenando solo los carritos entre los puestos que ya ocupan, con u3k como verdad el orden de u3k da +3,1% de compras de carrito sobre el de u1 (≈ +0,02 puntos de conversión total, ya dentro de la prueba en vivo de u3k); con u1 como verdad, −2,3%. Lo que añadirían los rasgos nuevos encima de u3k queda por debajo de +1% de las compras de carrito.
+- No hecho: histórico aleatorizado (su respuesta es otra: 98% de sus compras son recompras) y carritos fuera del top 10 (el hilo de pesos ya midió con u3k compras de carrusel retenidas 88,9% → 92,6% y orgánicas en el top 10 +1,68 ± 0,33).
+
+Conclusión: no hay un modelo de "qué carrito" que mejore a u3k; el orden de carritos de u3k es claramente mejor que el de u1 y esa es la mejora disponible.

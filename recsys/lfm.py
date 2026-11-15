@@ -70,7 +70,16 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # (109 buys), +1.46 +- 0.09 on clicks; inside the same request x2 against another pending cart at the same slot
          # and x3-5 against a non-cart product; hcc +0.40 +- 0.15 (E-550). 0 for products bought organically (those stay
          # excluded); weight 0 in every committed file
-         "hcb", "hcc"]
+         "hcb", "hcc",
+         # T-057: what the shopper's SEGMENT (device x region, 30 of them) buys. In the 60-day organic history each segment
+         # has its own stable mix of subcategories and brands (log purchase share against the catalogue-wide and the
+         # segment-wide average: split-half correlation 0.71, SD 0.26). For NEW shoppers on pages with views it carries
+         # over to our carousel about one to one, inside the same request and next to the score served live:
+         # gsub +1.33 +- 0.21 on purchases (996 buys), +0.80 +- 0.13 on clicks; another segment's table: -0.13 +- 0.23;
+         # both halves of the day positive (E-570). Returning shoppers: no evidence (their own history says it already).
+         # gphr = the same for the description phrases (evidence only on home, weak). lfm_seg_build.py -> lfm_seg.json;
+         # no file or unknown segment = 0; weight 0 in every committed file
+         "gsub", "gbrand", "gphr"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -86,6 +95,16 @@ GRAPH = HERE / "lfm_graph_B.json"
 CV_SCALE, CV_CAP = 10.0, 5.0
 SEG_REGIONS = ("Andalucía", "Canarias", "Murcia")
 def in_segment(device, region): return device == "android" and region in SEG_REGIONS
+SEGT = HERE / "lfm_seg.json"
+GRP_K = tuple(FEATS.index(f) for f in ("gsub", "gbrand", "gphr"))
+_SEG = [None]
+def seg_key(device, region): return f"{device}|{region}"
+def seg_tables() -> dict:
+    """lfm_seg.json, read once: {"sub": {segment: {subcategory: value}}, "brand": {...}, "phr": {segment: [20 values]}}."""
+    if _SEG[0] is None:
+        try: _SEG[0] = json.loads(SEGT.read_text())
+        except Exception as e: print("lfm segment tables off:", type(e).__name__, e, flush=True); _SEG[0] = {}
+    return _SEG[0]
 AFF_CAP, NEUTRAL = 0.35, 0.10
 
 
@@ -128,6 +147,7 @@ class Snap:
         c = cat.reindex(ids)
         self.ok = (c["category"].notna().values) & ~np.isin(np.array(ids, dtype=object), list(unavail))
         self.cat = pd.factorize(c["category"])[0]; self.sub = pd.factorize(c["sub"])[0]; self.brand = pd.factorize(c["brand"])[0]
+        self._names = (c["sub"].values, c["brand"].values); self._grp = {}      # T-057: names for the segment tables, cache per segment
         g = (lq or {}).get
         self.lq = np.array([g(p, lq0) for p in ids], dtype=np.float64) - lq0
         # T-028: corrected snapshot for arms with "lq": a COPY of the incumbent vector where only the products in lq_cold
@@ -155,6 +175,19 @@ class Snap:
         self.hot = None                       # T-044: 1.0 for products of a subcategory in a live burst (LiveFit.set_catalog)
         self.orate = self.opop = None         # T-049: organic quality of each product (LiveFit.set_catalog, organic_quality())
 
+    def group(self, key):
+        """T-057 -> (gsub, gbrand, gphr), one value per product, for the segment `key` (seg_key); None when unknown."""
+        g = self._grp.get(key, 0)
+        if g == 0:
+            T = seg_tables(); ts = (T.get("sub") or {}).get(key); tb = (T.get("brand") or {}).get(key); tp = (T.get("phr") or {}).get(key)
+            if ts is None and tb is None and tp is None: g = None
+            else:
+                ts = ts or {}; tb = tb or {}
+                ph = np.asarray(self.A, dtype=np.float64) @ np.asarray(tp, dtype=np.float64) if tp is not None and len(tp) == self.A.shape[1] else np.zeros(self.n)
+                g = (np.array([float(ts.get(x, 0.0)) for x in self._names[0]]), np.array([float(tb.get(x, 0.0)) for x in self._names[1]]), ph)
+            self._grp[key] = g
+        return g
+
     def stale(self, u):
         """Boolean mask: products this user viewed in the history and never carted (dead in the live carousel)."""
         if self.hc is None: return None
@@ -169,7 +202,7 @@ class Snap:
 PRV_TODAY, PRV_CAP = 2.0, 8.0      # T-054: weight of a view in an earlier request of the event; cap on the total count
 
 
-def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None, mfu=None, prev=None, hcar=None) -> np.ndarray:
+def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bought_today=(), seg=False, mix=None, lq=None, mfu=None, prev=None, hcar=None, grp=None) -> np.ndarray:
     """Feature matrix (rows = products `idx`, all of them if None; columns = FEATS). The SAME code builds the
     training rows from the feedback log (lfm_build.py) and the serving rows, so they cannot drift apart.
     aff: affinity of this shopper to every product (AttrAffinity.affinity_all); rv: recent views, oldest first;
@@ -236,6 +269,9 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         for col, items in ((27, hcar[0]), (28, hcar[1])):
             hk = [k for k in (r(p) for p in items) if k is not None]
             if hk: X[hk, col] = 1.0
+    if grp is not None:                                 # T-057: the shopper's segment key (seg_key), every page
+        g = S.group(grp)
+        if g is not None: X[:, 29] = g[0]; X[:, 30] = g[1]; X[:, 31] = g[2]
     return X if idx is None else X[idx]
 
 
@@ -567,7 +603,8 @@ class LiveFit:
         prev = self.prev_views(req["user_id"], req.get("request_id")) if w[seg][FEATS.index("prv")] != 0.0 else None
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None,
-                     prev=prev, hcar=self.hcar.get(req["user_id"]))
+                     prev=prev, hcar=self.hcar.get(req["user_id"]),
+                     grp=seg_key(req.get("device"), req.get("region")) if any(w[seg][k] != 0.0 for k in GRP_K) else None)
         s = X @ w[seg] + b0[seg]
         if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
             # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc
