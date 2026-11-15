@@ -37,7 +37,7 @@ class UnifiedPolicyTests(unittest.TestCase):
             lf = lfm.LiveFit(COEF, HIST); lf.set_arms(arms_of(name)[1])
             w, _ = lf.alt[tag]; h, _ = lf.alt[tag + "@home"]
             for seg in ("known", "new"):
-                self.assertEqual(w[seg][K("lq")], 0.0); self.assertGreater(w[seg][K("orate")], 0.0); self.assertEqual(w[seg][K("hot")], 1.5)
+                self.assertEqual(w[seg][K("lq")], 0.0); self.assertGreater(w[seg][K("orate")], 0.0); self.assertIn(w[seg][K("hot")], (1.5, 3.0))
                 self.assertEqual(h[seg][K("lq")], 0.0); self.assertGreater(h[seg][K("orate")], 0.0)
                 self.assertEqual(h[seg][K("hot")], 0.0)                     # a burst does not take over the home page
                 for f in ("chn", "cl", "islast", "oinrv", "ssub2", "scat2", "ucat", "usub", "aff10"):

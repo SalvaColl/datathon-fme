@@ -340,7 +340,7 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
 
 ## D-500 — Bot único (T-050, 15 nov 00:35 UTC)
 
-- **Política:** `recsys/policy.unified.json`, un solo brazo `u1` = fichero r3 con: conocidos en página, pesos de cs2r + `lq` 0, `orate` 1,6, `mf` 0,3, `bsub` 0,3, `hot` 1,5; nuevos en página `lq` 0, `orate` 1,8, `opop` 0,4, `hot` 1,5; home (conocidos y nuevos) r3 con `lq` 0, `orate` 1,0, `opop` 0,6. Base cs2r por decisión de Javi (00:24 UTC, la ve mejor en cold en vivo).
+- **Política:** `recsys/policy.unified.json`, un solo brazo `u1` = fichero r3 con: conocidos en página, pesos de cs2r + `lq` 0, `orate` 1,6, `mf` 0,3, `bsub` 0,3, `hot` 3,0 (sobre cs2r 3,0 mide igual o mejor que 1,5: org@10 16,6 frente a 16,5, mismas compras de carrusel; en ráfaga los líderes nos sacan 0,2 puntos más); nuevos en página `lq` 0, `orate` 1,8, `opop` 0,4, `hot` 1,5; home (conocidos y nuevos) r3 con `lq` 0, `orate` 1,0, `opop` 0,6. Base cs2r por decisión de Javi (00:24 UTC, la ve mejor en cold en vivo).
 - **Alternativa:** `policy.unified_nocarts.json` (`u1n`, las mismas piezas con los carritos de r3). **Vuelta atrás en caliente:** `policy.rot_cs2r.json` (base actual) o `policy.unified_rollback.json` (r3).
 - **Necesita reinicio con relevo** desde esta rama (features `orate`/`opop`, conteos solo orgánicos, reintento de ConnectTimeout). Con código anterior `policy.json` con `orate` se rechaza entero y sigue la política anterior (PR #42).
 - **Lectura sugerida:** equipo − referencia en los primeros bloques de 15 minutos contra los últimos bloques de cs2r; volver a cs2r si cae con claridad (dos bloques seguidos peores que el peor de cs2r) o si a tiempo baja de 97%.
