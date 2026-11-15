@@ -840,7 +840,7 @@ Writer: un proceso en el Mac, código `e8a1f18`, una sola política (ur2), sin r
 | Conocidos, home (-kh) | 3.032 | 3.011 | 16 (0,53%) | 112 | 1.361 / 2.142 |
 | Nuevos, home (-nh) | 1.285 | 1.277 | 13 (1,01%) | 40 | 1.405 / 2.194 |
 
-**Marcador de la final (HIDDEN MODEL, `api/state`, N = 21.600 por fila).** team_26 2,110% (cold 2,434%, a tiempo 99,57%), sexto. team_33 2,252; team_06 2,238; team_03 2,189; team_17 2,142. Referencia 2,141 (cold 2,199); punto de partida 0,750.
+**Marcador de la final (HIDDEN MODEL, `api/state`, N = 21.600 por fila).** team_26 2,110% (cold 2,434%, a tiempo 99,57%): quinto en conversión y sexto en la nota del stream (53,67 de 100; team_37 53,68). team_33 2,252; team_06 2,238; team_03 2,189; team_17 2,142. Referencia 2,141 (cold 2,199); punto de partida 0,750.
 
 | Fila del marcador | Última hora de práctica vista (06:19–07:19 UTC) | Final |
 |---|---|---|

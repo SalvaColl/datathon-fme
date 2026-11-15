@@ -190,7 +190,7 @@ Detalle y límites en `experiments.md` E-650.
 
 | Cifra | Valor | N | Fuente |
 |---|---|---|---|
-| team_26, conversión esperada | 2,110% (sextos) | 21.600 | `api/state`, modo final |
+| team_26, conversión esperada | 2,110% (quintos en conversión; sextos en nota del stream, 53,67 de 100, team_37 53,68) | 21.600 | `api/state`, modo final |
 | team_26, cold | 2,434% | 10.419 cold | ídem |
 | Referencia | 2,141% (cold 2,199%) | 21.600 | ídem |
 | Punto de partida | 0,750% | 21.600 | ídem |
