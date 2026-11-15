@@ -24,7 +24,7 @@ best first. No candidate lists: 5,100 products x 11 features is one numpy matrix
 No RawTree calls, no writes. Weights live in lfm_coef.json (refit: `python lfm_build.py --pull`).
 """
 from __future__ import annotations
-import json, math, sys, zlib
+import collections, json, math, sys, zlib
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -346,6 +346,10 @@ class LiveFit:
         # stream gives ("2026-11-15 08:00:00.123": string order = time order). day_start None = no day window (as before).
         self.lcart_t, self.lbought_t = {}, {}
         self.day_start, self.day_carts = None, False
+        # T-063: purchases made before `prior_start` (live stream / our carousel, never the 60-day history) can be let
+        # back into the lists. None = no boundary = behaviour before T-063. See set_prior().
+        self.prior_start, self.prior_allow = None, False
+        self.prior_stats = collections.Counter()
         self.snap = None
         # category mix of every shopper (r3). History matrices are built once, at the first set_catalog (needs the catalog).
         self._hist = history if history is not None and "v" in history else None        # a reference, dropped after the build
@@ -421,6 +425,36 @@ class LiveFit:
                 raise ValueError("day_start must be 'YYYY-MM-DD HH:MM:SS'")
         if carts not in ("persistent", "day"): raise ValueError("carts must be 'persistent' or 'day'")
         self.day_start, self.day_carts = day_start, carts == "day"       # two plain assignments; user_state reads them once
+
+    def set_prior(self, boundary=None, mode="exclude"):
+        """T-063. Purchases of the live state (organic stream since EVENTS_SINCE + our carousel feedback) whose latest
+        time is before `boundary` ("YYYY-MM-DD HH:MM:SS" UTC, the start of the final) are "prior purchases".
+          - mode "exclude" (default): they stay excluded, exactly as without a boundary; slate() only counts, in
+            prior_stats, how many would enter the list (shadow diagnosis, the answer is untouched).
+          - mode "allow": they are no longer excluded and compete with their normal score.
+        Purchases at or after the boundary, purchases without a time and the 60-day history purchases stay excluded in
+        both modes. Nothing is erased: carts, views, preferences and the "bought today" features do not change, and
+        switching back restores the exclusion at the next request. boundary None switches everything off."""
+        if boundary is not None:
+            boundary = str(boundary)
+            if len(boundary) != 19 or str(np.datetime64(boundary.replace(" ", "T"), "s")).replace("T", " ") != boundary:
+                raise ValueError("boundary must be 'YYYY-MM-DD HH:MM:SS'")
+        if mode not in ("exclude", "allow"): raise ValueError("mode must be 'exclude' or 'allow'")
+        self.prior_allow = False                                   # never "allow" with a stale boundary in between
+        self.prior_start = boundary
+        self.prior_allow = boundary is not None and mode == "allow"
+        self.prior_stats = collections.Counter()
+
+    def prior_bought(self, u):
+        """Products the shopper bought before the boundary and not since (and not in the 60-day history). Empty without
+        a boundary. Lock-free: one C-level copy of the shopper's small dict."""
+        ps = self.prior_start
+        if ps is None: return set()
+        t = self.lbought_t.get(u)
+        if not t: return set()
+        out = {i for i, x in list(t.items()) if x < ps}
+        h = self.hbought.get(u)
+        return out - h if h and out else out
 
     def add(self, u, i, v=0, a=0, p=0, ta=None, tp=None):
         """ta / tp: time of the latest cart / purchase event (ISO strings from the stream), used only by the state windows."""
@@ -599,6 +633,10 @@ class LiveFit:
 
     def scores(self, req, state, aff_obj, model=None):
         """(snapshot, score per product with dead / unavailable products at -inf)."""
+        return self._scores(req, state, aff_obj, model)[:2]
+
+    def _scores(self, req, state, aff_obj, model=None):
+        """scores() plus the prior purchases of this shopper that are otherwise servable: (rows, their scores) or None (T-063)."""
         S = self.snap; rv = req.get("rv") or []
         bought, lc, hc = state[:3]; bt = state[3] if len(state) > 3 else ()
         aff = aff_obj.affinity_all(req["user_id"], rv)
@@ -630,13 +668,23 @@ class LiveFit:
             hb = self.hcar.get(req["user_id"]) if w[seg][FEATS.index("hcb")] != 0.0 else None
             if hb: keep += [S.row[p] for p in hb[0] if p in S.row]
             st[keep] = False; dead = dead | st
+        prior = None
+        if self.prior_start is not None:
+            try:
+                pb = self.prior_bought(req["user_id"])
+                if pb:
+                    k = np.array([S.row[p] for p in pb if p in S.row and not dead[S.row[p]]], dtype=int)
+                    if len(k): prior = (k, s[k].copy())
+                    if self.prior_allow: bought = set(bought) - pb
+            except Exception: prior = None
         b = [S.row[p] for p in bought if p in S.row]
         if b: dead[b] = True
         s[dead] = -np.inf
-        return S, s
+        return S, s, prior
 
     def slate(self, req, state, aff_obj, n=10, exclude=(), model=None):
-        S, s = self.scores(req, state, aff_obj, model)
+        S, s, prior = self._scores(req, state, aff_obj, model)
+        s0 = s
         cap = getattr(self, "alt_cap", {}).get(model) if model else None
         out = None
         if cap:
@@ -654,7 +702,28 @@ class LiveFit:
         xm = getattr(self, "alt_x", {}).get(model) if model else None
         if len(out) == n and x_target(xm, req.get("is_new_user"), req.get("page", "product"), req.get("rv")):
             out = self._explore(req, S, s, out, exclude)
+        if self.prior_start is not None: self._prior_note(S, s0, prior, out, n, exclude)
         return out if len(out) == n and len(set(out)) == n else None
+
+    def _prior_note(self, S, s, prior, out, n, exclude):
+        """T-063 shadow diagnosis. Counts only; never changes `out`. In "exclude" mode: would any prior purchase enter
+        the top n if it were not excluded (plain ranking, before the launched cap and the exploration slot)? In "allow"
+        mode: how many were served."""
+        try:
+            c = self.prior_stats; c["requests"] += 1
+            if prior is None: return
+            k, v = prior
+            c["requests_with_prior"] += 1; c["prior_candidates"] += len(k)
+            ids = {S.ids[j] for j in k}
+            if self.prior_allow:
+                m = len(ids.intersection(out))
+            else:
+                s2 = s.copy(); s2[k] = v
+                top = top_items(S, s2, n, exclude)
+                m = len(ids.intersection(top))
+                if m: c["top3_requests"] += bool(ids.intersection(top[:3]))
+            if m: c["requests_entering"] += 1; c["products_entering"] += m
+        except Exception: pass
 
     def _explore(self, req, S, s, out, exclude):
         """T-039 exploration arm: the LAST slot (10% of the impressions, ~3% of a slate's expected purchases) shows one
