@@ -9,6 +9,7 @@ P = Path(__file__).resolve().parent
 OUT = P / "_render"
 OUT.mkdir(exist_ok=True)
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+PDF_NAME = "Team26_3min_ES.pdf"
 BASE = [str(CHROME), "--headless=new", "--disable-gpu", "--no-sandbox",
         "--disable-background-networking", "--disable-component-update",
         "--disable-extensions", "--no-first-run", "--no-default-browser-check",
@@ -30,7 +31,7 @@ def screenshot(i):
 
 if __name__ == "__main__":
     run(["--user-data-dir=" + str(OUT / "pdf_profile"),
-         "--print-to-pdf=" + str(P / "Team26_3min.pdf"),
+         "--print-to-pdf=" + str(P / PDF_NAME),
          "--no-pdf-header-footer", "--virtual-time-budget=1200",
          (P / "pitch.html").as_uri() + "?clean=1"])
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
@@ -41,4 +42,4 @@ if __name__ == "__main__":
         im.thumbnail((780, 439))
         canvas.paste(im, (10+(i%2)*800, 10+(i//2)*460))
     canvas.save(P / "preview.png")
-    print(json.dumps({"pdf": str(P/"Team26_3min.pdf"), "preview": str(P/"preview.png")}))
+    print(json.dumps({"pdf": str(P/PDF_NAME), "preview": str(P/"preview.png")}))

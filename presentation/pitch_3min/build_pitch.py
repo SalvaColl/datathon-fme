@@ -12,8 +12,124 @@ W, H, EMU = 1600, 900, 7620
 C = dict(bg="101A29", card="192638", white="F5F7FA", muted="A6B5C8",
          green="61E4B1", orange="FFAC86", line="304154")
 slides = []
+DECK_STEM = "Team26_3min_ES"
+ES_TEXT = {
+    "TEAM 26  /  RAWTREE × DATATHON FME 2026": "EQUIPO 26  /  RAWTREE × DATATHON FME 2026",
+    "The decision behind the system": "La decisión detrás del sistema",
+    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Un comprador.",
+    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nUn comprador.",
+    "A changing store.\nA different decision for every shopper.": "Una tienda que cambia.\nUna decisión para cada cliente.",
+    "THE DECISION WINDOW": "EL PLAZO PARA RESPONDER",
+    "seconds": "segundos",
+    "Why this model / how we trained it": "Por qué este modelo / cómo lo entrenamos",
+    "A small model. A deliberate choice.": "Un modelo sencillo. Una elección medida.",
+    "A small model.\nA deliberate choice.": "Un modelo sencillo.\nUna elección medida.",
+    "01 / examples": "01 / ejemplos",
+    "Learn from exposure": "Solo lo mostrado",
+    "Shown products + feedback.\nPurchases weighted ×3.": "Clics como señal.\nCompras con peso ×3.",
+    "02 / fitting": "02 / ajuste",
+    "Control position": "Incluir la posición",
+    "Regularized logistic model.\nSeparate known/new weights.": "Regresión logística.\nPesos por tipo de usuario.",
+    "03 / validation": "03 / validación",
+    "Test later requests": "Validación temporal",
+    "Earlier training → later test.\nComplexity needs evidence.": "Entrenar antes.\nEvaluar después.",
+    "Why linear? Fast to serve, easy to inspect, retained after held-out comparisons.": "El modelo complejo no mejoró la prueba: elegimos rapidez y claridad.",
+    "Why this adaptation / how it stays stable": "Cómo nos adaptamos sin perder el control",
+    "Frozen weights. Live intelligence.": "Pesos estables. Datos que cambian.",
+    "Frozen weights.\nLive intelligence.": "Pesos estables.\nDatos que cambian.",
+    "01 / shopper memory": "01 / memoria",
+    "Use earlier visits": "Recordar el interés",
+    "Session evidence accumulates.\nKnown purchases stay out.": "Visitas y actividad acumuladas.\nLo comprado queda fuera.",
+    "02 / product quality": "02 / calidad",
+    "Keep sources separate": "Separar las fuentes",
+    "Organic counts → quality.\nPrivate buys → user memory.": "Actividad orgánica → calidad.\nNuestro feedback → memoria.",
+    "03 / trends": "03 / tendencias",
+    "Compare event windows": "Detectar el cambio",
+    "Recent activity vs baseline.\nNo timetable assumptions.": "Eventos recientes frente al pasado.\nSin horarios prefijados.",
+    "Why: adapt from live evidence; keep the final policy stable.": "La tienda cambia. La política se mantiene bajo control.",
+    "Method / evidence": "Método / evidencia",
+    "Measure before believing.": "Medir antes de creer.",
+    "Measure before\nbelieving.": "Medir antes\nde creer.",
+    "+0.17": "+0,17",
+    "percentage points": "puntos porcentuales",
+    "Observed after refitting the weights": "Diferencia observada tras reajustar",
+    "Temporal offline": "Separación temporal",
+    "Screen hypotheses without future information.": "Entrenar antes; evaluar con datos posteriores.",
+    "Matched windows": "Misma ventana",
+    "Compare against the reference at the same time.": "Comparar con la referencia de esa misma hora.",
+    "Counterexamples": "Pruebas que fallan",
+    "A green test is only as good as its assumptions.": "Buscar casos que los tests no estaban cubriendo.",
+    "8 blocks · 10,800 requests per policy": "8 bloques · 10.800 peticiones por política",
+    "PRACTICE / 15 NOV 03:20–05:20 CET · TIME BLOCKS, NOT RANDOMIZED A/B": "PRÁCTICA / 15 NOV 03:20–05:20 CET · BLOQUES TEMPORALES, NO A/B ALEATORIZADO",
+    "Why it is fast / how RawTree supports it": "Cómo protegemos el plazo con RawTree",
+    "Precompute. Validate. Batch.": "Precalcular. Validar. Enviar.",
+    "Precompute.\nValidate. Batch.": "Precalcular.\nValidar. Enviar.",
+    "99.96%": "99,96%",
+    "valid and on time · 43,200 requests": "válidas y a tiempo · 43.200 peticiones",
+    "p99  2.35 s     /     deadline  3 s": "p99  2,35 s     /     límite  3 s",
+    "RAWTREE → ONE SERVING LOOP": "RAWTREE → UN ÚNICO ESCRITOR",
+    "Requests + events + catalogue": "Peticiones + eventos + catálogo",
+    "SQL → feature snapshots": "SQL → datos preparados",
+    "Rank → validate → batch write": "Ordenar → validar → enviar",
+    "Private feedback → evaluation": "Feedback → evaluación",
+    "144 stored metric snapshots": "144 registros de métricas",
+    "PRACTICE / 15 NOV 04:00–08:00 CET · 43,182 OF 43,200 SERVED ON TIME": "PRÁCTICA / 15 NOV 04:00–08:00 CET · 43.182 DE 43.200 RESPUESTAS A TIEMPO",
+    "How we worked / AI-assisted development": "Cómo trabajamos / agentes de programación",
+    "Agents accelerated. Evidence decided.": "La IA acelera. La evidencia decide.",
+    "Agents accelerated.\nEvidence decided.": "La IA acelera.\nLa evidencia decide.",
+    "Development tool": "Herramienta de desarrollo",
+    "Implementation, integrations\nand experiments.": "Modelos, integraciones\ny experimentos.",
+    "Audits, evaluation\nand failure cases.": "Auditorías, evaluación\ny casos de fallo.",
+    "Hypothesis → isolated code → tests → measured decision": "Hipótesis → código aislado → pruebas → decisión",
+    "Build fast. Verify carefully.": "Construir rápido. Comprobar con rigor.",
+}
+ES_UPPER = {k.upper(): v.upper() for k, v in ES_TEXT.items()}
+def tr(value):
+    return ES_TEXT.get(value, ES_UPPER.get(value, value))
+
+ES_NOTES = [
+    "Diez productos. Tres segundos. Un comprador. Somos el equipo 26. "
+    "Lo difícil no era añadir otro modelo, sino decidir qué señales creer y llegar a tiempo.",
+    "Probamos modelos más complejos, pero no mejoraron los resultados con datos apartados. "
+    "Elegimos un modelo lineal: rápido e interpretable. En el entrenamiento base usamos solo productos mostrados. "
+    "Aprendemos de los clics, dando triple peso a las compras, e incluimos la posición. "
+    "Entrenamos con peticiones anteriores y validamos después. Los ajustes finales se eligieron por segmento, con pruebas adicionales.",
+    "Congelamos los pesos, no la tienda. Seguimos actualizando memoria, calidad, stock y precios. "
+    "Separamos nuestras recomendaciones de la actividad orgánica para no inflar la calidad de un producto. "
+    "Detectamos tendencias comparando eventos recientes con su nivel habitual. "
+    "Así nos adaptamos sin reajustar el modelo con unas pocas compras ruidosas. "
+    "Y mantenemos todas las exclusiones de compras anteriores.",
+    "El histórico refleja lo que otros modelos eligieron mostrar. Por eso el offline solo filtra ideas. "
+    "En vivo comparamos con la referencia de la misma ventana: una hora favorable no debía parecer un modelo mejor. "
+    "En ocho bloques, el reajuste mostró 0,17 puntos más, con 10.800 peticiones por política. "
+    "No fue un A/B aleatorizado. También buscamos fallos que los tests no estaban cubriendo.",
+    "Precalculamos con SQL en segundo plano. La respuesta solo necesita puntuar, validar y enviar por lotes. "
+    "Un único escritor evita duplicados. En cuatro horas de práctica respondimos a tiempo al 99,96 % de 43.200 peticiones. "
+    "Con RawTree podemos seguir cada decisión desde la entrada hasta el resultado.",
+    "Claude y Codex nos ayudaron a implementar experimentos, auditar código y buscar fallos. "
+    "El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. "
+    "Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. "
+    "Nos quedamos con una idea: construir rápido y comprobar con rigor.",
+]
+ES_SOURCES = [
+    "Contrato oficial y handoff final del equipo: message (4).txt.",
+    "recsys/lfm_build.py: filas expuestas, etiquetas de clic, peso de compra 3, posición y regresión logística. "
+    "R-24/E-260: comparación con gradient boosting. El entrenamiento base no reproduce por sí solo todos los ajustes finales.",
+    "Handoff final y aclaración del organizador: el mundo no se reinicia. "
+    "Los eventos de carrito son actividad, no pedidos pendientes. No se atribuye una mejora online demostrada a cada señal.",
+    "presentation/cifras.md, rama javi/jury-final: 03:20–05:20 CET, 8 bloques de 2.700 peticiones. "
+    "4 bloques y 10.800 peticiones por política; diferencia de 0,167 puntos tras ajustar por la referencia. "
+    "Comparación temporal, no A/B aleatorizado.",
+    "presentation/cifras.md: práctica del 15 nov 04:00–08:00 CET; 43.182/43.200 respuestas a tiempo; "
+    "p99 2,35 s. 144 registros de métricas. No es una cifra de la final.",
+    "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; "
+    "no se inventan funciones individuales ni versiones concretas de los agentes.",
+]
 
 def slide(kicker, title, seconds, notes, source):
+    n = len(slides)
+    kicker, title = tr(kicker), tr(title)
+    notes, source = ES_NOTES[n], ES_SOURCES[n]
     s = dict(kicker=kicker, title=title, seconds=seconds, notes=notes, source=source, shapes=[])
     slides.append(s)
     rect(s, 0, 0, W, H, C["bg"])
@@ -27,6 +143,7 @@ def rect(s, x, y, w, h, color, radius=0):
     s["shapes"].append(dict(kind="rect", x=x, y=y, w=w, h=h, color=color, radius=radius))
 
 def text(s, x, y, value, size=30, color=None, bold=False, width=None):
+    value = tr(value)
     color = color or C["white"]
     lines = []
     font_path = Path("C:/Windows/Fonts") / ("arialbd.ttf" if bold else "arial.ttf")
@@ -199,7 +316,7 @@ def rels(items):
     return DECL+f'<Relationships xmlns="{PKG}">'+''.join(f'<Relationship Id="{i}" Type="{R}/{typ}" Target="{target}"/>' for i,typ,target in items)+'</Relationships>'
 
 def paragraphs(lines,size=24,color="F5F7FA",bold=False):
-    return "".join(f'<a:p><a:pPr marL="0" indent="0"/><a:r><a:rPr lang="en-US" sz="{int(size*60)}" b="{int(bold)}"><a:solidFill><a:srgbClr val="{color}"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t xml:space="preserve">{escape(line)}</a:t></a:r><a:endParaRPr lang="en-US" sz="{int(size*60)}"/></a:p>' for line in lines)
+    return "".join(f'<a:p><a:pPr marL="0" indent="0"/><a:r><a:rPr lang="es-ES" sz="{int(size*60)}" b="{int(bold)}"><a:solidFill><a:srgbClr val="{color}"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t xml:space="preserve">{escape(line)}</a:t></a:r><a:endParaRPr lang="es-ES" sz="{int(size*60)}"/></a:p>' for line in lines)
 
 def shape_xml(sh,i):
     x,y,w,h=[int(sh[k]*EMU) for k in ("x","y","w","h")]
@@ -236,7 +353,7 @@ def build_pptx():
         shapes=''.join(shape_xml(sh,k+2) for k,sh in enumerate(s["shapes"]))
         put(f"ppt/slides/slide{i}.xml",DECL+f'<p:sld xmlns:a="{A}" xmlns:r="{R}" xmlns:p="{P}"><p:cSld name="{escape(s["title"])}"><p:spTree>{GROUP}{shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>')
         put(f"ppt/slides/_rels/slide{i}.xml.rels",rels([("rId1","slideLayout","../slideLayouts/slideLayout1.xml"),("rId2","notesSlide",f"../notesSlides/notesSlide{i}.xml")]))
-        ntext=f'{s["seconds"]} seconds. '+s["notes"]+"\nSOURCE / LIMIT: "+s["source"]
+        ntext=f'{s["seconds"]} segundos. '+s["notes"]+"\nFUENTE / LÍMITE: "+s["source"]
         note=f'<p:sp><p:nvSpPr><p:cNvPr id="2" name="Notes"/><p:cNvSpPr txBox="1"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/>{paragraphs(ntext.splitlines(),18)}</p:txBody></p:sp>'
         put(f"ppt/notesSlides/notesSlide{i}.xml",DECL+f'<p:notes xmlns:a="{A}" xmlns:r="{R}" xmlns:p="{P}"><p:cSld><p:spTree>{GROUP}{note}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:notes>')
         put(f"ppt/notesSlides/_rels/notesSlide{i}.xml.rels",rels([("rId1","notesMaster","../notesMasters/notesMaster1.xml"),("rId2","slide",f"../slides/slide{i}.xml")]))
@@ -253,14 +370,14 @@ def build_pptx():
         else:typ="slide"
         overrides.append(f'<Override PartName="/{path}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.{typ}+xml"/>')
     parts["[Content_Types].xml"]=DECL+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'+''.join(overrides)+'</Types>'
-    with ZipFile(HERE/"Team26_3min.pptx","w",ZIP_DEFLATED) as z:
+    with ZipFile(HERE/(DECK_STEM+".pptx"),"w",ZIP_DEFLATED) as z:
         for p,t in parts.items():z.writestr(p,t.encode("utf8"))
 
 def build_html():
-    sections=''.join(f'<section class="slide" aria-label="Slide {i+1}">{svg(s)}</section>' for i,s in enumerate(slides))
+    sections=''.join(f'<section class="slide" aria-label="Diapositiva {i+1}">{svg(s)}</section>' for i,s in enumerate(slides))
     data=json.dumps([dict(notes=s["notes"],seconds=s["seconds"]) for s in slides]).replace("</","<\\/")
-    html="""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Team 26 — Three-minute pitch</title><style>
+    html="""<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Equipo 26 — Presentación de tres minutos</title><style>
 *{box-sizing:border-box}body{margin:0;background:#101a29;color:#f5f7fa;font-family:Arial,sans-serif}
 #stage{height:100vh;display:grid;place-items:center}.slide{display:none;width:min(100vw,177.7778vh);height:min(56.25vw,100vh)}.slide.active{display:block}svg{display:block;width:100%;height:100%}
 nav{position:fixed;bottom:14px;right:22px;display:flex;gap:7px;align-items:center;background:#101a29d9;padding:8px;border-radius:12px}
@@ -269,9 +386,9 @@ button{background:#26374a;border:0;border-radius:7px;color:white;padding:8px 12p
 aside{display:none;position:fixed;right:24px;top:24px;max-width:420px;padding:24px;background:#101a29f5;border:1px solid #61e4b1;border-radius:14px;font-size:18px;line-height:1.55}aside.open{display:block}
 @page{size:13.333333in 7.5in;margin:0}@media print{html,body,#stage{width:13.333333in;height:auto}#stage{display:block}.slide,.slide.active{display:block;width:13.333333in;height:7.5in;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}nav,aside{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style><main id="stage">__PITCH_SECTIONS__</main><aside id="notes"></aside>
-<nav><span id="clock">00:00 / 03:00</span><button id="prev" title="Left arrow">←</button><button id="next" title="Right arrow / space">→</button><button id="nt" title="N">Notes</button><button id="fs" title="F">Fullscreen</button><button id="rs" title="R">Reset timer</button></nav>
+<nav><span id="clock">00:00 / 03:00</span><button id="prev" title="Anterior">←</button><button id="next" title="Siguiente / espacio">→</button><button id="nt" title="N">Notas</button><button id="fs" title="F">Pantalla completa</button><button id="rs" title="R">Reiniciar tiempo</button></nav>
 <script>const data=__PITCH_DATA__;let idx=+(new URLSearchParams(location.search).get('s')||0),start=null;const pages=[...document.querySelectorAll('.slide')],note=document.getElementById('notes');
-function show(i){idx=Math.max(0,Math.min(pages.length-1,i));pages.forEach((p,k)=>p.classList.toggle('active',k===idx));note.textContent=data[idx].seconds+' sec — '+data[idx].notes;document.title='Team 26 — '+(idx+1)+'/6';}
+function show(i){idx=Math.max(0,Math.min(pages.length-1,i));pages.forEach((p,k)=>p.classList.toggle('active',k===idx));note.textContent=data[idx].seconds+' s — '+data[idx].notes;document.title='Equipo 26 — '+(idx+1)+'/6';}
 function next(){if(start===null)start=performance.now();show(idx+1)}function toggleNotes(){note.classList.toggle('open')}function full(){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()}
 document.getElementById('prev').onclick=()=>show(idx-1);document.getElementById('next').onclick=next;document.getElementById('nt').onclick=toggleNotes;document.getElementById('fs').onclick=full;document.getElementById('rs').onclick=()=>start=performance.now();
 document.addEventListener('keydown',e=>{if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();next()}if(['ArrowLeft','PageUp'].includes(e.key))show(idx-1);if(e.key.toLowerCase()==='n')toggleNotes();if(e.key.toLowerCase()==='f')full();if(e.key.toLowerCase()==='r')start=performance.now();if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
@@ -281,9 +398,9 @@ setInterval(()=>{const n=start===null?0:Math.floor((performance.now()-start)/100
     (HERE/"pitch.html").write_text(html,encoding="utf8")
 
 def build_notes():
-    out=["# Team 26 — three-minute pitch", "",
-         "English. Six slides. Timings are rehearsal targets, not a promise of reading speed.",
-         "Aim for roughly 130–140 words per minute and rehearse with pauses. Slide sources are in the PowerPoint notes and EVIDENCE.md.", ""]
+    out=["# Equipo 26 — presentación de tres minutos", "",
+         "Seis diapositivas. Guion breve, pensado para hablar con pausas.",
+         "Los tiempos son una guía de ensayo. Las fuentes están en las notas de PowerPoint y EVIDENCE.md.", ""]
     elapsed=0
     for i,s in enumerate(slides,1):
         end=elapsed+s["seconds"]
@@ -291,15 +408,18 @@ def build_notes():
         out += [f'## {i}. {s["title"]} — {fmt(elapsed)}–{fmt(end)}', "", s["notes"], ""]
         elapsed=end
     words=sum(len(s["notes"].split()) for s in slides)
-    out += ["## Delivery", "", f"Script: {words} words. Total slide budget: {elapsed} seconds.",
-            "Start the browser timer with R before speaking. Right arrow/space advances; N toggles notes; F enters fullscreen.",
-            "The initial pitch explains HOW and WHY. Team names are credited briefly; no unconfirmed individual roles are assigned.",
-            "For questions, HOW_AND_WHY.md provides a code walkthrough. The 2.159% practice aggregate in EVIDENCE.md is not a final result.",
-            "Keep the caveat that the +0.17 pp comparison used time blocks, not randomized contemporaneous A/B.", ""]
+    out += ["## Cómo contarlo", "", f"Guion: {words} palabras. Plan completo: {elapsed} segundos.",
+            "Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.",
+            "R inicia el cronómetro; flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa.",
+            "El foco es CÓMO y POR QUÉ. Los cuatro nombres aparecen al final, sin un reparto de funciones no confirmado.",
+            "Si preguntan por más detalle, HOW_AND_WHY.md contiene un recorrido por el código. No atribuyas a la final los resultados de práctica.",
+            "La comparación de +0,17 puntos usa bloques temporales: no la describas como A/B aleatorizado.",
+            "Puedes terminar entre 2:40 y 3:00 dejando pausas. El objetivo es transmitir las decisiones, no agotar el cronómetro.", ""]
     (HERE/"SCRIPT.md").write_text("\n".join(out),encoding="utf8")
+    (HERE/"GUION_ES.md").write_text("\n".join(out),encoding="utf8")
     (HERE/"slides.json").write_text(json.dumps(slides,indent=2),encoding="utf8")
     for i,s in enumerate(slides,1):(HERE/f"slide_{i:02d}.svg").write_text(svg(s),encoding="utf8")
-    print(json.dumps(dict(slides=len(slides),seconds=elapsed,script_words=words,pptx=str(HERE/"Team26_3min.pptx"))))
+    print(json.dumps(dict(slides=len(slides),seconds=elapsed,script_words=words,pptx=str(HERE/(DECK_STEM+".pptx")))))
 
 if __name__=="__main__":
     build_pptx();build_html();build_notes()

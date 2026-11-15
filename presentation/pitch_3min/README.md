@@ -1,8 +1,8 @@
-# Team 26 — three-minute initial pitch
+# Equipo 26 — presentación inicial de tres minutos
 
-Open **Team26_3min.pptx** in PowerPoint, or import it into Google Slides. All slide text and graphics are editable. **Team26_3min.pdf** is the projection backup. **pitch.html** is a standalone browser presentation with no network dependencies.
+Versión actual en español: **Team26_3min_ES.pptx** (editable), **Team26_3min_ES.pdf** y **GUION_ES.md**. **pitch.html** permite presentar desde el navegador sin conexión. Los archivos sin sufijo ES conservan la versión inglesa anterior.
 
-English, six slides, with a 378-word speaker script. The timed plan totals 180 seconds; rehearse aloud, since reading speed and pauses vary. Speaker notes are embedded in PowerPoint and available in SCRIPT.md. The revised story follows the organizers' request for HOW and WHY.
+Seis diapositivas y un guion de **300 palabras**. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas están dentro de PowerPoint y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
 
 ## Published scoring weights
 
@@ -21,12 +21,12 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 
 | Slide | Time | Share of the pitch | Main point |
 |---|---|---:|---|
-| 1. Ten products. Three seconds. One shopper. | 0:00–0:15 | 8.3% | Which evidence should we trust? |
-| 2. A deliberate choice | 0:15–0:55 | 22.2% | How we trained and why linear ranking stayed |
-| 3. Live intelligence | 0:55–1:30 | 19.4% | How evidence updates while the policy remains stable |
-| 4. Measure before believing | 1:30–2:10 | 22.2% | Why temporal validation and matched windows matter |
-| 5. Precompute. Validate. Batch. | 2:10–2:35 | 13.9% | How the architecture protects the deadline |
-| 6. Agents accelerated. Evidence decided. | 2:35–3:00 | 13.9% | How we used Claude/Codex; brief team credit |
+| 1. Diez productos. Tres segundos. Un comprador. | 0:00–0:15 | 8,3% | Qué señales merecían confianza |
+| 2. Una elección medida | 0:15–0:55 | 22,2% | Cómo entrenamos y por qué elegimos el modelo lineal |
+| 3. Datos que cambian | 0:55–1:30 | 19,4% | Cómo nos adaptamos sin reajustar los pesos |
+| 4. Medir antes de creer | 1:30–2:10 | 22,2% | Por qué comparamos en la misma ventana |
+| 5. Precalcular. Validar. Enviar. | 2:10–2:35 | 13,9% | Cómo protegemos el plazo con RawTree |
+| 6. La IA acelera. La evidencia decide. | 2:35–3:00 | 13,9% | Claude/Codex, control humano y crédito breve |
 
 ## Browser controls
 
@@ -50,3 +50,7 @@ To rebuild with the existing project environment:
     python presentation/pitch_3min/build_pitch.py
 
 This writes presentation artifacts only. It does not import serving code, read credentials or contact RawTree.
+
+Para regenerar también PDF y vista previa, con Chrome ya instalado:
+
+    python presentation/pitch_3min/render_pitch.py

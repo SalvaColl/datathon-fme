@@ -1,36 +1,38 @@
-# Team 26 — three-minute pitch
+# Equipo 26 — presentación de tres minutos
 
-English. Six slides. Timings are rehearsal targets, not a promise of reading speed.
-Aim for roughly 130–140 words per minute and rehearse with pauses. Slide sources are in the PowerPoint notes and EVIDENCE.md.
+Seis diapositivas. Guion breve, pensado para hablar con pausas.
+Los tiempos son una guía de ensayo. Las fuentes están en las notas de PowerPoint y EVIDENCE.md.
 
-## 1. Ten products. Three seconds. One shopper. — 0:00–0:15
+## 1. Diez productos. Tres segundos. Un comprador. — 0:00–0:15
 
-Ten products. Three seconds. One shopper. We are Team 26. The difficult part was choosing what to trust: old data, live behavior, or a more complicated model. Our answer was to make every extra layer earn its place.
+Diez productos. Tres segundos. Un comprador. Somos el equipo 26. Lo difícil no era añadir otro modelo, sino decidir qué señales creer y llegar a tiempo.
 
-## 2. A small model. A deliberate choice. — 0:15–0:55
+## 2. Un modelo sencillo. Una elección medida. — 0:15–0:55
 
-We kept a linear ranker because gradient boosting did not improve our held-out results. For baseline training, each shown product becomes an example; unshown products are not labeled failures. Clicks provide more examples, while purchases receive three times the weight. We model slot position because exposure changes behavior. We reconstruct earlier shopper state and test on later requests. The final policy then combines cohort-specific refits and overrides, rather than blindly deploying the default training output.
+Probamos modelos más complejos, pero no mejoraron los resultados con datos apartados. Elegimos un modelo lineal: rápido e interpretable. En el entrenamiento base usamos solo productos mostrados. Aprendemos de los clics, dando triple peso a las compras, e incluimos la posición. Entrenamos con peticiones anteriores y validamos después. Los ajustes finales se eligieron por segmento, con pruebas adicionales.
 
-## 3. Frozen weights. Live intelligence. — 0:55–1:30
+## 3. Pesos estables. Datos que cambian. — 0:55–1:30
 
-We separated changing evidence from stable model weights. Shopper memory updates as people return, including new shoppers without historical profiles. Product quality uses organic views and purchases; recommendation purchases update user memory, not the organic rate. That separation prevents a feedback loop. Trends come from recent events versus a baseline, not yesterday's clock. This lets us adapt during the final without refitting on a handful of noisy purchases. Previous purchases still stay excluded.
+Congelamos los pesos, no la tienda. Seguimos actualizando memoria, calidad, stock y precios. Separamos nuestras recomendaciones de la actividad orgánica para no inflar la calidad de un producto. Detectamos tendencias comparando eventos recientes con su nivel habitual. Así nos adaptamos sin reajustar el modelo con unas pocas compras ruidosas. Y mantenemos todas las exclusiones de compras anteriores.
 
-## 4. Measure before believing. — 1:30–2:10
+## 4. Medir antes de creer. — 1:30–2:10
 
-Offline screening was not enough, because logged impressions reflect what earlier policies chose to show. For live checks, we compared against the reference in the same windows, so a better hour would not look like a better model. Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement, with ten thousand eight hundred requests per policy. These were time blocks, not randomized A/B. We also rejected ideas and wrote counterexamples when passing tests missed real query behavior.
+El histórico refleja lo que otros modelos eligieron mostrar. Por eso el offline solo filtra ideas. En vivo comparamos con la referencia de la misma ventana: una hora favorable no debía parecer un modelo mejor. En ocho bloques, el reajuste mostró 0,17 puntos más, con 10.800 peticiones por política. No fue un A/B aleatorizado. También buscamos fallos que los tests no estaban cubriendo.
 
-## 5. Precompute. Validate. Batch. — 2:10–2:35
+## 5. Precalcular. Validar. Enviar. — 2:10–2:35
 
-To protect the deadline, SQL aggregation runs in the background and local scoring stays small. We validate products before batched writes, with one writer and durable request claims. That design served ninety-nine-point-nine-six percent on time across forty-three thousand two hundred practice requests. RawTree snapshots and feedback let us trace a decision from input to outcome.
+Precalculamos con SQL en segundo plano. La respuesta solo necesita puntuar, validar y enviar por lotes. Un único escritor evita duplicados. En cuatro horas de práctica respondimos a tiempo al 99,96 % de 43.200 peticiones. Con RawTree podemos seguir cada decisión desde la entrada hasta el resultado.
 
-## 6. Agents accelerated. Evidence decided. — 2:35–3:00
+## 6. La IA acelera. La evidencia decide. — 2:35–3:00
 
-We used Claude and Codex to implement experiments, audit code and find failure cases in isolated branches. People controlled integration, measurements and the single live deployment. The four of us covered modeling, independent challengers, cold-start research and reliability. The lesson was to use agents to move faster, while making every claimed improvement explainable and testable. Build fast. Verify carefully.
+Claude y Codex nos ayudaron a implementar experimentos, auditar código y buscar fallos. El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. Nos quedamos con una idea: construir rápido y comprobar con rigor.
 
-## Delivery
+## Cómo contarlo
 
-Script: 378 words. Total slide budget: 180 seconds.
-Start the browser timer with R before speaking. Right arrow/space advances; N toggles notes; F enters fullscreen.
-The initial pitch explains HOW and WHY. Team names are credited briefly; no unconfirmed individual roles are assigned.
-For questions, HOW_AND_WHY.md provides a code walkthrough. The 2.159% practice aggregate in EVIDENCE.md is not a final result.
-Keep the caveat that the +0.17 pp comparison used time blocks, not randomized contemporaneous A/B.
+Guion: 300 palabras. Plan completo: 180 segundos.
+Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
+R inicia el cronómetro; flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa.
+El foco es CÓMO y POR QUÉ. Los cuatro nombres aparecen al final, sin un reparto de funciones no confirmado.
+Si preguntan por más detalle, HOW_AND_WHY.md contiene un recorrido por el código. No atribuyas a la final los resultados de práctica.
+La comparación de +0,17 puntos usa bloques temporales: no la describas como A/B aleatorizado.
+Puedes terminar entre 2:40 y 3:00 dejando pausas. El objetivo es transmitir las decisiones, no agotar el cronómetro.

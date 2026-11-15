@@ -82,3 +82,7 @@ The revised initial pitch keeps six slides and a 180-second plan, with 378 spoke
 Training claims were checked directly in recsys/lfm_build.py: exposed-item rows, click labels, purchase row weight 3, separate known/new regularized logistic fits, log-slot and purchase calibration. The final JSON includes later refits/overrides; it is not claimed to be the untouched output of this default fit. R-24/E-260 supports the held-out model-choice account. See ../HOW_AND_WHY.md for the longer code walkthrough.
 
 The 2.159% practice aggregate is supporting evidence in this file and the root README, no longer the closing slide. Team member names were supplied by the user; no unconfirmed person-specific workstream or agent-version assignment is presented.
+
+## Spanish presentation
+
+The current default HTML/slides and the exports with suffix ES are in Spanish. The shortened script has 300 words and retains the same six-slide, 180-second plan with room for pauses. Statistics, comparison caveats and confirmed team credits are unchanged. GUION_ES.md and SCRIPT.md contain the Spanish notes. Earlier English exports remain available under their original filenames.
