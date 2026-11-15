@@ -12,10 +12,10 @@ from pathlib import Path
 os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np, pandas as pd, requests, joblib
 if __package__:
-    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends
+    from . import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends, cold_items
     from .serving import Journal, WriterLock, age, repair, serve, take_over
 else:
-    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends
+    import fe, qrank, aff_policy, d130, live_quality, attr_policy, lfm, home_arms, cold_lq_arm, trends, cold_items
     from serving import Journal, WriterLock, age, repair, serve, take_over
 build_tables, featurize, FEATS = fe.build_tables, fe.featurize, fe.FEATS
 DATA = Path(__file__).resolve().parent / 'data'
@@ -104,6 +104,11 @@ def clean_newcap(c):
     if not isinstance(c, dict) or not set(c) <= set(lfm.CAP_KEYS): return None
     if not all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 10 for v in c.values()): return None
     return {k: c[k] for k in lfm.CAP_KEYS if k in c}
+def clean_oqa(c):
+    """T-062 arm key "oqa": list of segments ("known" | "new" | "home_known" | "home_new") whose `orate` uses the
+    attribute prior for products without history (lfm.organic_prior_delta). Returns the sorted list, or None if anything is off."""
+    if not isinstance(c, list) or not c or not all(isinstance(k, str) and k in lfm.CAP_KEYS for k in c) or len(set(c)) != len(c): return None
+    return [k for k in lfm.CAP_KEYS if k in c]
 def clean_lfm_arms(raw):
     def spec(a):      # weights spec {"file": ..., "w": ...} -> cleaned dict, or None if anything is off
         if not isinstance(a, dict): return None
@@ -121,8 +126,9 @@ def clean_lfm_arms(raw):
         xp = a.get('explore')                                  # T-039: true = exploration arm (last slot from ranks 11..60); "new" / "known" = only for that kind of shopper
         rc = a.get('recart')                                   # T-046: true = re-cart bonus (LiveFit.set_arms); anything else but absent rejects the list
         cap = clean_newcap(a['newcap']) if 'newcap' in a else None   # T-061: max launched products per list, by segment; a bad one rejects the list
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True) and ('newcap' not in a or cap is not None):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {}), **({'newcap': cap} if cap else {})})
+        oqa = clean_oqa(a['oqa']) if 'oqa' in a else None            # T-062: attribute prior inside orate, by segment; a bad one rejects the list
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True) and ('newcap' not in a or cap is not None) and ('oqa' not in a or oqa is not None):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {}), **({'newcap': cap} if cap else {}), **({'oqa': oqa} if oqa else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -157,6 +163,7 @@ def clean_arms(raw):
     arms = []
     for a in (raw or [])[:4]:
         tag, vf = str(a.get('tag', '')), float(a.get('viewed_factor', 0.45))
+        oqa = clean_oqa(a['oqa']) if 'oqa' in a else None            # T-062: attribute prior inside orate, by segment; a bad one rejects the list
         if tag.isalnum() and len(tag) <= 12 and 0.05 <= vf <= 3: arms.append({'tag': tag.lower(), 'viewed_factor': vf})
     return arms if len(arms) >= 2 else []
 def qrank_arm(user_id):
@@ -213,7 +220,7 @@ def lfm_arm_weights(arms):
         for seg in ('known', 'new'):
             if not (np.all(np.isfinite(np.asarray(w[seg], dtype=float))) and math.isfinite(b[seg])):
                 raise PolicyRejected('non-finite coefficient in arm ' + tag)
-    return tmp.alt, tmp.alt_lq, tmp.alt_x, tmp.alt_cap
+    return tmp.alt, tmp.alt_lq, tmp.alt_x, tmp.alt_cap, tmp.alt_oqa
 def check_policy(conf):
     """T-043: the whole candidate policy.json, validated BEFORE anything is published. Returns the new values of the
     keys that change ({} = nothing to do); raises PolicyRejected and touches nothing if any part is wrong. A key that
@@ -247,7 +254,7 @@ def check_policy(conf):
 def publish_policy(new):
     """Install a candidate that check_policy() accepted. Weights first (a request never sees an arm without its
     weights), then the routing keys in one dict update."""
-    if 'lfm_weights' in new: LF.alt, LF.alt_lq, LF.alt_x, LF.alt_cap = new.pop('lfm_weights')
+    if 'lfm_weights' in new: LF.alt, LF.alt_lq, LF.alt_x, LF.alt_cap, LF.alt_oqa = new.pop('lfm_weights')
     if 'state_window' in new: LF.set_window(**(new['state_window'] or {}))
     POLICY.update(new)
     for k in ('variant', 'qrank_arms', 'lfm_arms', 'state_window'):
@@ -543,6 +550,35 @@ def organic_counts(T):
     except Exception as e:
         print('organic_counts failed', type(e).__name__, e, flush=True); return None, None
 
+OQA_CACHE, OQA_LOG = {}, {}
+def attr_prior(cat, hist):
+    """T-062: {product: purchases per view predicted by cold_items.ColdPrior from category, subcategory, brand, the
+    price of THIS catalogue snapshot and the description phrases} for the products without a 60-day history, for lfm
+    arms with "oqa". The prior was fitted on the historical catalogue only and is not refitted here. A product with
+    incomplete metadata, a description without its two phrases, or a prediction that is not a rate is left out, and
+    keeps the current orate (fallback per product). None when no arm asks or on any error. Refresher thread only: no
+    query (descriptions are the ones aff_policy already synced), cached per product and price."""
+    try:
+        if LF is None or not LF.wants_oqa() or AP is None or hist is None or cat.index.has_duplicates: return None
+        cold = AP.cold; out = {}; bad = 0
+        new = cat[~cat.index.isin(list(hist))]
+        for p, c, sb, br, pr in zip(new.index, new["category"].values, new["sub"].values, new["brand"].values, new["price"].values):
+            try:
+                d = cold.desc.get(p)
+                pr = float(pr)
+                if not (isinstance(c, str) and isinstance(sb, str) and isinstance(br, str) and c and sb and br and isinstance(d, str)
+                        and math.isfinite(pr) and pr > 0 and len(cold_items.attrs(d)) == 2): bad += 1; continue
+                key = (p, pr, d); r = OQA_CACHE.get(key)
+                if r is None: r = OQA_CACHE[key] = float(cold.prior.rate(c, sb, br, pr, d, "p"))
+                if math.isfinite(r) and 0.0 < r < 1.0: out[p] = r
+                else: bad += 1
+            except Exception: bad += 1
+        st = dict(products=len(out), fallback=bad)
+        if st != OQA_LOG.get('last'): OQA_LOG['last'] = st; print(json.dumps(dict(event='attr_prior', **st)), flush=True)
+        return out or None
+    except Exception as e:
+        print('attr_prior failed', type(e).__name__, e, flush=True); return None
+
 HOT_LOG = {}
 def hot_products(cat, max_share=0.10):
     """T-044: products of the subcategories in a live burst (trends.py: share of views of the last 15 minutes at least twice
@@ -596,7 +632,7 @@ def refresher():
             if LF is not None and AP is not None:
                 try:
                     oq, oq_hist = organic_counts(T)
-                    LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat), oq=oq, oq_hist=oq_hist)
+                    LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat), oq=oq, oq_hist=oq_hist, oq_prior=attr_prior(cat, oq_hist) if oq else None)
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:

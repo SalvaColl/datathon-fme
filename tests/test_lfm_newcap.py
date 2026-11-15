@@ -100,9 +100,9 @@ class NewcapTests(unittest.TestCase):
         try:
             lf, aff = build(arms=[{"tag": "big", **W}]); live.LF = lf
             arms = live.clean_lfm_arms([{"tag": "big", **W, "newcap": 1}])
-            lf.alt, lf.alt_lq, lf.alt_x, lf.alt_cap = live.lfm_arm_weights(arms)
+            lf.alt, lf.alt_lq, lf.alt_x, lf.alt_cap, lf.alt_oqa = live.lfm_arm_weights(arms)
             self.assertEqual(sum(p in NEW for p in slate(lf, aff, "big")), 1)
-            lf.alt, lf.alt_lq, lf.alt_x, lf.alt_cap = live.lfm_arm_weights(live.clean_lfm_arms([{"tag": "big", **W}]))
+            lf.alt, lf.alt_lq, lf.alt_x, lf.alt_cap, lf.alt_oqa = live.lfm_arm_weights(live.clean_lfm_arms([{"tag": "big", **W}]))
             self.assertEqual(lf.alt_cap, {}); self.assertGreater(sum(p in NEW for p in slate(lf, aff, "big")), 2)
         finally: live.LF = saved
 

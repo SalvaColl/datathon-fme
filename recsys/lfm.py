@@ -193,6 +193,7 @@ class Snap:
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
         self.hot = None                       # T-044: 1.0 for products of a subcategory in a live burst (LiveFit.set_catalog)
         self.orate = self.opop = None         # T-049: organic quality of each product (LiveFit.set_catalog, organic_quality())
+        self.orate_d = None                   # T-062: change of orate under the attribute prior (organic_prior_delta); None = off
 
     def stale(self, u):
         """Boolean mask: products this user viewed in the history and never carted (dead in the live carousel)."""
@@ -314,6 +315,43 @@ def organic_quality(ids, oq, hist=None):
         print("lfm organic quality off:", type(e).__name__, e, flush=True); return None, None
 
 
+OQ_PRIOR_K = 100.0                 # T-062: strength of the attribute prior in views (cold_items.K_PRIOR, E-090); not tuned here
+
+
+def organic_prior_delta(ids, oq, hist, prior, k=OQ_PRIOR_K):
+    """T-062 -> what `orate` gains, per product of `ids`, when a product WITHOUT a 60-day history swaps the flat prior
+    (1 purchase per 20 views) for its attribute prior: rate = (organic purchases + k * prior) / (organic views + k).
+    prior: {product: purchases per view predicted from its metadata (cold_items.ColdPrior, target "p")}.
+    Same centre and clipping as organic_quality(), computed from the CURRENT formula, so a product with history, or
+    without a usable prior (absent, not a number, outside (0, 1)), gets exactly 0: it keeps today's value. Returns None
+    when there is nothing to change or organic_quality() itself would be off."""
+    try:
+        if not oq or not prior or hist is None: return None
+        g = oq.get; n = len(ids); v = np.zeros(n); p = np.zeros(n); has = np.zeros(n, dtype=bool); pr = np.full(n, np.nan)
+        for j, i in enumerate(ids):
+            c = g(i)
+            if c is not None: v[j] = max(float(c[0]), 0.0); p[j] = max(float(c[1]), 0.0); has[j] = i in hist
+            if not has[j]:
+                x = prior.get(i)
+                if isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and 0.0 < x < 1.0: pr[j] = float(x)
+        if not np.isfinite(v).all() or not np.isfinite(p).all(): return None
+        r0 = np.log((p + OQ_PRIOR_P) / (v + OQ_PRIOR_V))
+        if has.sum() < 50:
+            if int((v > 0).sum()) < 50: return None
+            centre = np.median(r0)
+        else: centre = np.median(r0[has])
+        m = np.isfinite(pr) & ~has
+        if not m.any(): return None
+        d = np.zeros(n)
+        r1 = np.log((p[m] + k * pr[m]) / (v[m] + k))
+        d[m] = np.clip(r1 - centre, -OQ_CLIP, OQ_CLIP) - np.clip(r0[m] - centre, -OQ_CLIP, OQ_CLIP)
+        if not np.isfinite(d).all() or not d.any(): return None
+        d.flags.writeable = False
+        return d
+    except Exception as e:
+        print("lfm attribute prior off:", type(e).__name__, e, flush=True); return None
+
+
 def top_items(S, s, n=10, exclude=()):
     """The writer's top-N selection, including its tie order and stock-shock repair. Shared with offline target
     evaluation: a tied score does not put every tied product into the ten available slots. Does not mutate scores."""
@@ -332,6 +370,7 @@ class LiveFit:
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
         self.alt_cap = {}             # arm tag -> {"known" | "new" | "home_known" | "home_new": max launched products per list} (T-061)
+        self.alt_oqa = {}             # arm tag -> segments (CAP_KEYS) whose orate uses the attribute prior for products without history (T-062)
         self.alt_x = {}               # arm tag -> True | "new" | "known": exploration in the last slot (T-039)
         self.alt_lq = {}              # arm tag -> "cold" | "cold_new" (T-028), see set_arms()
         self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
@@ -403,6 +442,7 @@ class LiveFit:
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
         self.alt_x = {a["tag"]: a["explore"] for a in arms if a.get("explore") is True or a.get("explore") in X_MODES}   # T-039, see slate()
         self.alt_cap = {a["tag"]: dict(a["newcap"]) for a in arms if isinstance(a.get("newcap"), dict) and a["newcap"]}    # T-061, see slate()
+        self.alt_oqa = {a["tag"]: frozenset(a["oqa"]) for a in arms if a.get("oqa") and set(a["oqa"]) <= set(CAP_KEYS)}    # T-062, see scores()
 
     # ---- refresher thread ----
     def set_window(self, day_start=None, carts="persistent"):
@@ -437,14 +477,16 @@ class LiveFit:
                 d = self.lcart_t.setdefault(u, {})
                 if ta > d.get(i, ""): d[i] = ta
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None, oq=None, oq_hist=None):
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None, oq=None, oq_hist=None, oq_prior=None):
         """hot (T-044): products of the subcategories in a live burst, or None / empty (the feature stays 0).
-        oq (T-049): {product: (organic views, organic purchases)}, oq_hist: products with a 60-day history; None = features stay 0."""
+        oq (T-049): {product: (organic views, organic purchases)}, oq_hist: products with a 60-day history; None = features stay 0.
+        oq_prior (T-062): {product: purchases per view predicted from its attributes}; None = no arm uses it."""
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
         S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold, newp)
         if hot: S.hot = np.isin(np.array(ids, dtype=object), list(hot)).astype(np.float64)
         if oq: S.orate, S.opop = organic_quality(ids, oq, oq_hist)
+        if oq and oq_prior and S.orate is not None: S.orate_d = organic_prior_delta(ids, oq, oq_hist, oq_prior)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
         try: self._graph_catalog(S)
@@ -570,6 +612,10 @@ class LiveFit:
         sets = [self.w] + [w for w, _ in list(self.alt.values())]
         return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new") for k in ks)
 
+    def wants_oqa(self) -> bool:
+        """Does any arm ask for the attribute prior inside orate (T-062)? If not, nobody computes it."""
+        return bool(getattr(self, "alt_oqa", None))
+
     def wants_oq(self) -> bool:
         """Does any weight set in use give the organic quality features a weight? If not, nobody builds them."""
         ks = [FEATS.index("orate"), FEATS.index("opop")]
@@ -611,6 +657,12 @@ class LiveFit:
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None,
                      prev=prev, hcar=self.hcar.get(req["user_id"]))
         s = X @ w[seg] + b0[seg]
+        oa = getattr(self, "alt_oqa", {}).get(model) if model else None
+        if oa and cap_key(seg == "new", rv) in oa:
+            # T-062: orate is linear in the score, so the attribute prior enters as weight x (new orate - current orate);
+            # exactly 0 for every product with history. No snapshot of the prior = today's orate for everybody.
+            d = getattr(S, "orate_d", None)
+            if d is not None and len(d) == len(s): s = s + w[seg][FEATS.index("orate")] * d
         if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
             # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc
             h = self.hcart.get(req["user_id"])
