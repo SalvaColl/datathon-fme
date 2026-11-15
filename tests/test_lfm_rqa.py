@@ -27,7 +27,9 @@ class RequestTaste(unittest.TestCase):
         for f in lfm.HERE.glob("lfm_coef*.json"):
             c = json.loads(f.read_text())
             for seg in ("known", "new"): self.assertEqual(c[seg]["w"].get("rqa", 0.0), 0.0)
-        for f in lfm.HERE.glob("policy*.json"): self.assertNotIn('"rqa"', f.read_text(), f.name)
+        for f in lfm.HERE.glob("policy*.json"):
+            if f.name.startswith("policy.rot_ur"): continue      # the rqa trial policies themselves
+            self.assertNotIn('"rqa"', f.read_text(), f.name)
         lf, _ = build()
         self.assertEqual(float(lf.w["known"][K]), 0.0); self.assertEqual(float(lf.w["new"][K]), 0.0)
 
