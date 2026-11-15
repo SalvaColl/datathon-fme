@@ -224,3 +224,20 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Lectura de una ventana: `python recsys/confirm_read.py --from "2026-11-15 00:10" --to "2026-11-15 01:40" --control <código> --challenger <código> --sd 6.0` (usar `--sd 5.5` para conocidos). Los códigos públicos de `r3p`, `cn1p` y `np1p` salen en el log del writer como eventos `label` al servir la primera petición de cada uno.
 - Vuelta atrás: política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json`.
 
+
+
+## T-054 - Optional fast trend iteration (Javi owns activation)
+
+Files: `policy.events_trial.json` = unchanged unified u1 versus identical coefficients with `trend_window:5` (tag b7); `policy.events_candidate.json` is the challenger alone, **not promoted**. Public labels still use the existing private opaque mapping.
+
+Load the new Python code through the planned single-writer handoff BEFORE copying either policy: old code can silently ignore the new field and produce an A/A comparison. Validate on a non-writer machine. Do not run a second writer.
+
+From recsys, after code is loaded, Javi can activate the trial with:
+```sh
+cp policy.events_trial.json data/policy.json
+```
+Verify the policy acknowledgement and `hot_windows` log (15/5 masks) before starting measurement. Compare the two arms by user in the same exact window and cohort, with reference from that window. Exclude transition requests. Measure onset, sustained burst and expiry; confirm on a later episode without changing weights. Normal streaming updates continue through the final; freeze chosen parameters before it.
+
+Rollback in hot policy: `cp policy.unified.json data/policy.json` restores the original coefficients and 15-minute detector. Code rollback uses the normal handoff to the preceding deployment commit. No current coefficient or active policy file was modified by this work. The 90-second expiry applies to both detector masks if refresh stalls.
+
+Research: `python tools/event_policy_audit.py pull --asof "<completed UTC ten-minute boundary>" --cache <new-dir>`, then `prepare`, `promotions` or `shadow --n 1500` with that same cache. Samples are outcome-enriched, not conversion estimates. The standard unified_eval ten-minute proxy deliberately rejects fast arms; use this raw-event replay or writer --dry-run on another machine.

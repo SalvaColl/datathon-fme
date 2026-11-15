@@ -112,8 +112,9 @@ def clean_lfm_arms(raw):
         lqm = a.get('lq')                                      # T-028/T-034/T-047: "cold" | "cold_new" | "cold_known" = corrected quality for today's products
         xp = a.get('explore')                                  # T-039: true = exploration arm (last slot from ranks 11..60); "new" / "known" = only for that kind of shopper
         rc = a.get('recart')                                   # T-046: true = re-cart bonus (LiveFit.set_arms); anything else but absent rejects the list
-        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True):
-            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {})})
+        tw = a.get('trend_window')                              # T-054: explicit opt-in; absent preserves the 15-minute detector
+        if tag.isalnum() and len(tag) <= 8 and main is not None and ('home' not in a or home is not None) and (lqm is None or lqm in lfm.LQ_MODES) and (xp is None or xp is True or xp in lfm.X_MODES) and (rc is None or rc is True) and (tw is None or (type(tw) is int and tw in (5, 15))):
+            arms.append({'tag': tag.lower(), **main, **({'home': home} if 'home' in a else {}), **({'lq': lqm} if lqm else {}), **({'explore': xp} if xp else {}), **({'recart': True} if rc else {}), **({'trend_window': tw} if tw is not None else {})})
     # one arm alone is allowed: that is how lfm_tuner.py leaves its best weights in place without a restart
     # ...and one bad arm rejects the whole list, so a typo can never leave a lopsided split running
     arms = arms if 1 <= len(arms) == len(raw or []) and len({a['tag'] for a in arms}) == len(arms) else []
@@ -511,6 +512,27 @@ def hot_products(cat, max_share=0.10):
     except Exception as e:
         print('hot_products failed', type(e).__name__, e, flush=True); return None
 
+
+def hot_snapshots(cat, max_share=0.10):
+    """Slow/fast product sets for one atomic catalogue snapshot. Default path unchanged; an opt-in arm gets both
+    detectors from a single query outside the response path. Each mask has its own empty/error/size guard."""
+    if LF is None or not LF.wants_fast_hot(): return hot_products(cat, max_share), None
+    try:
+        snapshots = trends.window_snapshots(query, cat["sub"].to_dict())
+        sets = {}
+        for window in (15, 5):
+            subs = set(snapshots[window].hot)
+            ids = set(cat.index[cat["sub"].isin(subs)])
+            sets[window] = ids if 0 < len(ids) <= max_share * len(cat) else None
+        log = {str(w): sorted(snapshots[w].hot) for w in (15, 5)}
+        if log != HOT_LOG.get('windows'):
+            HOT_LOG['windows'] = log
+            print(json.dumps(dict(event='hot_windows', windows=log)), flush=True)
+        return sets[15], sets[5]
+    except Exception as e:
+        print('hot_snapshots failed', type(e).__name__, e, flush=True)
+        return None, None
+
 COLD_LOG = {}
 def cold_lq_for_arms(cat, T):
     """T-028: {product: corrected lq} for lfm arms with "lq": "cold"; None when no arm asks, when the corrector is not
@@ -546,7 +568,8 @@ def refresher():
             if LF is not None and AP is not None:
                 try:
                     oq, oq_hist = organic_counts(T)
-                    LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot_products(cat), oq=oq, oq_hist=oq_hist)
+                    hot, hot_fast = hot_snapshots(cat)
+                    LF.set_catalog(cat, unavail, AP.aff, QR.lq if QR is not None else None, d130.HC, lq_cold=cold_lq_for_arms(cat, T), newp=new_products(cat), hot=hot, oq=oq, oq_hist=oq_hist, hot_fast=hot_fast)
                 except Exception as e: print('lfm refresh failed', type(e).__name__, e, flush=True)
             pools, best = make_pools(cat, unavail, T)
             with lock:

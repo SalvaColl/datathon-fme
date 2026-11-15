@@ -102,6 +102,8 @@ def targets(grid=None, out=None, base="r3", horizon_min=30):
     lfm, LB, R, qrank, CV, d, LF, aff, carts, buys, H, it = load_all()
     FI = {f: k for k, f in enumerate(lfm.FEATS)}
     G = dict(GRID); G.update(grid or {})
+    if any(s.get("trend_window") == 5 for s in G.values()):
+        raise ValueError("Five-minute trend arms require the raw-event event_policy_audit replay, not this 10-minute proxy")
     W = {n: CV.weights({k: v for k, v in s.items() if k != "recart"}) for n, s in G.items()}
     RCV = {n for n, s in G.items() if s.get("recart")}
     names = list(G)
@@ -193,6 +195,8 @@ def check(files, n=4000, since="2026-11-14 17:00:00", out=None):
     for f in files:
         conf = json.loads((HERE / f).read_text()); arms = clean(conf.get("lfm_arms"))
         assert conf.get("variant") == "lfm" and len(arms) == 1, f + ": rejected by clean_lfm_arms"
+        if arms[0].get("trend_window") == 5:
+            raise ValueError("Five-minute trend arms require event_policy_audit or the writer's --dry-run; proxy snapshots have no fast mask")
         assert json.dumps(arms, sort_keys=True) == json.dumps([{**a, "tag": a["tag"].lower()} for a in conf["lfm_arms"]], sort_keys=True), f + ": cleaned arm differs from the file"
         pol[f] = arms
     d = d[(d.ts >= pd.Timestamp(since)) & (d.served_by == "team")]; d = d.iloc[::max(1, len(d) // n)]

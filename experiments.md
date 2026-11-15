@@ -753,3 +753,20 @@ selector p95/p99 ms: before 5.9802/6.9490; after 6.1438/7.2054
 The benchmark alternates call order and includes tied scores, non-finite exclusions and stock shocks. It measures synthetic selection only, not inference or network latency. Test portability fixes close a reopened SQLite handle before temporary-directory cleanup and compare paths using POSIX separators on Windows.
 
 **Limitations:** E-500 target-retrieval tables must be recomputed; none were rerun against team caches here. Organic purchase retrieval is a proxy for carousel response; feedback is exposure-biased; repeated users/purchase targets make naive standard errors optimistic. The coarse trend proxy cannot validate exact detection latency. No measured online conversion uplift, full-slate counterfactual estimate or production end-to-end p95/p99 is claimed.
+
+
+## E-540 - Five-minute trend iteration and promotion screen (T-054)
+
+**OFFLINE SIGNAL / SHADOW DIAGNOSTIC; NOT ONLINE CONVERSION.** Branch `codex/trends-promotions`, based on the unified bot and T-052 fixes. Optional `trend_window: 5` preserves every unified coefficient (known hot=3, new hot=1.5, home hot=0). Default remains 15 minutes. Both masks come from one 195-minute background query. Empty fast masks never inherit the slow mask; hot signals expire after 90 seconds without a refreshed snapshot.
+
+Prior minute-resolution signal replay (I-521): five bursts, 195 -> 213 of 225 burst-minutes detected; post-burst flagging 50 -> 17 minutes. Same thresholds and three-hour baseline; baseline median blocks become five minutes. No clock schedule or category IDs are hard-coded.
+
+Current unified-policy shadow, completed-data cutoff 2026-11-15 00:40 UTC: 1,560 deterministically sampled **outcome-enriched** product/category requests (993 known, 567 new). Both arms 100% valid. Slates differ in 0.833% overall, 13.542% of the 96 requests whose masks differ; identical masks give identical slates. Local scoring p95/p99 ms: u1 5.389/13.871; b7 5.253/17.802. This excludes network and ingestion, uses ten-minute-lagged organic/profile counts and one-minute trend resolution, and does not estimate traffic-wide uplift.
+
+Promotion screen: 6,177 eligible clicked/purchased slates, 2,037 purchases, source feedback through 00:40 UTC. Only the ten exposed products enter conditional choice fitting. Compare discounts to initial catalogue/launch prices reconstructed as of each request. Fit positive-score temperature/slot on data before 20:00 UTC, then a regularized global-discount or current-category-discount term. Later purchase choice log-likelihood:
+- Known, 20:00-22:00: global +0.151 nats [-0.241,+0.647]; context +0.171 [-0.442,+0.879], 167 purchases.
+- Known, 22:00-00:40: global -0.847 [-1.990,+0.266]; context -1.875 [-3.425,-0.646], 298 purchases.
+- New, 22:00-00:40: global -0.015 [-0.787,+0.830]; context +0.002 [-0.001,+0.005], 208 purchases.
+Intervals: user-cluster bootstrap, seed 540. Very few discounted targets (11-13 per slice); unified weights were themselves selected using same-day data. This is exploratory screening, not an untouched policy test. **No additional promotion bonus is shipped.** Existing current-price, quality and eligibility features remain in use.
+
+Validation: `python -m unittest tests.test_trend_windows tests.test_event_policy_audit tests.test_lfm_hot tests.test_policy_reload tests.test_unified_policy -q`: **31 tests passed**. Current iteration did not rerun the full suite. Read-only replay commands: `python tools/event_policy_audit.py prepare`, `promotions`, `shadow --n 1500`. Cache is ignored/private; use `pull --asof "2026-11-15 00:40:00" --cache <new-directory>` for a new snapshot, never overwrite a completed one. No writer launched or active policy changed.

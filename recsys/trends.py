@@ -116,6 +116,20 @@ def snapshot(query, sub_of: dict, now=None) -> Snapshot:
         return Snapshot(sub_of=sub_of)
 
 
+def window_snapshots(query, sub_of: dict, windows=(15, 5), now=None) -> dict:
+    """Causal detectors from ONE background query. Windows are minutes, using the same five-minute buckets,
+    three-hour baseline and thresholds. No shared mutable detector state; empty/error snapshots stay neutral."""
+    if not windows or any(type(w) is not int or w not in (5, 15) for w in windows):
+        raise ValueError("trend windows must be 5 or 15 minutes")
+    windows = tuple(dict.fromkeys(windows))
+    try:
+        counts = fetch_counts(query, now, recent=max(windows) // BUCKET_MIN, base=BASE)
+        return {w: compute(counts, sub_of, recent=w // BUCKET_MIN, base=BASE) for w in windows}
+    except Exception as e:
+        print("trend windows error", type(e).__name__, e, flush=True)
+        return {w: Snapshot(sub_of=sub_of) for w in windows}
+
+
 if __name__ == "__main__":  # python trends.py  -> print what is hot right now (read-only)
     import time
     from rt import q

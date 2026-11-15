@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-054 | P1 | Optional five-minute trend arm on the unified bot; causal promotion audit; shared-query snapshots, regression tests and offline handoff | Codex / codex/trends-promotions | IMPLEMENTED/TESTED: E-540, 31 targeted tests, 1560/1560 valid per arm; not deployed | Based on T-052 fixes; Javi owns activation; no extra packages |
 | T-052 | P0 | Audit the unified bot: preserve organic counts across catalogue-refresh races; remove future-data trend normalization and optimistic tie scoring from its evaluator; focused regressions and handoff | Codex / codex/unified-bot-audit (from main 16e14c6) | IMPLEMENTED/TESTED: E-520; 360 tests OK (8 skipped), 1000/1000 selector parity; not deployed | Serving owner Javi reviews/deploys; existing venv only |
 | T-001 | P0 | Official spec + starter files reviewed, schemas and score in `challenge.md` | Doc owner / docs refresh | **DONE (public sources only)** | Actual team API access not tested |
 | T-002 | P0 | Run baseline `starter/recommender.py`, verify live feedback `served_by='team'`, p95, `.env` safe | TBD / TBD | READY | TEAM_ID/key; available Python env |

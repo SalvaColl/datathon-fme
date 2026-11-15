@@ -24,7 +24,7 @@ best first. No candidate lists: 5,100 products x 11 features is one numpy matrix
 No RawTree calls, no writes. Weights live in lfm_coef.json (refit: `python lfm_build.py --pull`).
 """
 from __future__ import annotations
-import json, math, zlib
+import json, math, zlib, time
 from pathlib import Path
 import numpy as np, pandas as pd
 
@@ -85,6 +85,8 @@ def lq_target(mode, is_new_user, page, rv) -> bool:
 
 
 RC = "@recart"                     # arm key "recart": true (T-046). Marker entry of LiveFit.alt, see set_arms()
+FAST_HOT = "@hot5"                 # arm key "trend_window": 5 (T-054); travels atomically with the weights
+HOT_TTL_S = 90.0                   # a stalled refresher must not keep a finished demand burst boosted forever
 
 
 def recart_target(is_new_user, page, rv) -> bool:
@@ -133,6 +135,8 @@ class Snap:
         self.mf = None                        # (product factors, their rows, the matching rows of this snapshot), see LiveFit._mf_catalog
         self.perm = np.array([hc.idx.get(p, -1) for p in ids], dtype=np.int64) if hc is not None else None
         self.hot = None                       # T-044: 1.0 for products of a subcategory in a live burst (LiveFit.set_catalog)
+        self.hot_fast = None                  # independent five-minute detector; absent/empty always means neutral
+        self.hot_expires_at = None            # monotonic expiry; no wall-clock or timetable dependence
         self.orate = self.opop = None         # T-049: organic quality of each product (LiveFit.set_catalog, organic_quality())
 
     def stale(self, u):
@@ -317,6 +321,7 @@ class LiveFit:
             alt[a["tag"]] = build(a)
             if isinstance(a.get("home"), dict): alt[a["tag"] + "@home"] = build(a["home"])
             if a.get("recart") is True: alt[a["tag"] + RC] = alt[a["tag"]]
+            if a.get("trend_window") == 5: alt[a["tag"] + FAST_HOT] = alt[a["tag"]]
         self.alt = alt
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
         self.alt_x = {a["tag"]: a["explore"] for a in arms if a.get("explore") is True or a.get("explore") in X_MODES}   # T-039, see slate()
@@ -354,13 +359,17 @@ class LiveFit:
                 d = self.lcart_t.setdefault(u, {})
                 if ta > d.get(i, ""): d[i] = ta
 
-    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None, oq=None, oq_hist=None):
+    def set_catalog(self, cat, unavail, aff, lq=None, hc=None, lq_cold=None, newp=None, hot=None, oq=None, oq_hist=None, hot_fast=None):
         """hot (T-044): products of the subcategories in a live burst, or None / empty (the feature stays 0).
         oq (T-049): {product: (organic views, organic purchases)}, oq_hist: products with a 60-day history; None = features stay 0."""
         ids = list(aff.pid); A = aff.A
         ids = ids[:len(A)]
         S = Snap(ids, A, cat, set(unavail), lq, self.lq0, hc, lq_cold, newp)
         if hot: S.hot = np.isin(np.array(ids, dtype=object), list(hot)).astype(np.float64)
+        if hot_fast:
+            S.hot_fast = np.isin(np.array(ids, dtype=object), list(hot_fast)).astype(np.float64)
+            S.hot_fast.flags.writeable = False
+        if hot or hot_fast: S.hot_expires_at = time.monotonic() + HOT_TTL_S
         if oq: S.orate, S.opop = organic_quality(ids, oq, oq_hist)
         try: self._mix_catalog(S, cat)
         except Exception as e: print("lfm category mix off:", type(e).__name__, e, flush=True); S.ucode = S.scode = None
@@ -436,6 +445,17 @@ class LiveFit:
         sets = [self.w] + [w for w, _ in list(self.alt.values())]
         return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
 
+    def wants_fast_hot(self) -> bool:
+        """Ask for the second detector only if an opt-in arm actually weights hot, including its home override."""
+        k = FEATS.index("hot")
+        for tag in self.alt:
+            if not tag.endswith(FAST_HOT): continue
+            base = tag[:-len(FAST_HOT)]
+            sets = [self.alt[base][0]]
+            if base + "@home" in self.alt: sets.append(self.alt[base + "@home"][0])
+            if any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new")): return True
+        return False
+
     def wants_oq(self) -> bool:
         """Does any weight set in use give the organic quality features a weight? If not, nobody builds them."""
         ks = [FEATS.index("orate"), FEATS.index("opop")]
@@ -474,6 +494,11 @@ class LiveFit:
         page = req.get("page", "product")
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None)
+        if model and model + FAST_HOT in self.alt:
+            # Never fall back to the slow mask when a burst has ended or the fast snapshot is unavailable.
+            X[:, FEATS.index("hot")] = S.hot_fast if S.hot_fast is not None else 0.0
+        if S.hot_expires_at is not None and time.monotonic() >= S.hot_expires_at:
+            X[:, FEATS.index("hot")] = 0.0
         s = X @ w[seg] + b0[seg]
         if model and lc and (model + RC) in self.alt and recart_target(seg == "new", page, rv):
             # T-046: the history count comes from self.hcart because the served state drops re-carted products from hc

@@ -555,3 +555,10 @@ Past-only minute-resolution replay, shop.events 14 Nov 09:00 through 15 Nov 00:2
 Shadow replay on the **cs2r base at 05a862c**, with hot weight 1.5 for product/category pages and unchanged home overrides: 3,744 sampled requests, all three paths valid; fast/slow slates differed in 1.04%, and fast/no-hot in 5.48%. Local fast-arm scoring p95/p99 7.15/22.54 ms (includes replay user-profile work, excludes network). This was before the unified organic-quality policy arrived: it does not validate that newer policy, its known-user hot weight 3.0, or conversion.
 
 If pursued, clone the latest champion and change only the detector window, with separate immutable masks per arm built from one background query. A fast empty/error mask must be neutral, never fall back to a stale slow mask. Preserve all coefficients. Use actual served-policy epochs, same-window reference, one challenger, and confirmation on a new detected episode. Continue streaming updates after the pre-final parameter freeze. Keep this experiment separate from E-520.
+
+
+## I-540 - Ship the faster trend experiment; keep promotion boosts neutral
+
+**CANDIDATE, NOT A LIVE WIN.** E-540: five-minute detection reacts earlier and expires earlier across five bursts; a shadow of the actual unified coefficients is valid. Added only an opt-in arm, independent masks, one shared background query and a 90-second stale-signal guard. No coefficient tuning, automatic promotion, extra response-path query or new dependency.
+
+Direct discount bonuses did not improve later conditional purchase likelihood after the unified score; the current-category discount term was negative in the later known-user block. Keep the bonus at zero. Promotions continue to affect current-price features and observed organic quality. This does not prove all promotions are useless; support is small and feedback is selected. Revisit only with independent new evidence.
