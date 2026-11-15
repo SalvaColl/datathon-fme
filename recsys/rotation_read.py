@@ -48,7 +48,7 @@ def in_burst(a, step, bursts):
     return False
 
 
-def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None):
+def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time=99.0, team="team_26", bursts=None, kcodes=None):
     step = block_min * 60; champion = champion or seq[0]
     end = min(until or 1 << 62, int(time.time()) // 300 * 300)
     rows = []
@@ -58,17 +58,21 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
         if not t or not d.get("custom"): continue
         rows.append(dict(k=k, start=time.strftime("%H:%M", time.gmtime(a)), variant=seq[k % len(seq)], burst=in_burst(a, step, bursts), requests=t["requests"], conversion=round(t["conversion"], 3),
                          reference=round(d["reference"]["conversion"], 3), diff=round(t["conversion"] - d["reference"]["conversion"], 3),
-                         cold=round(t["cold_conversion"], 3), on_time=round(t["on_time"], 2), versions=len(t.get("versions", []))))
+                         cold=round(t["cold_conversion"], 3), cold_diff=round(t["cold_conversion"] - d["reference"].get("cold_conversion", 0), 3),
+                         on_time=round(t["on_time"], 2), versions=len(t.get("versions", []))))
+        kc = (kcodes or {}).get(rows[-1]["variant"])          # public code of this variant's row for returning shoppers on pages
+        kr = next((v for v in t.get("versions", []) if v["model_version"] == kc), None) if kc else None
+        rows[-1]["known"] = None if kr is None else round(kr["conversion"], 3); rows[-1]["known_requests"] = None if kr is None else kr["requests"]
     good = [r for r in rows if r["on_time"] >= min_on_time]
     per = {}
     for name in dict.fromkeys(seq):
         b = [r for r in good if r["variant"] == name]
         per[name] = dict(stats([r["diff"] for r in b]), requests=sum(r["requests"] for r in b),
-                         cold_mean=round(sum(r["cold"] for r in b) / len(b), 3) if b else None, worst_on_time=min((r["on_time"] for r in b), default=None))
-    paired = {}; paired_all = {}
+                         cold_mean=round(sum(r["cold"] for r in b) / len(b), 3) if b else None, cold_minus_reference=stats([r["cold_diff"] for r in b]), worst_on_time=min((r["on_time"] for r in b), default=None))
+    paired = {}; paired_all = {}; paired_known = {}; paired_cold = {}
     for name in dict.fromkeys(seq):
         if name == champion: continue
-        v, w = [], []
+        v, w, kn, co = [], [], [], []
         for r in good:
             if r["variant"] != name: continue
             for same, acc in ((False, w), (True, v)):       # nearest champion block(s), at most 2 blocks away (ABBA / random pairs)
@@ -76,9 +80,15 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
                 if not c: continue
                 d0 = min(abs(x["k"] - r["k"]) for x in c); nb = [x for x in c if abs(x["k"] - r["k"]) == d0]
                 acc.append(r["diff"] - sum(x["diff"] for x in nb) / len(nb))
-        paired[name + "_minus_" + champion] = stats(v, SD_FLOOR); paired_all[name + "_minus_" + champion] = stats(w, SD_FLOOR)
+                if same:
+                    co.append(r["cold_diff"] - sum(x["cold_diff"] for x in nb) / len(nb))
+                    nk = [x["known"] for x in nb if x.get("known") is not None]
+                    if r.get("known") is not None and nk: kn.append(r["known"] - sum(nk) / len(nk))
+        key = name + "_minus_" + champion
+        paired[key] = stats(v, SD_FLOOR); paired_all[key] = stats(w, SD_FLOOR)
+        paired_known[key] = stats(kn); paired_cold[key] = stats(co)       # secondary: row of returning shoppers on pages (no reference), cold minus reference cold
     res = dict(kind="time rotation, team row minus reference per block; not a user-split A/B", block_min=block_min, seq=seq, champion=champion,
-               per_variant=per, paired=paired, paired_all_neighbours=paired_all,
+               per_variant=per, paired=paired, paired_all_neighbours=paired_all, paired_known_row=paired_known, paired_cold=paired_cold,
                champion_burst_vs_calm={k: stats([r["diff"] for r in good if r["variant"] == champion and r["burst"] == (k == "burst")]) for k in ("burst", "calm")}, left_out=[r for r in rows if r not in good], blocks=rows)
     print(json.dumps(res, indent=1))
     if out: open(out, "w").write(json.dumps(res, indent=1))
@@ -88,7 +98,8 @@ def main(start, block_min, seq, until=None, out=None, champion=None, min_on_time
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--start", required=True); ap.add_argument("--block-min", type=int, default=15); ap.add_argument("--seq", required=True)
-    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts")
+    ap.add_argument("--until"); ap.add_argument("--out"); ap.add_argument("--champion"); ap.add_argument("--min-on-time", type=float, default=99.0); ap.add_argument("--bursts"); ap.add_argument("--k-codes", help="variant=public code of its returning-shoppers-on-pages row, comma separated (never commit the codes)")
     g = ap.parse_args()
     b = None if g.bursts is None else [int(x[:2]) * 60 + int(x[3:5]) for x in g.bursts.split(",") if x]
-    main(epoch(g.start), g.block_min, g.seq.split(","), epoch(g.until) if g.until else None, g.out, g.champion, g.min_on_time, bursts=b)
+    main(epoch(g.start), g.block_min, g.seq.split(","), epoch(g.until) if g.until else None, g.out, g.champion, g.min_on_time, bursts=b,
+         kcodes=dict(x.split("=") for x in g.k_codes.split(",")) if g.k_codes else None)
