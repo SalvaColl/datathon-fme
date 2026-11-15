@@ -18,8 +18,8 @@ DECK_STEM = "Team26_3min_ES"
 ES_TEXT = {
     "TEAM 26  /  RAWTREE × DATATHON FME 2026": "EQUIPO 26  /  RAWTREE × DATATHON FME 2026",
     "The decision behind the system": "La decisión detrás del sistema",
-    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Sin bola de cristal.",
-    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nSin bola de cristal.",
+    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Cada comprador.",
+    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nCada comprador.",
     "A changing store.\nA different decision for every shopper.": "Elegir qué enseñar a cada comprador.\nReto de Tinybird · RawTree.",
     "THE DECISION WINDOW": "EL PLAZO PARA RESPONDER",
     "seconds": "segundos",
@@ -90,8 +90,9 @@ def tr(value):
     return ES_TEXT.get(value, ES_UPPER.get(value, value))
 
 ES_NOTES = [
-    "Diez productos. Tres segundos. Y sin bola de cristal. Somos el equipo 26. "
-    "Lo difícil no era añadir otro modelo, sino decidir qué señales creer y llegar a tiempo.",
+    "Buenas… [Pausa de tres segundos.] "
+    "Este es el tiempo que teníamos para recomendar los diez mejores productos a cada comprador. "
+    "Y así es como lo hemos hecho.",
     "Probamos modelos más complejos, pero no mejoraron los resultados con datos apartados. "
     "Elegimos un modelo lineal: rápido e interpretable. En el entrenamiento base usamos solo productos mostrados. "
     "Aprendemos de los clics, dando triple peso a las compras, e incluimos la posición. "

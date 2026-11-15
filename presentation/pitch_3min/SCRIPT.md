@@ -3,9 +3,9 @@
 Seis diapositivas. Guion breve, pensado para hablar con pausas.
 Los tiempos son una guía de ensayo. Las fuentes y límites están en EVIDENCE.md y en el panel de datos del HTML.
 
-## 1. Diez productos. Tres segundos. Sin bola de cristal. — 0:00–0:15
+## 1. Diez productos. Tres segundos. Cada comprador. — 0:00–0:15
 
-Diez productos. Tres segundos. Y sin bola de cristal. Somos el equipo 26. Lo difícil no era añadir otro modelo, sino decidir qué señales creer y llegar a tiempo.
+Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomendar los diez mejores productos a cada comprador. Y así es como lo hemos hecho.
 
 ## 2. Observar. Cambiar. Comprobar. — 0:15–0:50
 
@@ -29,7 +29,7 @@ Usamos Claude para programar y Codex para investigar señales y contrastar hipó
 
 ## Cómo contarlo
 
-Guion: 310 palabras. Plan completo: 180 segundos.
+Guion: 308 palabras. Plan completo: 180 segundos.
 Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.
 Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.
 D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.
