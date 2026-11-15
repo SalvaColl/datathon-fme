@@ -1347,12 +1347,11 @@
         "x": 70,
         "y": 149,
         "w": 1465,
-        "h": 200.01999999999998,
+        "h": 92.92,
         "lines": [
-          "La IA acelera.",
-          "La evidencia decide."
+          "La IA acelera. La evidencia decide."
         ],
-        "size": 79,
+        "size": 68,
         "color": "F5F7FA",
         "bold": true
       },

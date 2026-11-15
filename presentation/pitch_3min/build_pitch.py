@@ -315,7 +315,7 @@ s = slide("How we worked / AI-assisted development", "Agents accelerated. Eviden
     "Team roster supplied by the user. Claude/Codex use is confirmed at team level; no unconfirmed per-person "
     "tool or workstream assignment is asserted. Examples of agent work are in tasks and branch histories. "
     "Practice conversion 2.159% remains in EVIDENCE.md, not presented as a final result.")
-text(s, 70, 149, "Agents accelerated.\nEvidence decided.", 79, bold=True)
+text(s, 70, 149, "Agents accelerated. Evidence decided.", 68, bold=True)
 card(s, 70, 395, 710, 235, "PROGRAMACIÓN", "Claude",
      "Implementation, integrations\nand experiments.")
 card(s, 800, 395, 730, 235, "INVESTIGACIÓN", "Codex",
