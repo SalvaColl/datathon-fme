@@ -73,8 +73,9 @@ class LiveQuality:
 
     def update(self, cat: pd.DataFrame, hist_item=None, live_item=None, window=None, promo=(), known=None):
         """cat: live catalogue (index product id; category, sub[, brand, price, description]).
-        hist_item / live_item / window: per-product counts (columns v,p or it_v,it_p): 60-day history, the event
-        so far, and the last WINDOW_MIN minutes. promo: ids discounted now. known: ids with a historical q
+        hist_item / live_item / window: per-product ORGANIC counts (columns v,p or it_v,it_p): 60-day history, the event
+        so far, and the last WINDOW_MIN minutes. Purchases of our own carousel must not be in them (their impressions
+        are not views): in the writer pass LiveTables.organic_item_frame(), never item_frame() (T-047). promo: ids discounted now. known: ids with a historical q
         (everything else is treated as new for `adjust_q`). All state is replaced in one step (thread-safe reads)."""
         idx = cat.index
         hv, hp = _counts(hist_item, idx); lv, lp = _counts(live_item, idx); wv, wp = _counts(window, idx)
@@ -193,7 +194,8 @@ def refresh(g, desc, base_price):
     for r in query(SQL_NEW): desc.setdefault(r["i"], r["description"])
     if not base_price: base_price.update({r["i"]: float(r["price"]) for r in query(SQL_BASE_PRICE)})
     window = pd.DataFrame(query(SQL_WINDOW.format(w=WINDOW_MIN)), columns=["i", "v", "p"]).set_index("i")
-    with g["feature_lock"]: live_item = g["LIVE"].item_frame()
+    # T-047: organic counts only. LIVE.item_frame() also holds the purchases of our own carousel, without their impressions
+    with g["feature_lock"]: live_item = getattr(g["LIVE"], "organic_item_frame", g["LIVE"].item_frame)()
     c = cat.assign(description=[desc.get(i, "") for i in cat.index])
     bp = pd.Series(base_price).reindex(cat.index)
     promo = cat.index[(cat.price.astype(float) <= PROMO_DISCOUNT * bp).fillna(False).to_numpy()]

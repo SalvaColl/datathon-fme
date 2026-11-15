@@ -152,10 +152,12 @@ class ColdStart:
             rows.append((vol, ar * vol, cr * vol))
         return pd.DataFrame(rows, index=new, columns=cols)
 
-    def tables(self, cat, base_item, live_item=None) -> dict:
+    def tables(self, cat, base_item, live_item=None, organic_item=None) -> dict:
         """Extra lookup table for fe.featurize([BASE, live, tables]): for new products it holds pseudo-counts MINUS
-        their live counts, so BASE(0) + live + this = pseudo-counts. Other lookups are empty (contribute zeros)."""
-        ps = self.pseudo_counts(cat, base_item, live_item)
+        their live counts, so BASE(0) + live + this = pseudo-counts. Other lookups are empty (contribute zeros).
+        live_item is the table featurize adds (it may hold purchases of our own carousel); organic_item (T-047), when
+        given, is the organic-only version the posterior rates are computed from. Without it both are live_item."""
+        ps = self.pseudo_counts(cat, base_item, organic_item if organic_item is not None else live_item)
         if len(ps) and live_item is not None: ps = ps - live_item.reindex(ps.index).fillna(0.0).values
         e = lambda cols, names: pd.DataFrame(columns=cols, dtype=float,
                                              index=pd.MultiIndex.from_arrays([[], []], names=names) if len(names) > 1 else pd.Index([], name=names[0]))

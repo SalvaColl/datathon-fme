@@ -2,7 +2,7 @@
 
     cd recsys
     python cold_lq_replay.py --pull            # READ-ONLY RawTree -> data/lfm_*.parquet + data/coldlq_replay/*.parquet
-    python cold_lq_replay.py [--mode cold|cold_new] [--n 4000] [--since "2026-11-14 14:00"] [--coef lfm_coef_r3.json] [--out file.json]
+    python cold_lq_replay.py [--mode cold|cold_new|cold_known] [--n 4000] [--since "2026-11-14 14:00"] [--coef lfm_coef_r3.json] [--out file.json]
 
 Replaces the replay of `cold_lq_slates.py` (PR #17), which applied events up to 15:00 to earlier requests and did not
 replay stock or stale-item eligibility. Here every answered request is scored twice (control arm / arm with
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--pull", action="store_true"); ap.add_argument("--n", type=int, default=4000)
     ap.add_argument("--since", default="2026-11-14 14:00:00"); ap.add_argument("--coef", default="lfm_coef_r3.json"); ap.add_argument("--out")
-    ap.add_argument("--mode", default="cold", choices=("cold", "cold_new"))
+    ap.add_argument("--mode", default="cold", choices=("cold", "cold_new", "cold_known"))
     a = ap.parse_args()
     if a.pull: pull()
     main(a.n, a.since, a.coef, a.out, a.mode)
