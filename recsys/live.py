@@ -832,6 +832,27 @@ def fallback_answers(reqs, version=None):
         out.append({"request_id": r["request_id"], "items": items, "model_version": version or VERSION + "-guard"})
     return out
 
+GATE = None      # T-063: failover.Gate when started with --standby or WRITER_LEASE=1; None = behaviour unchanged
+def scratch_insert(row):
+    """Lease rows only (T-063). Never called unless WRITER_LEASE=1."""
+    r = session().post(f'{API}/v1/tables/scratch', params={'database': TEAM}, json=[row], timeout=5); r.raise_for_status()
+
+def make_gate(standby, lock_path, argv=None, env=None):
+    """--standby: load, score without sending, write only after a promote file (runbook, T-063). WRITER_LEASE=1: remote
+    fencing token in <team>.scratch. Neither given -> None."""
+    if __package__: from . import failover
+    else: import failover
+    env = os.environ if env is None else env
+    lease_on = env.get('WRITER_LEASE') == '1'
+    if not standby and not lease_on: return None
+    token = arg_value('--promote-token', env.get('PROMOTE_TOKEN'), argv)
+    if standby and not token: raise SystemExit('--standby needs --promote-token <word> (or PROMOTE_TOKEN)')
+    lease = failover.Lease(TEAM, query, scratch_insert, failover.holder_name(),
+                           max_stale=float(env.get('WRITER_LEASE_MAX_STALE', 20))) if lease_on else None
+    return failover.Gate(TEAM, query, lambda: WriterLock(lock_path), standby,
+                         promote_path=arg_value('--promote-file', str(DATA / 'PROMOTE'), argv), token=token, lease=lease,
+                         yield_to_foreign=env.get('STANDBY_YIELD', '1') != '0')
+
 def pull(seen):
     rows = query("SELECT request_id::String request_id, ts::String ts, user_id::String user_id, is_new_user, context.page::String page, context.device::String device, context.region::String region, toJSONString(recent_views) rv FROM shop.requests ORDER BY ts DESC LIMIT 60", timeout=(0.5, 2.0))
     fresh = []
@@ -847,6 +868,7 @@ def pull(seen):
 
 def post_batch(batch, remaining):
     """The ONE place that writes to submissions (tools/handoff_rehearsal.py swaps it for a recorder)."""
+    if GATE is not None: GATE.before_post(batch)      # T-063: standby / lease gate; None (the default) = no gate
     response = session().post(f'{API}/v1/tables/submissions', params={'database': TEAM},
         json=batch, timeout=(min(0.3, remaining/2), max(0.05, remaining-0.3)))
     response.raise_for_status()
@@ -955,15 +977,25 @@ def warm_up(seconds=8.0, pause=0.25):
         time.sleep(pause)
     print(json.dumps(dict(event='warm_up', scored=n, worst_batch_ms=round(1000 * worst, 1))), flush=True)
 
+def failover_idle(idle_seen, limit=8):
+    """Standby loop body: score a few real requests and send NOTHING (keeps caches and code paths warm)."""
+    reqs = [r for r in pull(idle_seen) if age(r) <= 2.5][:limit]
+    idle_seen.update(r['request_id'] for r in reqs)
+    if len(idle_seen) > 5000: idle_seen.clear()
+    if reqs: predict(reqs)
+
 def main():
     import tempfile
     directory = Path(os.environ.get('RAWTREE_LOCK_DIR') or Path(tempfile.gettempdir()) / ('rawtree-' + TEAM))
     lock_path = directory / 'writer.lock'
     # --takeover: load and warm up NEXT TO the running writer, then ask it to stop and start writing the moment the
     # OS hands the lock over. This process never writes without the lock, so there are never two writers.
-    takeover = '--takeover' in sys.argv and not DRY
+    global GATE
+    standby = '--standby' in sys.argv and not DRY          # T-063: never writes until promoted by hand
+    takeover = '--takeover' in sys.argv and not DRY and not standby
     old_pid = int(arg_value('--replace-pid', 0)) or None      # only for an old writer that left no pid file
-    writer_lock = None if DRY or takeover else WriterLock(lock_path)
+    GATE = None if DRY else make_gate(standby, lock_path)
+    writer_lock = None if DRY or takeover or standby else WriterLock(lock_path)
     journal = None
     try:
         signal.signal(signal.SIGINT, request_stop); signal.signal(signal.SIGTERM, request_stop)
@@ -973,26 +1005,32 @@ def main():
         threading.Thread(target=stock_refresher, daemon=True).start()
         while state['pools'] is None and not STOP.is_set():
             time.sleep(0.1)
-        if takeover:
+        if takeover or standby:
             while (state['live'] is None or not state['stock_checked']) and not STOP.is_set():
                 time.sleep(0.1)              # first full refresh done: today's stream is applied, every model is live
             warm_up()
             settle_gc()
             if STOP.is_set(): return
-            writer_lock = take_over(lock_path, old_pid)
+            if takeover: writer_lock = take_over(lock_path, old_pid)
         else:
             settle_gc()
+        if GATE is not None:
+            if not standby: GATE.start(writer_lock)          # lease-only writer: take the token or die before writing
+            threading.Thread(target=GATE.run_checks, args=(STOP,), daemon=True).start()
         if not DRY:
             journal = Journal(directory / 'attempts.sqlite3')
-        print('ready', 'DRY RUN' if DRY else 'LIVE', 'A/B 50/50' if AB else '', flush=True)
+        print('ready', 'DRY RUN' if DRY else 'STANDBY (not writing)' if standby else 'LIVE', 'A/B 50/50' if AB else '', flush=True)
         seen = set()
-        if not DRY:
+        def reconcile():
             # First migration from the old writer has no local journal. Reconcile
             # newest IDs with remote submissions before serving any of them.
             seen.update(r['request_id'] for r in query(f"""SELECT DISTINCT s.request_id::String request_id
                 FROM {TEAM}.submissions s INNER JOIN
                 (SELECT request_id FROM shop.requests ORDER BY ts DESC LIMIT 60) r
                 ON s.request_id::String = r.request_id::String"""))
+        if not DRY:
+            reconcile()
+        idle_seen = set()
         def deliver(reqs, answers):
             send_answers(reqs, answers, journal, seen, dry=DRY)
         def score(reqs):
@@ -1002,6 +1040,15 @@ def main():
         while not STOP.is_set():
             started = time.perf_counter()
             try:
+                if GATE is not None:          # T-063; with no gate this block does not exist
+                    verdict = GATE.tick()
+                    if verdict == 'stop': break
+                    if verdict == 'promoted':
+                        reconcile(); idle_seen.clear()
+                        print('ready LIVE (promoted)', flush=True)
+                    elif verdict != 'write':
+                        if verdict == 'idle': failover_idle(idle_seen)
+                        time.sleep(0.25); continue
                 reqs = pull(seen)
                 if journal:
                     reqs = [r for r in reqs if not journal.contains(r['request_id'])]
@@ -1018,8 +1065,10 @@ def main():
                 time.sleep(0.1)
             # Network round trips already consumed time; don't add a fixed .25s tax.
             time.sleep(max(0, 0.1-(time.perf_counter()-started)))
-        print(json.dumps(dict(event='stopped', reason='signal')), flush=True)
+        print(json.dumps(dict(event='stopped', reason='signal' if STOP.is_set() else 'gate')), flush=True)
     finally:
+        if GATE is not None:
+            GATE.close()
         if journal:
             journal.close()
         if writer_lock:
