@@ -248,11 +248,12 @@ class R3CategoryMixTests(unittest.TestCase):
 
 class OwnPurchaseTests(unittest.TestCase):
     def test_first_feedback_read_after_start_takes_every_carousel_purchase(self):
-        saved = live.state.get('fb_full')
+        saved = live.state.get('fb_ts')
         try:
-            live.state['fb_full'] = False; self.assertEqual(live.fb_window(), '')
-            live.state['fb_full'] = True; self.assertIn('INTERVAL 10 MINUTE', live.fb_window())
-        finally: live.state['fb_full'] = saved
+            live.state['fb_ts'] = None; self.assertEqual(live.fb_window(), '')
+            live.state['fb_ts'] = '2026-11-15 09:00:00.000'
+            self.assertIn("> toDateTime64('2026-11-15 08:50:00',3)", live.fb_window())
+        finally: live.state['fb_ts'] = saved
 
     def test_product_bought_through_the_carousel_is_never_shown_again(self):
         lf, aff = build()
