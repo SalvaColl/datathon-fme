@@ -482,19 +482,6 @@
         "size": 25,
         "color": "A6B5C8",
         "bold": false
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 745,
-        "w": 1460,
-        "h": 47.699999999999996,
-        "lines": [
-          "La se\u00f1al del historial tambi\u00e9n aparece en nuestro feedback real"
-        ],
-        "size": 30,
-        "color": "61E4B1",
-        "bold": true
       }
     ]
   },

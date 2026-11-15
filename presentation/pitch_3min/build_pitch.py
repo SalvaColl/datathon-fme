@@ -241,7 +241,6 @@ card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
      "Dimos más puntuación a productos cuyos atributos encajaban con esos gustos.")
 card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "Compras en vivo",
      "Por 10.000 exposiciones:\nAfinidad baja: 0,6 compras\nAfinidad alta: 89,7 compras")
-text(s, 75, 745, "La señal del historial también aparece en nuestro feedback real", 30, C["green"], True)
 
 s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
 text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
