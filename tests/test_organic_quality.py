@@ -56,7 +56,7 @@ class IngestionTests(unittest.TestCase):
     def boot(self):
         """What a writer start does: empty tables, empty feedback memory, the stream read again from EVENTS_SINCE."""
         live.LIVE = live.LiveTables(); live.fb_seen = {}; live.BOUGHT.clear()
-        live.state.update(ev_ts=self.s.ts(0)); live.state.pop("fb_full", None)
+        live.state.update(ev_ts=self.s.ts(0)); live.state.pop("fb_full", None); live.state.pop("fb_ts", None)
 
     def tearDown(self):
         live.LIVE, live.fb_seen, live.query, live.LF, live.AP = self.saved[:5]; fe.set_catalog(self.saved[5])
