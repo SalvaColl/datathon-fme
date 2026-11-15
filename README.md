@@ -6,7 +6,7 @@ Our entry for the **RawTree Challenge, Datathon FME 2026**. One serving process 
 
 ## For the judges
 
-- [Three-minute PDF (Spanish)](presentation/pitch_3min/Team26_3min_ES.pdf), [editable PowerPoint](presentation/pitch_3min/Team26_3min_ES.pptx), [browser deck](presentation/pitch_3min/pitch.html), [speaker script](presentation/pitch_3min/GUION_ES.md).
+- [Latest three-minute pitch: HTML, Spanish](presentation/pitch_3min/pitch.html), [current speaker script](presentation/pitch_3min/GUION_ES.md). [PDF](presentation/pitch_3min/Team26_3min_ES.pdf) and [PowerPoint](presentation/pitch_3min/Team26_3min_ES.pptx) retain the preceding revision; the HTML includes the newest diagrams and RawTree detail.
 - [Evidence, windows, sample sizes and limitations](presentation/pitch_3min/EVIDENCE.md).
 - [Training and evaluation walkthrough](presentation/HOW_AND_WHY.md).
 - [Team and coding-agent credits](presentation/TEAM.md).

@@ -86,3 +86,13 @@ The 2.159% practice aggregate is supporting evidence in this file and the root R
 ## Spanish presentation
 
 The current default HTML/slides and the exports with suffix ES are in Spanish. The shortened script has 300 words and retains the same six-slide, 180-second plan with room for pauses. Statistics, comparison caveats and confirmed team credits are unchanged. GUION_ES.md and SCRIPT.md contain the Spanish notes. Earlier English exports remain available under their original filenames.
+
+## HTML-first diagram and RawTree revision
+
+The current HTML and notes now have 316 spoken words with a 180-second plan. Slide one replaces the decorative number/tiles with the actual request -> local rank/validation -> submission flow, under a single three-second deadline. No stage latency is invented.
+
+Slide five names RawTree's creator, Tinybird, and shows the actual uses: reading shared streams; SQL event aggregation feeding quality/trends; batched team submissions and private feedback; metrics in scratch. Ranking and indicator calculations remain local code, not falsely described as database-hosted ML.
+
+Primary source for corporate attribution: https://rawtree.com/ (footer: "A Tinybird product"). Usage evidence: recsys/live.py, recsys/trends.py, final handoff and the 144-snapshot record in the earlier evidence map.
+
+This revision updates HTML/SVG/notes only at the user's request. Earlier PDF/PowerPoint files are not claimed to contain these last changes.

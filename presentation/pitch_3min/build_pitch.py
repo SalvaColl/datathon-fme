@@ -4,6 +4,7 @@ from xml.sax.saxutils import escape
 from zipfile import ZipFile, ZIP_DEFLATED
 from datetime import datetime, timezone
 import json
+import sys
 import textwrap
 from PIL import ImageFont
 
@@ -18,7 +19,7 @@ ES_TEXT = {
     "The decision behind the system": "La decisión detrás del sistema",
     "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Un comprador.",
     "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nUn comprador.",
-    "A changing store.\nA different decision for every shopper.": "Una tienda que cambia.\nUna decisión para cada cliente.",
+    "A changing store.\nA different decision for every shopper.": "Reto de Tinybird.\nDecisiones en tiempo real con RawTree.",
     "THE DECISION WINDOW": "EL PLAZO PARA RESPONDER",
     "seconds": "segundos",
     "Why this model / how we trained it": "Por qué este modelo / cómo lo entrenamos",
@@ -61,9 +62,9 @@ ES_TEXT = {
     "A green test is only as good as its assumptions.": "Buscar casos que los tests no estaban cubriendo.",
     "8 blocks · 10,800 requests per policy": "8 bloques · 10.800 peticiones por política",
     "PRACTICE / 15 NOV 03:20–05:20 CET · TIME BLOCKS, NOT RANDOMIZED A/B": "PRÁCTICA / 15 NOV 03:20–05:20 CET · BLOQUES TEMPORALES, NO A/B ALEATORIZADO",
-    "Why it is fast / how RawTree supports it": "Cómo protegemos el plazo con RawTree",
-    "Precompute. Validate. Batch.": "Precalcular. Validar. Enviar.",
-    "Precompute.\nValidate. Batch.": "Precalcular.\nValidar. Enviar.",
+    "Why it is fast / how RawTree supports it": "Cómo usamos RawTree, creado por Tinybird",
+    "Precompute. Validate. Batch.": "RawTree: del dato a la acción.",
+    "Precompute.\nValidate. Batch.": "RawTree:\ndel dato a la acción.",
     "99.96%": "99,96%",
     "valid and on time · 43,200 requests": "válidas y a tiempo · 43.200 peticiones",
     "p99  2.35 s     /     deadline  3 s": "p99  2,35 s     /     límite  3 s",
@@ -103,16 +104,19 @@ ES_NOTES = [
     "En vivo comparamos con la referencia de la misma ventana: una hora favorable no debía parecer un modelo mejor. "
     "En ocho bloques, el reajuste mostró 0,17 puntos más, con 10.800 peticiones por política. "
     "No fue un A/B aleatorizado. También buscamos fallos que los tests no estaban cubriendo.",
-    "Precalculamos con SQL en segundo plano. La respuesta solo necesita puntuar, validar y enviar por lotes. "
-    "Un único escritor evita duplicados. En cuatro horas de práctica respondimos a tiempo al 99,96 % de 43.200 peticiones. "
-    "Con RawTree podemos seguir cada decisión desde la entrada hasta el resultado.",
+    "RawTree, creado por Tinybird, es la base de nuestro circuito. "
+    "Leemos peticiones, eventos y cambios del catálogo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. "
+    "Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos métricas en scratch. "
+    "Así podemos explicar cada decisión y detectar fallos. En práctica, el 99,96 % de las respuestas llegó a tiempo.",
     "Claude y Codex nos ayudaron a implementar experimentos, auditar código y buscar fallos. "
     "El equipo controló las pruebas y el despliegue. Cubrimos modelos, nuevas señales, evaluación y fiabilidad. "
     "Los agentes aceleraron el trabajo; la evidencia decidió qué conservar. "
     "Nos quedamos con una idea: construir rápido y comprobar con rigor.",
 ]
 ES_SOURCES = [
-    "Contrato oficial y handoff final del equipo: message (4).txt.",
+    "Contrato oficial y handoff final del equipo: message (4).txt. "
+    "El diagrama explica el flujo y su plazo global de 3 segundos, no tiempos medidos por etapa. "
+    "RawTree se identifica como producto de Tinybird en https://rawtree.com/.",
     "recsys/lfm_build.py: filas expuestas, etiquetas de clic, peso de compra 3, posición y regresión logística. "
     "R-24/E-260: comparación con gradient boosting. El entrenamiento base no reproduce por sí solo todos los ajustes finales.",
     "Handoff final y aclaración del organizador: el mundo no se reinicia. "
@@ -121,7 +125,9 @@ ES_SOURCES = [
     "4 bloques y 10.800 peticiones por política; diferencia de 0,167 puntos tras ajustar por la referencia. "
     "Comparación temporal, no A/B aleatorizado.",
     "presentation/cifras.md: práctica del 15 nov 04:00–08:00 CET; 43.182/43.200 respuestas a tiempo; "
-    "p99 2,35 s. 144 registros de métricas. No es una cifra de la final.",
+    "p99 2,35 s. 144 registros de métricas. No es una cifra de la final. "
+    "SQL agrega eventos; el código local calcula las puntuaciones y los indicadores. "
+    "Uso de team_26.scratch según el handoff y presentation/cifras.md. RawTree es un producto de Tinybird: https://rawtree.com/.",
     "Nombres facilitados por el equipo. Uso confirmado de Claude y Codex a nivel de equipo; "
     "no se inventan funciones individuales ni versiones concretas de los agentes.",
 ]
@@ -179,16 +185,24 @@ s = slide("The decision behind the system", "Ten products. Three seconds. One sh
     "Official challenge contract; team final handoff, message (4).txt.")
 text(s, 70, 180, "Ten products.\nThree seconds.\nOne shopper.", 100, bold=True)
 text(s, 75, 595, "A changing store.\nA different decision for every shopper.", 31, C["muted"])
-rect(s, 1020, 166, 480, 556, C["card"], 32)
-text(s, 1070, 200, "THE DECISION WINDOW", 21, C["green"], True)
-text(s, 1062, 274, "3", 230, C["green"], True)
-text(s, 1240, 402, "seconds", 35, C["muted"])
-for j in range(10):
-    x, y = 1070+(j%5)*76, 580+(j//5)*54
-    rect(s, x, y, 61, 39, C["green"] if j < 3 else C["line"], 8)
-    text(s, x+19, y+7, str(j+1), 20, C["bg"] if j<3 else C["white"], True)
+rect(s, 970, 166, 560, 575, C["card"], 28)
+text(s, 1005, 193, "DE LA PETICIÓN A LA RESPUESTA", 20, C["green"], True)
+for y, step, label, description in [
+    (245, "01", "LEER DE RAWTREE", "Petición de un cliente"),
+    (375, "02", "MODELO LOCAL", "Puntuar y validar"),
+    (505, "03", "ESCRIBIR EN RAWTREE", "10 IDs únicos y válidos"),
+]:
+    rect(s, 1005, y, 490, 97, C["bg"], 14)
+    text(s, 1026, y+17, step, 21, C["green"], True)
+    text(s, 1073, y+13, label, 16, C["muted"], True)
+    text(s, 1073, y+43, description, 28, bold=True, width=400)
+    if step != "03":
+        text(s, 1230, y+98, "↓", 28, C["green"])
+rect(s, 1005, 638, 490, 59, C["green"], 13)
+text(s, 1042, 650, "PLAZO TOTAL: 3 SEGUNDOS", 26, C["bg"], True)
+text(s, 1006, 711, "Flujo conceptual, no tiempos por etapa.", 17, C["muted"])
 
-s = slide("Why this model / how we trained it", "A small model. A deliberate choice.", 40,
+s = slide("Why this model / how we trained it", "A small model. A deliberate choice.", 35,
     "We kept a linear ranker because gradient boosting did not improve our held-out results. "
     "For baseline training, each shown product becomes an example; unshown products are not labeled failures. "
     "Clicks provide more examples, while purchases receive three times the weight. We model slot position because exposure changes behavior. "
@@ -224,7 +238,7 @@ card(s, 1030, 395, 500, 240, "03 / trends", "Compare event windows",
      "Recent activity vs baseline.\nNo timetable assumptions.")
 text(s, 75, 704, "Why: adapt from live evidence; keep the final policy stable.", 31, C["green"], True)
 
-s = slide("Method / evidence", "Measure before believing.", 40,
+s = slide("Method / evidence", "Measure before believing.", 35,
     "Offline screening was not enough, because logged impressions reflect what earlier policies chose to show. "
     "For live checks, we compared against the reference in the same windows, so a better hour would not look like a better model. "
     "Across eight practice blocks, refitted weights showed a zero-point-seventeen percentage-point improvement, with ten thousand eight hundred requests per policy. "
@@ -250,7 +264,7 @@ for j, control in enumerate([True, False, True, False, False, True, False, True]
 text(s, 880, 616, "8 blocks · 10,800 requests per policy", 26, bold=True)
 text(s, 75, 762, "PRACTICE / 15 NOV 03:20–05:20 CET · TIME BLOCKS, NOT RANDOMIZED A/B", 19, C["muted"])
 
-s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 25,
+s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Batch.", 35,
     "To protect the deadline, SQL aggregation runs in the background and local scoring stays small. "
     "We validate products before batched writes, with one writer and durable request claims. "
     "That design served ninety-nine-point-nine-six percent on time across forty-three thousand two hundred practice requests. "
@@ -258,17 +272,23 @@ s = slide("Why it is fast / how RawTree supports it", "Precompute. Validate. Bat
     "presentation/cifras.md, sections 3 and 10: 15 Nov 03:00–07:00 UTC / 04:00–08:00 CET, "
     "43,182/43,200 on time; p50 1.22 s, p95 1.91 s, p99 2.35 s. "
     "144 scratch snapshots recorded. Handoff's p99≈2.0 s has no comparable window; use documented 2.35 s.")
-text(s, 70, 145, "Precompute.\nValidate. Batch.", 79, bold=True)
+text(s, 70, 145, "Precompute.\nValidate. Batch.", 73, bold=True)
 text(s, 75, 397, "99.96%", 126, C["green"], True)
 text(s, 82, 550, "valid and on time · 43,200 requests", 29)
 text(s, 83, 602, "p99  2.35 s     /     deadline  3 s", 28, C["muted"])
 rect(s, 890, 164, 640, 533, C["card"], 24)
-text(s, 925, 196, "RAWTREE → ONE SERVING LOOP", 23, C["green"], True)
-for j, label in enumerate(["Requests + events + catalogue", "SQL → feature snapshots", "Rank → validate → batch write", "Private feedback → evaluation"]):
-    text(s, 931, 278+j*80, label, 30, bold=j==2)
-    if j<3:
-        rect(s, 934, 328+j*80, 3, 22, C["green"])
-text(s, 925, 626, "144 stored metric snapshots", 22, C["muted"])
+text(s, 925, 196, "RAWTREE · TINYBIRD", 26, C["green"], True)
+for j, (label, detail) in enumerate([
+    ("Leer la tienda", "shop.requests · shop.events · shop.catalog_updates"),
+    ("Agregar actividad con SQL", "Conteos por producto · ventanas temporales"),
+    ("Enviar y aprender del resultado", "team_26.submissions → team_26.feedback"),
+    ("Guardar evidencia", "team_26.scratch · 144 registros de métricas"),
+]):
+    y = 269+j*91
+    rect(s, 925, y+7, 5, 29, C["green"] if j%2==0 else C["orange"], 2)
+    text(s, 947, y, label, 28, bold=True, width=550)
+    text(s, 947, y+40, detail, 18, C["muted"], width=550)
+text(s, 925, 652, "Trazabilidad: de la petición a su feedback.", 21, C["green"])
 text(s, 75, 762, "PRACTICE / 15 NOV 04:00–08:00 CET · 43,182 OF 43,200 SERVED ON TIME", 19, C["muted"])
 
 s = slide("How we worked / AI-assisted development", "Agents accelerated. Evidence decided.", 25,
@@ -419,7 +439,10 @@ def build_notes():
     (HERE/"GUION_ES.md").write_text("\n".join(out),encoding="utf8")
     (HERE/"slides.json").write_text(json.dumps(slides,indent=2),encoding="utf8")
     for i,s in enumerate(slides,1):(HERE/f"slide_{i:02d}.svg").write_text(svg(s),encoding="utf8")
-    print(json.dumps(dict(slides=len(slides),seconds=elapsed,script_words=words,pptx=str(HERE/(DECK_STEM+".pptx")))))
+    print(json.dumps(dict(slides=len(slides),seconds=elapsed,script_words=words,html=str(HERE/"pitch.html"),
+                          pptx_requested="--pptx" in sys.argv)))
 
 if __name__=="__main__":
-    build_pptx();build_html();build_notes()
+    build_html();build_notes()
+    if "--pptx" in sys.argv:
+        build_pptx()

@@ -4,7 +4,7 @@
     "title": "Diez productos. Tres segundos. Un comprador.",
     "seconds": 15,
     "notes": "Diez productos. Tres segundos. Un comprador. Somos el equipo 26. Lo dif\u00edcil no era a\u00f1adir otro modelo, sino decidir qu\u00e9 se\u00f1ales creer y llegar a tiempo.",
-    "source": "Contrato oficial y handoff final del equipo: message (4).txt.",
+    "source": "Contrato oficial y handoff final del equipo: message (4).txt. El diagrama explica el flujo y su plazo global de 3 segundos, no tiempos medidos por etapa. RawTree se identifica como producto de Tinybird en https://rawtree.com/.",
     "shapes": [
       {
         "kind": "rect",
@@ -85,8 +85,8 @@
         "w": 1460,
         "h": 85.78,
         "lines": [
-          "Una tienda que cambia.",
-          "Una decisi\u00f3n para cada cliente."
+          "Reto de Tinybird.",
+          "Decisiones en tiempo real con RawTree."
         ],
         "size": 31,
         "color": "A6B5C8",
@@ -94,21 +94,43 @@
       },
       {
         "kind": "rect",
-        "x": 1020,
+        "x": 970,
         "y": 166,
-        "w": 480,
-        "h": 556,
+        "w": 560,
+        "h": 575,
         "color": "192638",
-        "radius": 32
+        "radius": 28
       },
       {
         "kind": "text",
-        "x": 1070,
-        "y": 200,
-        "w": 465,
+        "x": 1005,
+        "y": 193,
+        "w": 530,
+        "h": 35.8,
+        "lines": [
+          "DE LA PETICI\u00d3N A LA RESPUESTA"
+        ],
+        "size": 20,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "rect",
+        "x": 1005,
+        "y": 245,
+        "w": 490,
+        "h": 97,
+        "color": "101A29",
+        "radius": 14
+      },
+      {
+        "kind": "text",
+        "x": 1026,
+        "y": 262,
+        "w": 509,
         "h": 36.989999999999995,
         "lines": [
-          "EL PLAZO PARA RESPONDER"
+          "01"
         ],
         "size": 21,
         "color": "61E4B1",
@@ -116,256 +138,193 @@
       },
       {
         "kind": "text",
-        "x": 1062,
-        "y": 274,
-        "w": 473,
-        "h": 285.7,
+        "x": 1073,
+        "y": 258,
+        "w": 462,
+        "h": 31.04,
         "lines": [
-          "3"
+          "LEER DE RAWTREE"
         ],
-        "size": 230,
-        "color": "61E4B1",
+        "size": 16,
+        "color": "A6B5C8",
         "bold": true
       },
       {
         "kind": "text",
-        "x": 1240,
-        "y": 402,
-        "w": 295,
-        "h": 53.65,
+        "x": 1073,
+        "y": 288,
+        "w": 400,
+        "h": 45.32,
         "lines": [
-          "segundos"
+          "Petici\u00f3n de un cliente"
         ],
-        "size": 35,
-        "color": "A6B5C8",
+        "size": 28,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1230,
+        "y": 343,
+        "w": 305,
+        "h": 45.32,
+        "lines": [
+          "\u2193"
+        ],
+        "size": 28,
+        "color": "61E4B1",
         "bold": false
       },
       {
         "kind": "rect",
-        "x": 1070,
-        "y": 580,
-        "w": 61,
-        "h": 39,
-        "color": "61E4B1",
-        "radius": 8
+        "x": 1005,
+        "y": 375,
+        "w": 490,
+        "h": 97,
+        "color": "101A29",
+        "radius": 14
       },
       {
         "kind": "text",
-        "x": 1089,
-        "y": 587,
-        "w": 446,
-        "h": 35.8,
+        "x": 1026,
+        "y": 392,
+        "w": 509,
+        "h": 36.989999999999995,
         "lines": [
-          "1"
+          "02"
         ],
-        "size": 20,
+        "size": 21,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1073,
+        "y": 388,
+        "w": 462,
+        "h": 31.04,
+        "lines": [
+          "MODELO LOCAL"
+        ],
+        "size": 16,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1073,
+        "y": 418,
+        "w": 400,
+        "h": 45.32,
+        "lines": [
+          "Puntuar y validar"
+        ],
+        "size": 28,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1230,
+        "y": 473,
+        "w": 305,
+        "h": 45.32,
+        "lines": [
+          "\u2193"
+        ],
+        "size": 28,
+        "color": "61E4B1",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 1005,
+        "y": 505,
+        "w": 490,
+        "h": 97,
+        "color": "101A29",
+        "radius": 14
+      },
+      {
+        "kind": "text",
+        "x": 1026,
+        "y": 522,
+        "w": 509,
+        "h": 36.989999999999995,
+        "lines": [
+          "03"
+        ],
+        "size": 21,
+        "color": "61E4B1",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1073,
+        "y": 518,
+        "w": 462,
+        "h": 31.04,
+        "lines": [
+          "ESCRIBIR EN RAWTREE"
+        ],
+        "size": 16,
+        "color": "A6B5C8",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 1073,
+        "y": 548,
+        "w": 400,
+        "h": 45.32,
+        "lines": [
+          "10 IDs \u00fanicos y v\u00e1lidos"
+        ],
+        "size": 28,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "rect",
+        "x": 1005,
+        "y": 638,
+        "w": 490,
+        "h": 59,
+        "color": "61E4B1",
+        "radius": 13
+      },
+      {
+        "kind": "text",
+        "x": 1042,
+        "y": 650,
+        "w": 493,
+        "h": 42.94,
+        "lines": [
+          "PLAZO TOTAL: 3 SEGUNDOS"
+        ],
+        "size": 26,
         "color": "101A29",
         "bold": true
       },
       {
-        "kind": "rect",
-        "x": 1146,
-        "y": 580,
-        "w": 61,
-        "h": 39,
-        "color": "61E4B1",
-        "radius": 8
-      },
-      {
         "kind": "text",
-        "x": 1165,
-        "y": 587,
-        "w": 370,
-        "h": 35.8,
+        "x": 1006,
+        "y": 711,
+        "w": 529,
+        "h": 32.230000000000004,
         "lines": [
-          "2"
+          "Flujo conceptual, no tiempos por etapa."
         ],
-        "size": 20,
-        "color": "101A29",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1222,
-        "y": 580,
-        "w": 61,
-        "h": 39,
-        "color": "61E4B1",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1241,
-        "y": 587,
-        "w": 294,
-        "h": 35.8,
-        "lines": [
-          "3"
-        ],
-        "size": 20,
-        "color": "101A29",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1298,
-        "y": 580,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1317,
-        "y": 587,
-        "w": 218,
-        "h": 35.8,
-        "lines": [
-          "4"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1374,
-        "y": 580,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1393,
-        "y": 587,
-        "w": 142,
-        "h": 35.8,
-        "lines": [
-          "5"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1070,
-        "y": 634,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1089,
-        "y": 641,
-        "w": 446,
-        "h": 35.8,
-        "lines": [
-          "6"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1146,
-        "y": 634,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1165,
-        "y": 641,
-        "w": 370,
-        "h": 35.8,
-        "lines": [
-          "7"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1222,
-        "y": 634,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1241,
-        "y": 641,
-        "w": 294,
-        "h": 35.8,
-        "lines": [
-          "8"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1298,
-        "y": 634,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1317,
-        "y": 641,
-        "w": 218,
-        "h": 35.8,
-        "lines": [
-          "9"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
-      },
-      {
-        "kind": "rect",
-        "x": 1374,
-        "y": 634,
-        "w": 61,
-        "h": 39,
-        "color": "304154",
-        "radius": 8
-      },
-      {
-        "kind": "text",
-        "x": 1393,
-        "y": 641,
-        "w": 142,
-        "h": 35.8,
-        "lines": [
-          "10"
-        ],
-        "size": 20,
-        "color": "F5F7FA",
-        "bold": true
+        "size": 17,
+        "color": "A6B5C8",
+        "bold": false
       }
     ]
   },
   {
     "kicker": "Por qu\u00e9 este modelo / c\u00f3mo lo entrenamos",
     "title": "Un modelo sencillo. Una elecci\u00f3n medida.",
-    "seconds": 40,
+    "seconds": 35,
     "notes": "Probamos modelos m\u00e1s complejos, pero no mejoraron los resultados con datos apartados. Elegimos un modelo lineal: r\u00e1pido e interpretable. En el entrenamiento base usamos solo productos mostrados. Aprendemos de los clics, dando triple peso a las compras, e incluimos la posici\u00f3n. Entrenamos con peticiones anteriores y validamos despu\u00e9s. Los ajustes finales se eligieron por segmento, con pruebas adicionales.",
     "source": "recsys/lfm_build.py: filas expuestas, etiquetas de clic, peso de compra 3, posici\u00f3n y regresi\u00f3n log\u00edstica. R-24/E-260: comparaci\u00f3n con gradient boosting. El entrenamiento base no reproduce por s\u00ed solo todos los ajustes finales.",
     "shapes": [
@@ -854,7 +813,7 @@
   {
     "kicker": "M\u00e9todo / evidencia",
     "title": "Medir antes de creer.",
-    "seconds": 40,
+    "seconds": 35,
     "notes": "El hist\u00f3rico refleja lo que otros modelos eligieron mostrar. Por eso el offline solo filtra ideas. En vivo comparamos con la referencia de la misma ventana: una hora favorable no deb\u00eda parecer un modelo mejor. En ocho bloques, el reajuste mostr\u00f3 0,17 puntos m\u00e1s, con 10.800 peticiones por pol\u00edtica. No fue un A/B aleatorizado. Tambi\u00e9n buscamos fallos que los tests no estaban cubriendo.",
     "source": "presentation/cifras.md, rama javi/jury-final: 03:20\u201305:20 CET, 8 bloques de 2.700 peticiones. 4 bloques y 10.800 peticiones por pol\u00edtica; diferencia de 0,167 puntos tras ajustar por la referencia. Comparaci\u00f3n temporal, no A/B aleatorizado.",
     "shapes": [
@@ -1290,11 +1249,11 @@
     ]
   },
   {
-    "kicker": "C\u00f3mo protegemos el plazo con RawTree",
-    "title": "Precalcular. Validar. Enviar.",
-    "seconds": 25,
-    "notes": "Precalculamos con SQL en segundo plano. La respuesta solo necesita puntuar, validar y enviar por lotes. Un \u00fanico escritor evita duplicados. En cuatro horas de pr\u00e1ctica respondimos a tiempo al 99,96 % de 43.200 peticiones. Con RawTree podemos seguir cada decisi\u00f3n desde la entrada hasta el resultado.",
-    "source": "presentation/cifras.md: pr\u00e1ctica del 15 nov 04:00\u201308:00 CET; 43.182/43.200 respuestas a tiempo; p99 2,35 s. 144 registros de m\u00e9tricas. No es una cifra de la final.",
+    "kicker": "C\u00f3mo usamos RawTree, creado por Tinybird",
+    "title": "RawTree: del dato a la acci\u00f3n.",
+    "seconds": 35,
+    "notes": "RawTree, creado por Tinybird, es la base de nuestro circuito. Leemos peticiones, eventos y cambios del cat\u00e1logo. Con SQL agrupamos vistas y compras para alimentar la calidad de producto y las tendencias. Escribimos recomendaciones por lotes, recuperamos su feedback y guardamos m\u00e9tricas en scratch. As\u00ed podemos explicar cada decisi\u00f3n y detectar fallos. En pr\u00e1ctica, el 99,96 % de las respuestas lleg\u00f3 a tiempo.",
+    "source": "presentation/cifras.md: pr\u00e1ctica del 15 nov 04:00\u201308:00 CET; 43.182/43.200 respuestas a tiempo; p99 2,35 s. 144 registros de m\u00e9tricas. No es una cifra de la final. SQL agrega eventos; el c\u00f3digo local calcula las puntuaciones y los indicadores. Uso de team_26.scratch seg\u00fan el handoff y presentation/cifras.md. RawTree es un producto de Tinybird: https://rawtree.com/.",
     "shapes": [
       {
         "kind": "rect",
@@ -1321,7 +1280,7 @@
         "w": 1413,
         "h": 35.8,
         "lines": [
-          "C\u00d3MO PROTEGEMOS EL PLAZO CON RAWTREE"
+          "C\u00d3MO USAMOS RAWTREE, CREADO POR TINYBIRD"
         ],
         "size": 20,
         "color": "61E4B1",
@@ -1358,12 +1317,12 @@
         "x": 70,
         "y": 145,
         "w": 1465,
-        "h": 200.01999999999998,
+        "h": 185.73999999999998,
         "lines": [
-          "Precalcular.",
-          "Validar. Enviar."
+          "RawTree:",
+          "del dato a la acci\u00f3n."
         ],
-        "size": 79,
+        "size": 73,
         "color": "F5F7FA",
         "bold": true
       },
@@ -1420,104 +1379,165 @@
         "x": 925,
         "y": 196,
         "w": 610,
-        "h": 39.37,
+        "h": 42.94,
         "lines": [
-          "RAWTREE \u2192 UN \u00daNICO ESCRITOR"
+          "RAWTREE \u00b7 TINYBIRD"
         ],
-        "size": 23,
+        "size": 26,
         "color": "61E4B1",
         "bold": true
       },
       {
-        "kind": "text",
-        "x": 931,
-        "y": 278,
-        "w": 604,
-        "h": 47.699999999999996,
-        "lines": [
-          "Peticiones + eventos + cat\u00e1logo"
-        ],
-        "size": 30,
-        "color": "F5F7FA",
-        "bold": false
-      },
-      {
         "kind": "rect",
-        "x": 934,
-        "y": 328,
-        "w": 3,
-        "h": 22,
+        "x": 925,
+        "y": 276,
+        "w": 5,
+        "h": 29,
         "color": "61E4B1",
-        "radius": 0
+        "radius": 2
       },
       {
         "kind": "text",
-        "x": 931,
-        "y": 358,
-        "w": 604,
-        "h": 47.699999999999996,
+        "x": 947,
+        "y": 269,
+        "w": 550,
+        "h": 45.32,
         "lines": [
-          "SQL \u2192 datos preparados"
+          "Leer la tienda"
         ],
-        "size": 30,
-        "color": "F5F7FA",
-        "bold": false
-      },
-      {
-        "kind": "rect",
-        "x": 934,
-        "y": 408,
-        "w": 3,
-        "h": 22,
-        "color": "61E4B1",
-        "radius": 0
-      },
-      {
-        "kind": "text",
-        "x": 931,
-        "y": 438,
-        "w": 604,
-        "h": 47.699999999999996,
-        "lines": [
-          "Ordenar \u2192 validar \u2192 enviar"
-        ],
-        "size": 30,
+        "size": 28,
         "color": "F5F7FA",
         "bold": true
       },
       {
+        "kind": "text",
+        "x": 947,
+        "y": 309,
+        "w": 550,
+        "h": 33.42,
+        "lines": [
+          "shop.requests \u00b7 shop.events \u00b7 shop.catalog_updates"
+        ],
+        "size": 18,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
         "kind": "rect",
-        "x": 934,
-        "y": 488,
-        "w": 3,
-        "h": 22,
-        "color": "61E4B1",
-        "radius": 0
+        "x": 925,
+        "y": 367,
+        "w": 5,
+        "h": 29,
+        "color": "FFAC86",
+        "radius": 2
       },
       {
         "kind": "text",
-        "x": 931,
-        "y": 518,
-        "w": 604,
-        "h": 47.699999999999996,
+        "x": 947,
+        "y": 360,
+        "w": 550,
+        "h": 45.32,
         "lines": [
-          "Feedback \u2192 evaluaci\u00f3n"
+          "Agregar actividad con SQL"
         ],
-        "size": 30,
+        "size": 28,
         "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 947,
+        "y": 400,
+        "w": 550,
+        "h": 33.42,
+        "lines": [
+          "Conteos por producto \u00b7 ventanas temporales"
+        ],
+        "size": 18,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 925,
+        "y": 458,
+        "w": 5,
+        "h": 29,
+        "color": "61E4B1",
+        "radius": 2
+      },
+      {
+        "kind": "text",
+        "x": 947,
+        "y": 451,
+        "w": 550,
+        "h": 45.32,
+        "lines": [
+          "Enviar y aprender del resultado"
+        ],
+        "size": 28,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 947,
+        "y": 491,
+        "w": 550,
+        "h": 33.42,
+        "lines": [
+          "team_26.submissions \u2192 team_26.feedback"
+        ],
+        "size": 18,
+        "color": "A6B5C8",
+        "bold": false
+      },
+      {
+        "kind": "rect",
+        "x": 925,
+        "y": 549,
+        "w": 5,
+        "h": 29,
+        "color": "FFAC86",
+        "radius": 2
+      },
+      {
+        "kind": "text",
+        "x": 947,
+        "y": 542,
+        "w": 550,
+        "h": 45.32,
+        "lines": [
+          "Guardar evidencia"
+        ],
+        "size": 28,
+        "color": "F5F7FA",
+        "bold": true
+      },
+      {
+        "kind": "text",
+        "x": 947,
+        "y": 582,
+        "w": 550,
+        "h": 33.42,
+        "lines": [
+          "team_26.scratch \u00b7 144 registros de m\u00e9tricas"
+        ],
+        "size": 18,
+        "color": "A6B5C8",
         "bold": false
       },
       {
         "kind": "text",
         "x": 925,
-        "y": 626,
+        "y": 652,
         "w": 610,
-        "h": 38.18,
+        "h": 36.989999999999995,
         "lines": [
-          "144 registros de m\u00e9tricas"
+          "Trazabilidad: de la petici\u00f3n a su feedback."
         ],
-        "size": 22,
-        "color": "A6B5C8",
+        "size": 21,
+        "color": "61E4B1",
         "bold": false
       },
       {

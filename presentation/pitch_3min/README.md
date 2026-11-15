@@ -1,8 +1,8 @@
 # Equipo 26 — presentación inicial de tres minutos
 
-Versión actual en español: **Team26_3min_ES.pptx** (editable), **Team26_3min_ES.pdf** y **GUION_ES.md**. **pitch.html** permite presentar desde el navegador sin conexión. Los archivos sin sufijo ES conservan la versión inglesa anterior.
+**Versión actual: pitch.html**, en español y sin dependencias de red. Incluye el nuevo flujo del plazo de tres segundos y la explicación ampliada de RawTree/Tinybird. El guion actualizado está en **GUION_ES.md**. A partir de esta revisión trabajamos primero en HTML: los PDF/PPTX existentes conservan la revisión anterior.
 
-Seis diapositivas y un guion de **300 palabras**. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas están dentro de PowerPoint y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
+Seis diapositivas y un guion de **316 palabras**. El plan reserva 180 segundos, con margen para pausas; ensaya en voz alta. Las notas actuales están en el HTML y en GUION_ES.md/SCRIPT.md. El foco es lo que pide el jurado: CÓMO y POR QUÉ.
 
 ## Published scoring weights
 
@@ -22,10 +22,10 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 | Slide | Time | Share of the pitch | Main point |
 |---|---|---:|---|
 | 1. Diez productos. Tres segundos. Un comprador. | 0:00–0:15 | 8,3% | Qué señales merecían confianza |
-| 2. Una elección medida | 0:15–0:55 | 22,2% | Cómo entrenamos y por qué elegimos el modelo lineal |
-| 3. Datos que cambian | 0:55–1:30 | 19,4% | Cómo nos adaptamos sin reajustar los pesos |
-| 4. Medir antes de creer | 1:30–2:10 | 22,2% | Por qué comparamos en la misma ventana |
-| 5. Precalcular. Validar. Enviar. | 2:10–2:35 | 13,9% | Cómo protegemos el plazo con RawTree |
+| 2. Una elección medida | 0:15–0:50 | 19,4% | Cómo entrenamos y por qué elegimos el modelo lineal |
+| 3. Datos que cambian | 0:50–1:25 | 19,4% | Cómo nos adaptamos sin reajustar los pesos |
+| 4. Medir antes de creer | 1:25–2:00 | 19,4% | Por qué comparamos en la misma ventana |
+| 5. RawTree: del dato a la acción | 2:00–2:35 | 19,4% | SQL, submissions/feedback, métricas y trazabilidad |
 | 6. La IA acelera. La evidencia decide. | 2:35–3:00 | 13,9% | Claude/Codex, control humano y crédito breve |
 
 ## Browser controls
@@ -50,6 +50,10 @@ To rebuild with the existing project environment:
     python presentation/pitch_3min/build_pitch.py
 
 This writes presentation artifacts only. It does not import serving code, read credentials or contact RawTree.
+
+El comando anterior solo actualiza HTML, SVG y notas. Para regenerar también el PowerPoint de forma explícita:
+
+    python presentation/pitch_3min/build_pitch.py --pptx
 
 Para regenerar también PDF y vista previa, con Chrome ya instalado:
 
