@@ -645,3 +645,41 @@ Límites: el `policy.json` que está ahora mismo en el Mac no se ha podido leer 
   A igual slot el re-carrito vende el doble que el carrito solo histórico. Son 56 compras y el usuario que re-carrita es distinto del que no, así que no demuestra el efecto del cambio de orden.
 - **No es conversión.** Es una hipótesis de política. Se decide en el leaderboard: cx3rc contra cx3 (su control) y la referencia en ventanas idénticas, sin sustituir a cx3 a mitad de su serie.
 - **Tests:** 10 en `tests/test_lfm_recart.py` (260 en total): contadores 1/2/5, nunca baja una puntuación, comprados por historia / eventos de hoy / feedback del carrusel, stock, cohortes fuera del objetivo idénticas, opción apagada idéntica al control, estado y features sin cambios, ventana de día, y la opción sobrevive a la instalación de `alt` que hace la recarga validada del PR #42.
+
+### E-470 — Entrada orgánica de la calidad: regresiones (T-047, 15 nov 00:15 UTC, contenedor en la nube)
+
+- **Comando:** `python -m unittest tests.test_organic_quality` → 20 tests OK; suite completa `python -m unittest discover -s tests` → 339 OK (308 antes).
+- **Qué cubren** (stream y feedback simulados que responden a las dos consultas reales del writer; ninguna red):
+  - una compra del carrusel entra en `BOUGHT`, en `bought_in` y en las tablas de usuario, y la tasa orgánica del producto no se mueve; con la tabla antigua sí subía;
+  - una compra orgánica sube la tasa exactamente a (compras + K·prior) / (vistas + K), K = 100;
+  - las dos tablas difieren exactamente en las compras del carrusel deduplicadas por usuario y producto (mismo usuario dos veces, usuario que además compró orgánicamente, producto fuera de catálogo);
+  - cuatro lecturas seguidas no duplican; un arranque nuevo reconstruye las mismas cuentas;
+  - fallo de la consulta de eventos y fallo de la de feedback: las cuentas se conservan y la recuperación no duplica; si falla la primera lectura de feedback, la siguiente vuelve a ser completa;
+  - el envoltorio de `LIVE.add` que instala D-130 sigue viendo todas las compras;
+  - sin brazo `lq` no se calcula nada y las puntuaciones son idénticas al campeón; sin compras del carrusel las dos tablas son iguales.
+- **Límite:** no hay replay con datos reales del tamaño del efecto por petición; el tamaño es el de I-470.
+
+### E-471 — Un reintento con `ConnectTimeout`: tests y simulación con fallos inyectados (T-047, 15 nov 00:20 UTC)
+
+- **Tests:** `python -m unittest tests.test_connect_retry` → 11 OK. Fallo de conexión y luego éxito (misma carga, plazo medido de nuevo, `acknowledged`); `ReadTimeout`, `Timeout`, `ConnectionError`, `HTTPError`, `TimeoutError` y desconocidas con cero reintentos; sin margen (más de 2,0 s) no se reintenta; dos fallos de conexión paran en dos intentos; fallo ambiguo en el segundo intento queda `uncertain` y la misma petición no se vuelve a enviar ni tras reabrir el diario; las 25 combinaciones de dos resultados dan como mucho un envío que pudo llegar al servidor; `--dry-run` no envía ni reclama; los adaptadores de `requests` siguen con 0 reintentos.
+- **Medida real del Mac (hilo de despliegue, log del 14 nov, OBSERVED DATA):** 13:19–20:20 UTC, 15 lotes `ConnectTimeout` (48 peticiones) y 60 `ReadTimeout` (135) sobre 42.416 lotes; 21:54–23:59 UTC, 0 `ConnectTimeout` y 31 `ReadTimeout` (72) sobre 11.861 lotes. Los 15 son probablemente del despliegue de las 13:19 con el Mac en reposo (sin confirmar). Última hora: POST p50 321 / p95 447 / p99 516 ms; edad de la petición más vieja al confirmar p50 1.198 / p95 1.843 / p99 2.297 ms.
+- **Simulación** (`python tools/connect_retry_sim.py --minutes 120`; ejecuta `serving.serve` y `live.send_answers` reales sobre un reloj virtual, 21.700 peticiones por fila, mismos números aleatorios en todas; calibrada con las cifras de arriba: edades simuladas 1.193 / 1.928 / 2.330 ms). Salida completa en `/mnt/project-files/reintento-envio/sim_e471.txt`. OFFLINE ESTIMATE:
+
+| fallos de conexión inyectados | a tiempo sin reintento | con reintento ≤ 1,6 s | ≤ 2,0 s | ≤ 2,2 s | reintentadas / recuperadas (2,0 s) | llegadas tarde (> 3 s) | peticiones siguientes a tiempo, sin → con (2,0 s) |
+|---|---|---|---|---|---|---|---|
+| ninguno | 99,566% | 99,566% | 99,566% | 99,566% | 0 / 0 | 0 | — |
+| 0,035% por intento (tasa del Mac de día) | 99,510% | 99,524% | 99,543% | 99,543% | 12 / 12 | 0 | 100% → 100% (53) |
+| 1% por intento | 98,573% | 99,298% | 99,483% | 99,506% | 212 / 209 | 0 | 99,63% → 99,56% (≈850) |
+| 5% por intento | 94,657% | 98,042% | 98,970% | 99,118% | 1.017 / 979 | 0 | 99,73% → 99,59% (≈3.650) |
+| corte de 0,5 s cada ~60 s | 98,725% | 99,136% | 99,099% | 99,196% | 145 / 75 | 0 | 99,04% → 99,64% (≈540) |
+| corte de 2 s cada ~60 s | 96,481% | 97,035% | 97,114% | 97,141% | 523 / 65 | 0 | 99,11% → 98,58% (≈720) |
+| corte de 1 s cada ~30 s con POST ×1,6 (cola) | 93,548% | 94,310% | 94,841% | 94,864% | 543 / 159 | 0 | 99,32% → 98,84% (≈1.350) |
+
+- **Lectura:** el reintento nunca hizo llegar tarde una respuesta en ningún umbral (el plazo se vuelve a medir). Con fallos sueltos recupera casi todo; en un corte largo recupera poco porque el segundo intento cae en el mismo corte. El coste para las peticiones de detrás es de 0,1 a 0,5 puntos de las que llegan justo después de un fallo, siempre menor que lo recuperado: el total a tiempo sube en las siete filas. 2,2 s gana algo más que 2,0 s pero es el máximo que cabe con un POST p99; se deja 2,0 s como pedía el encargo.
+- **Límites:** es un modelo (retardo del stream y POST lognormales), no el Mac. Con la tasa actual del Mac (0 `ConnectTimeout` desde las 21:54 UTC) el efecto esperado es prácticamente nulo: lo que falla hoy es `ReadTimeout`, que no se reintenta porque el servidor pudo aceptar el envío. No se ha medido con un fallo de conexión real de `requests` contra RawTree.
+
+### E-472 — Modo `cold_known` (calidad corregida solo para conocidos): regresiones (T-047, 15 nov 00:20 UTC)
+
+- **Tests:** 6 en `tests/test_organic_quality.py` (`ColdKnownTests`): regla de cohorte (espejo de `cold_new`; `cold` y `cold_new` sin cambios), exige un control con pesos idénticos, no se mezcla con `cold_new` sin control, control / nuevos / home idénticos al campeón en puntuación y lista, solo se mueve el producto lanzado, y la ruta usa la misma regla que la puntuación (no existen etiquetas `ck1-n`, `ck1-kh`, `ck1-nh`; el tráfico no tratado sale idéntico al control solo).
+- **Evidencia previa (dato del encargo, replay en sombra, 504 peticiones de conocidos en producto/categoría, 14 nov 23:10–23:15 UTC):** cuota de lanzamientos en la lista r3 0,26%, con corrección de calidad 7,64%, np2 52,46%; todas las listas válidas. Cambia la composición; no mide conversión.
+- **No medido:** conversión, ni latencia en vivo. Sin activar.

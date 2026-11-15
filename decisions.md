@@ -328,3 +328,12 @@ Cambio de comportamiento de `read_policy` en `recsys/live.py`, para el dueño de
 - **Cómo se prueba:** como un nombre más de la rotación, en época nueva: `cx3rc` contra `cx3` con r3 entre medias (por ejemplo `r3,cx3,r3,cx3rc`), cada bloque menos la referencia en la misma ventana. Sin `lq`.
 - **Se quita si:** envíos inválidos o `on_time` bajo el umbral del rotador. Rollback sin reinicio: quitar el nombre del plan, o la clave `recart` del brazo.
 - **No se hace:** subir `cl` a todos los carritos de hoy (los carritos solo de hoy venden menos que los solo históricos, E-460).
+
+### D-470 — Entrada orgánica, reintento de conexión y modo `cold_known` (T-047, 15 nov 00:20 UTC). Activa y revierte Javi
+- **Evidencia:** I-470, E-470…E-472. Rama `javi/organic-quality-retry`. Nada desplegado ni activado; necesita un reinicio con relevo.
+- **Época nueva:** al cargarse, la entrada de la calidad cambia para todo brazo `lq`. Ninguna lectura de `cold`, `cold_new` anterior se suma a las posteriores. Control y retador deben correr los dos sobre este código.
+- **Reintento:** encendido por defecto a 2,0 s. Apagarlo: arrancar con `CONNECT_RETRY_AGE=0`. Vigilar en el log `push_retry` y `push_ack` con `attempts: 2`; si `on_time` baja tras un `push_retry`, apagar en el siguiente relevo.
+- **`cold_known`:** preparado, apagado. Política `recsys/policy.fix_c_cold_known.json` (control `r3p`, retador `ck1p`); si el control pasa a ser otro (por ejemplo cs2r), copiar su especificación de pesos exacta a los dos brazos. Con código anterior a este la política se rechaza entera y sigue la última válida (PR #42).
+- **Prioridad para la final:** primero la prueba limpia de `cold_new` (D-420, fase A): protege a los compradores nuevos, que es la población de la final. `cold_known` solo si no la desplaza. Un control estable y como mucho un retador activo.
+- **Regla para `cold_known`, fijada antes de ver datos:** misma que D-420 fase B: cohorte conocidos en producto/categoría con vistas, `v3-lfm-<control>-k` contra `v3-lfm-ck1p-k` en la misma ventana, con `reference` de esa ventana; descubrimiento y confirmación en un bloque posterior sin tocar pesos ni cota; promover solo si es positivo en los dos bloques, el conjunto supera 2 errores típicos, cold no cae y `on_time` ≥ 99,5%. Si no es concluyente, no se promueve. Comprobar en el log las etiquetas servidas.
+- **Vuelta atrás:** política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `9fd2425`.
