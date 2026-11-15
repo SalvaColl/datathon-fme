@@ -54,7 +54,7 @@
       {
         "kind": "text",
         "x": 75,
-        "y": 595,
+        "y": 455,
         "w": 1460,
         "h": 85.78,
         "lines": [
@@ -495,19 +495,6 @@
         "size": 30,
         "color": "61E4B1",
         "bold": true
-      },
-      {
-        "kind": "text",
-        "x": 75,
-        "y": 794,
-        "w": 1460,
-        "h": 40.56,
-        "lines": [
-          "Comparaci\u00f3n entre afinidad baja y alta; no es un antes y despu\u00e9s del modelo."
-        ],
-        "size": 24,
-        "color": "A6B5C8",
-        "bold": false
       }
     ]
   },
@@ -1498,7 +1485,7 @@
         "w": 1460,
         "h": 51.269999999999996,
         "lines": [
-          "Hip\u00f3tesis \u2192 c\u00f3digo aislado \u2192 pruebas \u2192 decisi\u00f3n"
+          "Hip\u00f3tesis \u2192 implementar la idea \u2192 pruebas \u2192 decisi\u00f3n"
         ],
         "size": 33,
         "color": "61E4B1",

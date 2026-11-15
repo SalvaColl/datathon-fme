@@ -82,7 +82,7 @@ ES_TEXT = {
     "Development tool": "Herramienta de desarrollo",
     "Implementation, integrations\nand experiments.": "Programar e integrar mejoras.",
     "Audits, evaluation\nand failure cases.": "Investigar y contrastar hipótesis.",
-    "Hypothesis → isolated code → tests → measured decision": "Hipótesis → código aislado → pruebas → decisión",
+    "Hypothesis → isolated code → tests → measured decision": "Hipótesis → implementar la idea → pruebas → decisión",
     "Build fast. Verify carefully.": "Construir rápido. Comprobar con rigor.",
 }
 ES_UPPER = {k.upper(): v.upper() for k, v in ES_TEXT.items()}
@@ -214,7 +214,7 @@ s = slide("The decision behind the system", "Ten products. Three seconds. One sh
     "Our answer was to make every extra layer earn its place.",
     "Official challenge contract; team final handoff, message (4).txt.")
 text(s, 70, 180, "Ten products.\nThree seconds.\nOne shopper.", 100, bold=True)
-text(s, 75, 595, "A changing store.\nA different decision for every shopper.", 31, C["muted"])
+text(s, 75, 455, "A changing store.\nA different decision for every shopper.", 31, C["muted"])
 rect(s, 970, 166, 560, 575, C["card"], 28)
 text(s, 1005, 193, "DE LA PETICIÓN A LA RESPUESTA", 20, C["green"], True)
 for y, step, label, description in [
@@ -242,7 +242,6 @@ card(s, 565, 365, 470, 340, "02 · CAMBIAR", "Añadimos afinidad",
 card(s, 1060, 365, 470, 340, "03 · COMPROBAR", "Compras en vivo",
      "Por 10.000 exposiciones:\nAfinidad baja: 0,6 compras\nAfinidad alta: 89,7 compras")
 text(s, 75, 745, "La señal del historial también aparece en nuestro feedback real", 30, C["green"], True)
-text(s, 75, 794, "Comparación entre afinidad baja y alta; no es un antes y después del modelo.", 24, C["muted"])
 
 s = slide("Ideas descartadas / por qué repetimos las pruebas", "Una ronda no bastaba.", 35, "", "")
 text(s, 70, 143, "Una ronda\nno bastaba.", 79, bold=True)
