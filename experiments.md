@@ -818,6 +818,15 @@ Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cu
 
 Features `hcb` / `hcc` (peso 0 = inertes), fichero `data/hist_carousel.parquet` (`download_prev_views.py`). Política `policy.unified_hcb.json` (u1h = u1v + hcb 3,0 y hcc 0,8 en páginas de conocidos, hcb 1,5 en home). La dosis está en la escala de cs2r (chn 3,0) y no se ha pasado por repetición.
 
+## E-610 — Deriva de la exposición de lanzados y tope por lista (T-061, 15 nov 05:40 UTC) — OFFLINE, exposición, no conversión
+
+Repetición de 5.006 peticiones (desde las 04:00 UTC) por el camino del writer sobre `policy.rot_u3nh.json`, 5 tandas de 100 lanzados vigentes.
+
+- Lanzados por lista hoy: páginas de conocidos newp 0,5 → 0,93; 1,0 → 1,35; 2,0 → 2,53 (49% de las listas con 3 o más). Home de conocidos newph 0,5 → 0,89. Home de nuevos newph 0,5 → 0,67; 0,8 → 1,41 (eran 0,81 con 400 lanzados). Páginas de nuevos sin refuerzo 0,62.
+- Cada tanda aporta más o menos lo mismo y la edad no la apaga (aportes por tanda con newp 1,0: 0,33 / 0,24 / 0,28 / 0,08 / 0,41), así que la exposición de una dosis fija crece con el número de tandas: x1,2 con 6 y x1,4 con 7 (extrapolación lineal, conjetura).
+- Tope `newcap` (clave del brazo, por segmento `known` / `new` / `home_known` / `home_new`; ausente = sin tope): `lfm.cap_launched` deja a −inf todos los lanzados menos los `c` mejores antes de elegir la lista; los que el comprador ha visto en la sesión o tiene en un carrito no se quitan y cuentan para el tope. Con las dosis de u3nkh (1,0 / 0,5 / 0,8): sin tope 1,35 / 0,89 / 1,41 por lista y 17% / 6% / 16% de listas con 3 o más; tope 2: 0,99 / 0,78 / 1,14 y 0,3% (solo productos propios); tope 1: 0,58 / 0,56 / 0,69. Con el triple de dosis (deriva exagerada): sin tope 4,1 / 4,1 / 8,9 por lista; tope 2: 1,7 / 1,9 / 2,0. El resto de la lista conserva su orden en las 5.006 peticiones; +0,2 ms por lista; ninguna lista inválida.
+- No hay medida de conversión del tope: es un seguro contra el fallo conocido de inundar la lista (np2, 4,3 por lista), no una mejora medida. El tope 2 ya cambia hoy el 25% de las listas de páginas de conocidos y el 18% de las de home de nuevos respecto a la política probada en vivo; el tope 3 cambia el 10% de las de páginas de conocidos, el 2,5% de las de home de conocidos y el 7% de las de home de nuevos (1,21 / 0,86 / 1,32 por lista) y deja pasar más deriva.
+
 ## E-570 — Pesos de lfm reajustados contra la compra del carrusel (T-057, 15 nov 02:00–03:00 UTC) — OFFLINE ESTIMATE
 
 Datos: 143.809 peticiones servidas por el equipo (14 nov 11:25 – 15 nov 01:49 UTC), 1,44 M impresiones, 2.455 compras; señales de cada producto mostrado reconstruidas a fecha de la petición (`unified_eval.snapshots` + `lfm.features`). Scripts en `recsys/lab_t057/`.

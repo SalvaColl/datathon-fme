@@ -124,6 +124,40 @@ def x_target(mode, is_new_user, page, rv) -> bool:
     return mode is True or (mode == "new") == bool(is_new_user)
 
 
+CAP_KEYS = ("known", "new", "home_known", "home_new")     # arm key "newcap" (T-061): segments of the cap on launched products
+
+
+def cap_key(is_new_user, rv) -> str:
+    """Segment of a request for the cap on launched products: pages with views ("known" / "new") or requests without
+    recent views ("home_known" / "home_new"), the same split as the model_version suffixes -k / -n / -kh / -nh."""
+    return ("" if rv else "home_") + ("new" if is_new_user else "known")
+
+
+def cap_launched(S, s, c, exclude=(), own=()):
+    """T-061: scores with all but the best `c` launched products (S.newp, the ones the `newp` / `newph` weights push)
+    at -inf, so a list never carries more than `c` of them however many products have been launched. The boost on
+    launched products is a weight per product, so its exposure grows with every batch of launches (0.8 on new-user home:
+    0.81 per list with 400 launched, 1.41 with 500); the cap bounds it without retuning the dose. Launched products
+    the shopper has viewed this session or holds in a cart (`own`) are never dropped and count towards `c`: their
+    place comes from the shopper's own record, not from the boost. Returns `s` itself when nothing has to go."""
+    newp = getattr(S, "newp", None)
+    if newp is None or c is None or c < 0: return s
+    idx = np.flatnonzero((newp > 0) & np.isfinite(s))
+    if len(idx) <= c: return s
+    idx = idx[np.argsort(-s[idx], kind="stable")]
+    left = c - sum(1 for k in idx if S.ids[k] in own and S.ids[k] not in exclude)
+    drop = []
+    for k in idx:
+        p = S.ids[k]
+        if p in own: continue
+        if p in exclude: continue                      # cannot be served anyway: neither kept nor counted
+        if left > 0: left -= 1
+        else: drop.append(k)
+    if not drop: return s
+    s = s.copy(); s[drop] = -np.inf
+    return s
+
+
 class Snap:
     """Arrays aligned with the rows of AttrAffinity.A (one row per product). Built once per catalog refresh."""
 
@@ -297,6 +331,7 @@ class LiveFit:
     def __init__(self, coef: dict, history: pd.DataFrame | None = None):
         self.w = {k: np.array([coef[k]["w"].get(f, 0.0) for f in FEATS]) for k in ("known", "new")}
         self.b = {k: float(coef[k]["b"]) for k in ("known", "new")}
+        self.alt_cap = {}             # arm tag -> {"known" | "new" | "home_known" | "home_new": max launched products per list} (T-061)
         self.alt_x = {}               # arm tag -> True | "new" | "known": exploration in the last slot (T-039)
         self.alt_lq = {}              # arm tag -> "cold" | "cold_new" (T-028), see set_arms()
         self.alt = {}                 # extra weight sets served side by side (A/B): name -> (w, b), see add_model()
@@ -367,6 +402,7 @@ class LiveFit:
         self.alt = alt
         self.alt_lq = {a["tag"]: a["lq"] for a in arms if a.get("lq") in LQ_MODES}
         self.alt_x = {a["tag"]: a["explore"] for a in arms if a.get("explore") is True or a.get("explore") in X_MODES}   # T-039, see slate()
+        self.alt_cap = {a["tag"]: dict(a["newcap"]) for a in arms if isinstance(a.get("newcap"), dict) and a["newcap"]}    # T-061, see slate()
 
     # ---- refresher thread ----
     def set_window(self, day_start=None, carts="persistent"):
@@ -601,7 +637,20 @@ class LiveFit:
 
     def slate(self, req, state, aff_obj, n=10, exclude=(), model=None):
         S, s = self.scores(req, state, aff_obj, model)
-        out = top_items(S, s, n, exclude)
+        cap = getattr(self, "alt_cap", {}).get(model) if model else None
+        out = None
+        if cap:
+            # T-061: at most `c` launched products in the list. Anything unexpected serves the uncapped list.
+            try:
+                c = cap.get(cap_key(req.get("is_new_user"), req.get("rv")))
+                if c is not None:
+                    own = set(req.get("rv") or ()) | set(state[1]) | set(state[2])
+                    sc = cap_launched(S, s, int(c), exclude, own)
+                    out = top_items(S, sc, n, exclude)
+                    if len(out) == n: s = sc
+                    else: out = None
+            except Exception: out = None
+        if out is None: out = top_items(S, s, n, exclude)
         xm = getattr(self, "alt_x", {}).get(model) if model else None
         if len(out) == n and x_target(xm, req.get("is_new_user"), req.get("page", "product"), req.get("rv")):
             out = self._explore(req, S, s, out, exclude)
