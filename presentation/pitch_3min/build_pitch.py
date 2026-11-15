@@ -419,23 +419,18 @@ def build_html():
 <title>Equipo 26 — Presentación de tres minutos</title><style>
 *{box-sizing:border-box}body{margin:0;background:#101a29;color:#f5f7fa;font-family:Arial,sans-serif}
 #stage{height:100vh;display:grid;place-items:center}.slide{display:none;width:min(100vw,177.7778vh);height:min(56.25vw,100vh)}.slide.active{display:block}svg{display:block;width:100%;height:100%}
-nav{position:fixed;bottom:14px;right:22px;display:flex;gap:7px;align-items:center;background:#101a29d9;padding:8px;border-radius:12px}
 button{background:#26374a;border:0;border-radius:7px;color:white;padding:8px 12px;cursor:pointer}button:hover{background:#38516c}
-#clock{min-width:125px;font-variant-numeric:tabular-nums;font-size:13px;color:#a6b5c8}
 aside{display:none;position:fixed;right:24px;top:24px;max-width:420px;padding:24px;background:#101a29f5;border:1px solid #61e4b1;border-radius:14px;font-size:18px;line-height:1.55}aside.open{display:block}
 __EVIDENCE_STYLE__
 dialog#versions{width:min(1440px,95vw);max-height:92vh;padding:12px;background:#101a29;color:#f5f7fa;border:1px solid #61e4b1;border-radius:18px}dialog#versions::backdrop{background:#000b}.close-data{position:sticky;top:0;float:right;z-index:2}
 @page{size:13.333333in 7.5in;margin:0}@media print{html,body,#stage{width:13.333333in;height:auto}#stage{display:block}.slide,.slide.active{display:block;width:13.333333in;height:7.5in;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}nav,aside,dialog{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style><main id="stage">__PITCH_SECTIONS__</main><aside id="notes"></aside>
 <dialog id="versions"><button class="close-data" onclick="document.getElementById('versions').close()">Volver al pitch · Esc</button>__EVIDENCE_BODY__</dialog>
-<nav><span id="clock">00:00 / 03:00</span><button id="prev" title="Anterior">←</button><button id="next" title="Siguiente / espacio">→</button><button id="dt" title="D">Datos por versión</button><button id="nt" title="N">Notas</button><button id="fs" title="F">Pantalla completa</button><button id="rs" title="R">Reiniciar tiempo</button></nav>
-<script>const data=__PITCH_DATA__;let idx=+(new URLSearchParams(location.search).get('s')||0),start=null;const pages=[...document.querySelectorAll('.slide')],note=document.getElementById('notes');
+<script>const data=__PITCH_DATA__;let idx=+(new URLSearchParams(location.search).get('s')||0);const pages=[...document.querySelectorAll('.slide')],note=document.getElementById('notes');
 function show(i){idx=Math.max(0,Math.min(pages.length-1,i));pages.forEach((p,k)=>p.classList.toggle('active',k===idx));note.textContent=data[idx].seconds+' s — '+data[idx].notes;document.title='Equipo 26 — '+(idx+1)+'/6';}
-function next(){if(start===null)start=performance.now();show(idx+1)}function toggleNotes(){note.classList.toggle('open')}function full(){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()}function showData(){const v=document.getElementById('versions');if(v.open)v.close();else v.showModal()}
-document.getElementById('prev').onclick=()=>show(idx-1);document.getElementById('next').onclick=next;document.getElementById('dt').onclick=showData;document.getElementById('nt').onclick=toggleNotes;document.getElementById('fs').onclick=full;document.getElementById('rs').onclick=()=>start=performance.now();
-document.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='d'){e.preventDefault();showData();return}if(document.getElementById('versions').open)return;if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();next()}if(['ArrowLeft','PageUp'].includes(e.key))show(idx-1);if(e.key.toLowerCase()==='n')toggleNotes();if(e.key.toLowerCase()==='f')full();if(e.key.toLowerCase()==='r')start=performance.now();if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
-if(new URLSearchParams(location.search).has('clean'))document.querySelector('nav').style.display='none';
-setInterval(()=>{const n=start===null?0:Math.floor((performance.now()-start)/1000);document.getElementById('clock').textContent=String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')+' / 03:00';},250);show(idx);
+function next(){show(idx+1)}function toggleNotes(){note.classList.toggle('open')}function full(){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()}function showData(){const v=document.getElementById('versions');if(v.open)v.close();else v.showModal()}
+document.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='d'){e.preventDefault();showData();return}if(document.getElementById('versions').open)return;if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();next()}if(['ArrowLeft','PageUp'].includes(e.key))show(idx-1);if(e.key.toLowerCase()==='n')toggleNotes();if(e.key.toLowerCase()==='f')full();if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
+show(idx);
 if(new URLSearchParams(location.search).has('datos'))showData();
 </script></html>""".replace("__PITCH_SECTIONS__",sections).replace("__PITCH_DATA__",data).replace("__EVIDENCE_STYLE__",evidence_style).replace("__EVIDENCE_BODY__",evidence_body)
     (HERE/"pitch.html").write_text(html,encoding="utf8")
@@ -453,7 +448,7 @@ def build_notes():
     words=sum(len(s["notes"].split()) for s in slides)
     out += ["## Cómo contarlo", "", f"Guion: {words} palabras. Plan completo: {elapsed} segundos.",
             "Ensaya una vez en voz alta. No leas los números de muestra con prisa: haz una pausa tras cada idea.",
-            "R inicia el cronómetro; flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa.",
+            "Flecha derecha/espacio avanza; N muestra notas; F activa pantalla completa. Sin temporizador ni botones inferiores.",
             "D abre los datos por versión; Esc vuelve al pitch. No leas las tablas completas durante los tres minutos.",
             "El foco es CÓMO y POR QUÉ. Los cuatro nombres aparecen al final, sin un reparto de funciones no confirmado.",
             "Si preguntan por más detalle, HOW_AND_WHY.md contiene un recorrido por el código. No atribuyas a la final los resultados de práctica.",

@@ -34,7 +34,7 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 - Left arrow or Page Up: previous slide.
 - F: fullscreen.
 - N: speaker notes (keep off on the projector).
-- R: start/reset the three-minute rehearsal clock.
+No timer or bottom toolbar is displayed.
 - D: abrir/cerrar datos por versión; Esc vuelve al pitch.
 - Home/End: first/last slide.
 
