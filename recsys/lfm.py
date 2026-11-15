@@ -75,7 +75,17 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # weight launched products on home. For new shoppers on home they are 8.5% of the organic purchases that follow
          # the request and 0.9% of our impressions (14 Nov 16:45 UTC - 15 Nov 01:50 UTC); no carousel evidence yet
          # (264 impressions), so this only opens the dial: weight 0 in every committed file and policy
-         "newph"]
+         "newph",
+         # T-063: attribute affinity computed ONLY from the products of the shopper's EARLIER requests (the `prv` store:
+         # 30 days of history_sessions + the event), a source that never reaches shop.events and that `aff10` (organic
+         # views + the current request) does not see. `prv` rewards the exact product; this transfers the taste to other
+         # products with the same description phrases. Returning shoppers on pages, within the same request with the
+         # live score, prv, aff10, ucat, usub, mf and session context as controls: +0.32 +- 0.11 on purchases (1,675),
+         # +0.29 +- 0.06 on clicks, both halves; out of sample at three cuts a dose of 0.8 gains log-likelihood on
+         # purchases and clicks (E-630). For new shoppers it loses out of sample: leave their weight at 0. Value = aff10's
+         # formula on that profile, without the views of the request being answered and without the candidate itself;
+         # weight 0 in every committed file and policy
+         "rqa"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -279,11 +289,39 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         if lc: X[lc, 26] = 0.0                          # pending carts keep their own order (live: x1.15, no evidence)
         hk = [k for k in (r(p) for p in hist_cart) if k is not None]
         if hk: X[hk, 26] = 0.0
+        try: X[:, 30] = request_affinity(S, prev, rv)   # T-063: taste from earlier requests; any surprise leaves it at 0
+        except Exception: X[:, 30] = 0.0
     if hcar:                                            # T-055: (products bought, products only clicked) in the history carousel
         for col, items in ((27, hcar[0]), (28, hcar[1])):
             hk = [k for k in (r(p) for p in items) if k is not None]
             if hk: X[hk, col] = 1.0
     return X if idx is None else X[idx]
+
+
+RQA_SHRINK = 20.0       # T-063: pseudo attribute mass, the same as attr_affinity.SHRINK
+
+
+def request_affinity(S, prev, rv=()):
+    """T-063 (`rqa`): affinity of every product to the description phrases of the products seen in EARLIER requests
+    (`prev`: {product: weighted count}, LiveFit.prev_views), in aff10's units and with its shrinkage, uncapped. The views
+    of the request being answered are left out (they are in aff10 already) and a product does not count towards its own
+    value (that is `prv`). Zeros when there is nothing to transfer."""
+    out = np.zeros(S.n)
+    if not prev: return out
+    r = S.row.get; cur = set(rv or ())
+    ks = []; ws = []
+    for p, c in prev.items():
+        if c > 0 and p not in cur:
+            k = r(p)
+            if k is not None: ks.append(k); ws.append(float(c))
+    if not ks: return out
+    ks = np.array(ks); ws = np.array(ws)
+    A = S.A
+    vec = ws @ A[ks]; tot = float(vec.sum())
+    num = A @ vec; den = np.full(S.n, tot)
+    own = A[ks]
+    num[ks] -= ws * (own * own).sum(axis=1); den[ks] -= ws * own.sum(axis=1)
+    return ((num + RQA_SHRINK * NEUTRAL) / (den + RQA_SHRINK) - NEUTRAL) * 10.0
 
 
 OQ_PRIOR_P, OQ_PRIOR_V, OQ_POP0, OQ_CLIP = 1.0, 20.0, 5.0, 3.0
@@ -601,9 +639,9 @@ class LiveFit:
         return len(self.hcar)
 
     def wants_prv(self) -> bool:
-        k = FEATS.index("prv")
+        ks = (FEATS.index("prv"), FEATS.index("rqa"))
         sets = [self.w] + [w for w, _ in list(self.alt.values())]
-        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
+        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new") for k in ks)
 
     def wants_hot(self) -> bool:
         """Does any weight set in use (committed or arm) give the burst feature a weight? If not, nobody asks for trends."""
@@ -651,7 +689,7 @@ class LiveFit:
         w, b0 = (self.alt.get(model + "@home") if not rv else None) or self.alt[model] if model else (self.w, self.b)
         m = getattr(self, "alt_lq", {}).get(model) if model else None      # T-028: this arm asks for the corrected quality
         page = req.get("page", "product")
-        prev = self.prev_views(req["user_id"], req.get("request_id")) if w[seg][FEATS.index("prv")] != 0.0 else None
+        prev = self.prev_views(req["user_id"], req.get("request_id")) if (w[seg][FEATS.index("prv")] != 0.0 or w[seg][FEATS.index("rqa")] != 0.0) else None
         X = features(S, aff, rv, page, hc, lc, bought_today=bt, seg=in_segment(req.get("device"), req.get("region")),
                      mix=state[4] if len(state) > 4 else None, mfu=state[5] if len(state) > 5 else None, lq=S.lqc if lq_target(m, seg == "new", page, rv) else None,
                      prev=prev, hcar=self.hcar.get(req["user_id"]))

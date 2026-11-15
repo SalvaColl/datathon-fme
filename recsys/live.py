@@ -435,14 +435,25 @@ def refresh_prev_views():
                 state["prv_ts"] = max(wm, lo)
     except Exception as e: print('prev views refresh failed', type(e).__name__, e, flush=True)
 
-def fb_window():
+FB_OVERLAP_S = 600      # every incremental feedback read goes back this far from the last successful one (late rows)
+
+def utcnow(): return pd.Timestamp.now("UTC").tz_localize(None)
+
+def fb_window(hi=None):
     """Our own carousel purchases never reach shop.events, so after a (re)start the first read takes ALL of them (a
     shopper who bought through us is much less likely to buy the product again: organizer note, 14 Nov). Later reads
-    take the last 10 minutes, which also covers a slow refresh cycle."""
-    return " AND f.ts::DateTime64(3) > now() - INTERVAL 10 MINUTE" if state.get("fb_full") else ""
+    start at the upper bound of the last read that was fetched AND applied (state["fb_ts"]) minus FB_OVERLAP_S: a
+    reader outage of any length is read again from where it began, instead of losing everything older than 10 minutes.
+    The old `now() - 10 min` bound stays as an OR, so a read never covers less than it did (also with a skewed local
+    clock). Rows that land more than FB_OVERLAP_S after their own ts are only recovered by the next start."""
+    up = f" AND f.ts::DateTime64(3) <= toDateTime64('{hi}',3)" if hi else ""
+    wm = state.get("fb_ts")
+    if not wm: return up
+    lo = str(pd.Timestamp(wm) - pd.Timedelta(seconds=FB_OVERLAP_S))[:23]
+    return f" AND (f.ts::DateTime64(3) > toDateTime64('{lo}',3) OR f.ts::DateTime64(3) > now() - INTERVAL 10 MINUTE)" + up
 
 def refresh_events():
-    now = pd.Timestamp.now("UTC").tz_localize(None)
+    now = utcnow()
     for lo, hi in event_windows(state["ev_ts"], now):
         rows = query(EVENT_SQL.format(lo=lo, hi=f" AND ts::DateTime64(3) <= toDateTime64('{hi}',3)" if hi else ""), timeout=60)
         apply_events(rows)
@@ -450,8 +461,7 @@ def refresh_events():
         if hi: state["ev_ts"] = hi
         elif rows: state["ev_ts"] = max(r["mx"] for r in rows)
     try:  # our own carousel purchases: shopper won't want them again
-        fb = query(f"SELECT r.user_id::String u, f.purchased::String i, f.ts::DateTime64(3)::String t FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window())
-        state["fb_full"] = True
+        fb = query(f"SELECT r.user_id::String u, f.purchased::String i, f.ts::DateTime64(3)::String t FROM {TEAM}.feedback f INNER JOIN shop.requests r ON r.request_id::String=f.request_id::String WHERE f.purchased::String != ''" + fb_window(fb_hi := str(utcnow())[:23]))
         for r in fb:
             if r["i"] not in fb_seen.setdefault(r["u"], set()):
                 fb_seen[r["u"]].add(r["i"])
@@ -460,6 +470,7 @@ def refresh_events():
                     # LIVE.add only, never to LIVE.add_organic (its carousel impressions are in nobody's view counts).
                     LIVE.add(r["u"], r["i"], 0, 0, 1); BOUGHT[r["u"]].add(r["i"])
                     if LF is not None: LF.add(r["u"], r["i"], 0, 0, 1, tp=r.get("t"))
+        state["fb_ts"] = fb_hi      # only here: fetched and applied (an empty answer counts); a failure keeps the old mark
     except Exception as e: print("fb refresh failed", e)
     return LIVE
 
