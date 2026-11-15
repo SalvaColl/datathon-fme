@@ -18,8 +18,8 @@ DECK_STEM = "Team26_3min_ES"
 ES_TEXT = {
     "TEAM 26  /  RAWTREE × DATATHON FME 2026": "EQUIPO 26  /  RAWTREE × DATATHON FME 2026",
     "The decision behind the system": "La decisión detrás del sistema",
-    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos. Cada comprador.",
-    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.\nCada comprador.",
+    "Ten products. Three seconds. One shopper.": "Diez productos. Tres segundos.",
+    "Ten products.\nThree seconds.\nOne shopper.": "Diez productos.\nTres segundos.",
     "A changing store.\nA different decision for every shopper.": "Elegir qué enseñar a cada comprador.\nReto de Tinybird · RawTree.",
     "THE DECISION WINDOW": "EL PLAZO PARA RESPONDER",
     "seconds": "segundos",

@@ -4,6 +4,7 @@
 
 | Task | Priority | Workstream and deliverable | Owner/branch | Status | Dependencies |
 |---|---|---|---|---|---|
+| T-PITCH-12 | P1 | Remove third cover line | Codex / codex/pitch-3min | DONE: cover now reads Diez productos / Tres segundos; HTML, SVG, notes and preview regenerated | Presentation only |
 | T-PITCH-11 | P1 | Replace crystal-ball hook with three-second opening pause | Codex / codex/pitch-3min | DONE: cover, notes and preview updated; old hook absent from HTML | Presentation only |
 | T-PITCH-10 | P1 | Single-line Claude/Codex card descriptions; restore closing title | Codex / codex/pitch-3min | DONE: descriptions fit on one line; HTML/SVG and preview regenerated | Presentation only |
 | T-PITCH-09 | P1 | Single-line closing headline | Codex / codex/pitch-3min | DONE: regenerated HTML/SVG; font-width check confirms title fits on one line | Presentation only |

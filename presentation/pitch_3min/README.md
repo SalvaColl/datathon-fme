@@ -21,7 +21,7 @@ Source: [official scoring rubric](https://github.com/rawtreedb/datathon-fme-2026
 
 | Slide | Time | Share of the pitch | Main point |
 |---|---|---:|---|
-| 1. Diez productos. Tres segundos. Cada comprador. | 0:00–0:15 | 8,3% | Qué señales merecían confianza |
+| 1. Diez productos. Tres segundos. | 0:00–0:15 | 8,3% | Qué señales merecían confianza |
 | 2. Observar. Cambiar. Comprobar. | 0:15–0:50 | 19,4% | Compras previas y afinidad: datos que motivaron señales |
 | 3. Una ronda no bastaba | 0:50–1:25 | 19,4% | Grafo, complejidad y señales que no justificaron promoción |
 | 4. Cada versión, con su contexto | 1:25–2:00 | 19,4% | Tabla u1/u3k con conversión, referencia y N |

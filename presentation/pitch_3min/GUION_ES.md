@@ -3,7 +3,7 @@
 Seis diapositivas. Guion breve, pensado para hablar con pausas.
 Los tiempos son una guía de ensayo. Las fuentes y límites están en EVIDENCE.md y en el panel de datos del HTML.
 
-## 1. Diez productos. Tres segundos. Cada comprador. — 0:00–0:15
+## 1. Diez productos. Tres segundos. — 0:00–0:15
 
 Buenas… [Pausa de tres segundos.] Este es el tiempo que teníamos para recomendar los diez mejores productos a cada comprador. Y así es como lo hemos hecho.
 

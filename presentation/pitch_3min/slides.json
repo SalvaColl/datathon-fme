@@ -1,7 +1,7 @@
 [
   {
     "kicker": "La decisi\u00f3n detr\u00e1s del sistema",
-    "title": "Diez productos. Tres segundos. Cada comprador.",
+    "title": "Diez productos. Tres segundos.",
     "seconds": 15,
     "notes": "Buenas\u2026 [Pausa de tres segundos.] Este es el tiempo que ten\u00edamos para recomendar los diez mejores productos a cada comprador. Y as\u00ed es como lo hemos hecho.",
     "source": "Contrato oficial y handoff final del equipo: message (4).txt. El diagrama explica el flujo y su plazo global de 3 segundos, no tiempos medidos por etapa. RawTree se identifica como producto de Tinybird en https://rawtree.com/.",
@@ -42,11 +42,10 @@
         "x": 70,
         "y": 180,
         "w": 1465,
-        "h": 369.0,
+        "h": 250.0,
         "lines": [
           "Diez productos.",
-          "Tres segundos.",
-          "Cada comprador."
+          "Tres segundos."
         ],
         "size": 100,
         "color": "F5F7FA",
