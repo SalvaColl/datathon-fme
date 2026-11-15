@@ -183,3 +183,22 @@ Las columnas de la consulta son una versión legible de tres señales del modelo
 | z 2,96 de la lectura de u3k | cifra del hilo de despliegue; aquí sale 3,5 con Welch sobre los mismos 8 bloques |
 | Asignación bloque → política de la ronda 02:20–04:20 | registro en la máquina del writer, fuera del repo |
 | Nombres del equipo en la portada | marcador de posición |
+
+## 12. La final, 15 nov 09:00–11:00 UTC (añadido a las 11:20 UTC)
+
+Detalle y límites en `experiments.md` E-650.
+
+| Cifra | Valor | N | Fuente |
+|---|---|---|---|
+| team_26, conversión esperada | 2,110% (sextos) | 21.600 | `api/state`, modo final |
+| team_26, cold | 2,434% | 10.419 cold | ídem |
+| Referencia | 2,141% (cold 2,199%) | 21.600 | ídem |
+| Punto de partida | 0,750% | 21.600 | ídem |
+| A tiempo | 99,57% (marcador); 99,43% servidas por el modelo | 21.600 | `api/state`; `team_26.feedback` |
+| Sin respuesta | 93, de ellas 82 en un corte de ~30 s a las 10:33 UTC | 21.600 | `team_26.feedback` |
+| Inválidas | 0 | 21.600 | ídem |
+| Latencia servida | p50 1,38 s, p95 2,18 s, p99 2,65 s | 21.476 | ídem |
+| Compras reales / clics | 431 / 1.427 | 21.600 | ídem |
+| Nuevos en página, conversión esperada | 3,09% (práctica 06:19–07:19 UTC: 3,41%) | 5.132 / 2.614 | `api/state?by=model` |
+
+No decir: que la política de la final fuera peor o mejor que la de práctica (no hay comparación limpia), ni por qué subió la referencia (no observable).

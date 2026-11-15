@@ -11,9 +11,9 @@
 | Dónde | Qué falta | De dónde sale |
 |---|---|---|
 | Portada | `[nombres del equipo]` | — |
-| Diapositiva 9, barra discontinua | Resultado de la final. No se puede saber antes: el marcador está oculto de 09:00 a 11:00 UTC | Publicación de los organizadores |
+| Diapositiva 9 | Hecho a las 11:20 UTC: final 2,11 (sextos), referencia 2,14; ver `cifras.md` sección 12 y E-650 | `api/state`, modo final |
 | Diapositiva 7, tarjeta de lanzados | Efecto en vivo del peso de productos lanzados (`newp`, `newph`) y del tope por lista (`newcap`): las rondas posteriores a las 04:20 UTC no tienen entrada en `experiments.md`; E-610 solo mide exposición | Lectura por bloques del dueño del writer (`rotation_read.py`) |
-| Diapositivas 7 y 8 (notas) | Qué política exacta corre en la final (candidatas uf1, uf0, uf1n) | Dueño del writer |
+| Diapositivas 7 y 8 (notas) | La final se jugó con una sola política (ur2, código `e8a1f18`). No desplegados: arreglo de `newcap` (PR 66), prior de lanzados (PR 60), interruptor `prior_purchases` (PR 62) | Hilo de despliegue |
 | Diapositiva 5 (fuente) | La asignación de cada bloque a su política sale del registro de despliegue, que no está en el repo; las ocho diferencias sí se reproducen con la API | `recsys/data/policy_changes.log` en la máquina del writer |
 | Diapositivas 7 y 8 | Efecto en vivo por separado de tendencias y de calidad orgánica: entraron juntas en la política única; solo hay lectura del conjunto | — |
 
@@ -37,7 +37,7 @@ Regla: si un número no está medido cuando toque presentar, se deja el hueco y 
 
 **8. Aprender del stream, 2 (30 s).** Las modas son subcategorías enteras que multiplican sus vistas por cuatro durante 45 minutos; siete el 14 nov. Lo descartamos una vez con una prueba sin potencia y lo recuperamos con más datos: para quien ya mira esa categoría, la lista con un producto de moda convierte 3,0 % frente a 0,7 %. Es feedback, marca dirección. El detector compara 15 minutos con 3 horas sobre los eventos y está en vivo.
 
-**9. Resultados (40 s).** 15 nov 05:00–07:00 UTC, 21.600 peticiones: punto de partida 0,53, referencia 1,87, nosotros 2,14; en frío 2,56 frente a 1,64. El camino: −1,07 respecto a la referencia ayer a mediodía, −0,15 por la tarde, +0,10 de madrugada, +0,27 ahora. Es práctica. La final está oculta: no damos ese número.
+**9. Resultados (45 s).** Práctica, 15 nov 05:00–07:00 UTC, 21.600 peticiones: punto de partida 0,53, referencia 1,87, nosotros 2,14. El camino: de un punto por debajo de la referencia el sábado a mediodía a 27 centésimas por encima de madrugada. Final, 21.600 peticiones: 2,11, sextos, tres centésimas por debajo de la referencia, que sube a 2,14 (el punto de partida sube a 0,75). Medido: nuestra bajada absoluta, unas ocho centésimas, está en los clientes nuevos en página (3,4 → 3,1); los equipos que iban delante también pierden distancia con la referencia. No sabemos por qué las listas genéricas mejoran en la final ni cuánto de lo nuestro es política y cuánto clientes distintos. Un corte de red de 30 segundos costó 82 peticiones, menos de una centésima.
 
 **10. Fallos y descartes (35 s).** Un fallo nuestro dejó las señales de precio a cero desde las 19:07 UTC; al corregirlo cambiaba el 84 % de las listas y no mezclamos esas medidas con las posteriores. Contábamos compras de nuestro carrusel como orgánicas: 33 compras, pero se realimentaba. 29 ideas descartadas con evidencia. Antes de optimizar, construye con qué medir; y la fiabilidad es operación.
 
