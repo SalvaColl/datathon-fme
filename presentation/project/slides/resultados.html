@@ -3,27 +3,28 @@
 <h2>Dónde estamos, medido en el marcador</h2>
 <div class="main">
 <div class="col grow">
-<p class="small">Compras esperadas por cada 100 peticiones</p>
+<p class="small">Compras esperadas por cada 100 peticiones, 15 nov 05:00–07:00 UTC</p>
 <div class="bars">
-<div class="row"><p class="lab" style="width:400px">Punto de partida</p><div class="bar" style="width:136px"></div><p class="val">0,69</p></div>
-<div class="row"><p class="lab" style="width:400px">Nuestro primer modelo (v1)</p><div class="bar good" style="width:179px"></div><p class="val">0,91</p></div>
-<div class="row"><p class="lab" style="width:400px">qrank, prueba A/B</p><div class="bar todo" style="width:260px"></div><p class="val todo-text">[pendiente]</p></div>
-<div class="row"><p class="lab" style="width:400px">Referencia de los organizadores</p><div class="bar" style="width:400px"></div><p class="val">2,03</p></div>
+<div class="row"><p class="lab" style="width:400px">Punto de partida</p><div class="bar" style="width:139px"></div><p class="val">0,53</p></div>
+<div class="row"><p class="lab" style="width:400px">Referencia de los organizadores</p><div class="bar" style="width:489px"></div><p class="val">1,87</p></div>
+<div class="row"><p class="lab" style="width:400px">team_26</p><div class="bar good" style="width:560px"></div><p class="val">2,14</p></div>
+<div class="row"><p class="lab" style="width:400px">team_26 en la final</p><div class="bar todo" style="width:260px"></div><p class="val todo-text">[marcador oculto]</p></div>
 </div>
-<p class="small">La hora de v1 incluye 14 minutos de caída (63,6 % a tiempo), que la acercan al punto de partida.</p>
+<p class="small">En peticiones de arranque en frío: 2,56 frente a 1,64 de la referencia y 0,74 del punto de partida.</p>
 </div>
 <div class="col" style="width:680px">
-<h3>Laboratorio nocturno</h3>
+<h3>Distancia a la referencia</h3>
 <table>
-<tr><th style="width:44%; text-align:left">Variante</th><th style="width:28%; text-align:left">Conversión</th><th style="width:28%; text-align:left">Frente a partida</th></tr>
-<tr><td>v1</td><td>[__]</td><td>[__]</td></tr>
-<tr><td>qrank</td><td>[__]</td><td>[__]</td></tr>
-<tr><td>qrank + inicio</td><td>[__]</td><td>[__]</td></tr>
-<tr><td>+ afinidad</td><td>[__]</td><td>[__]</td></tr>
+<tr><th style="width:44%; text-align:left">Ventana UTC</th><th style="width:28%; text-align:left">team_26</th><th style="width:28%; text-align:left">Diferencia</th></tr>
+<tr><td>14 nov 12–13</td><td>0,96</td><td>−1,07</td></tr>
+<tr><td>14 nov 17–18</td><td>1,88</td><td>−0,15</td></tr>
+<tr><td>14 nov 23–01</td><td>1,91</td><td>−0,09</td></tr>
+<tr><td>15 nov 01–03</td><td>2,06</td><td>+0,10</td></tr>
+<tr><td>15 nov 05–07</td><td>2,14</td><td>+0,27</td></tr>
 </table>
-<p class="small">Offline, acierto en 1.ª posición: 0,472 → 0,519 al añadir afinidad (4.697 sesiones con compra).</p>
+<p class="small">A tiempo: del 76,9 % en la primera ventana al 99,94 % en la última.</p>
 </div>
 </div>
-<p class="source">Marcador público de práctica, 14 nov 13:50 UTC, última hora (N = 10.785 peticiones). La barra discontinua y la tabla se rellenan con las mediciones de esta noche.</p>
-<aside>Resultados, solo lo medido. En el marcador, el punto de partida está en 0,69 compras esperadas por cada cien peticiones y nuestro primer modelo en 0,91, y eso en una hora que incluye una caída nuestra de 14 minutos, durante la cual respondía el recomendador por defecto. La referencia de los organizadores está en 2,03. [RELLENAR: resultado del A/B de qrank, con su N y la hora.] [RELLENAR: tabla del laboratorio nocturno, conversión de cada variante y diferencia frente al punto de partida de su misma hora.] Lo que sí podemos decir hoy de las variantes nuevas es offline: la afinidad sube el acierto en primera posición de 0,472 a 0,519 con un intervalo que no toca el cero, y nuestra estimación prudente para qrank en páginas de producto y categoría es pasar de 1,34 a cerca de 2,1 por ciento. Es una estimación con nuestro modelo, no una medida, y por eso no está en la diapositiva.</aside>
+<p class="source">Marcador público por ventana (api/state con from y to); N = 21.600 en las ventanas de 2 horas y 10.800 en las de 1 hora, las mismas peticiones para todos. Práctica: no predice la final.</p>
+<aside>Resultados, solo lo medido. En las dos últimas horas limpias de práctica, de cinco a siete de la mañana, sobre 21.600 peticiones: el punto de partida convierte 0,53, la referencia de los organizadores 1,87 y nosotros 2,14. En arranque en frío, que puntúa aparte, 2,56 frente a 1,64. La tabla cuenta el camino: ayer a mediodía, con el primer modelo y un 77 por ciento de respuestas a tiempo, estábamos un punto entero por debajo de la referencia. Por la tarde, con el modelo lineal y las categorías favoritas, a quince centésimas. Pasamos a la referencia de madrugada, con la política única, y el reajuste de pesos y lo demás nos lleva a 27 centésimas por encima. Dos avisos. Esto es práctica, con clientes y productos que la final cambia. Y la barra discontinua es la final: el marcador está oculto y no vamos a daros un número que no tenemos.</aside>
 </section>

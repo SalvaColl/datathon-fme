@@ -1,24 +1,24 @@
 <section id="marcador" class="dark" data-transition="fade">
 <p class="eyebrow">CÓMO MEDIMOS</p>
-<h2>El marcador es nuestro laboratorio</h2>
+<h2>Bloques de 15 minutos contra la referencia</h2>
 <div class="stack">
 <div class="cards">
-<div class="card"><p class="mid">Cada 60 s</p><p class="cap">se recalcula sobre la última hora exacta</p></div>
-<div class="card"><p class="mid">Sin azar</p><p class="cap">mide la compra esperada, no las compras que tocaron</p></div>
-<div class="card"><p class="mid">65 min</p><p class="cap">por variante y la cifra se lee directa, sin mezclas</p></div>
+<div class="card"><p class="mid">100 %</p><p class="cap">del tráfico con una sola política durante 15 minutos: 2.700 peticiones por bloque</p></div>
+<div class="card"><p class="mid">Sin azar</p><p class="cap">el marcador da la compra esperada; restamos la referencia de esa misma ventana</p></div>
+<div class="card"><p class="mid">5 a 7 veces</p><p class="cap">más fino que repartir el tráfico entre brazos: 0,06–0,08 puntos por bloque frente a ±0,4</p></div>
 </div>
-<p class="body">Laboratorio nocturno: cuatro variantes, dos vueltas, cada una comparada con el punto de partida de su misma hora.</p>
+<p class="body">Ronda del 15 nov, 02:20–04:20 UTC. Nuestra conversión menos la de la referencia, bloque a bloque:</p>
 <div class="blocks">
-<div class="blk b1"><p>v1</p></div>
-<div class="blk b2"><p>qrank</p></div>
-<div class="blk b3"><p>+ inicio</p></div>
-<div class="blk b4" style="border:2px solid #7FD1BE"><p>+ afinidad</p></div>
-<div class="blk b1"><p>v1</p></div>
-<div class="blk b2"><p>qrank</p></div>
-<div class="blk b3"><p>+ inicio</p></div>
-<div class="blk b4" style="border:2px solid #7FD1BE"><p>+ afinidad</p></div>
+<div class="blk b1"><p>A −0,06</p></div>
+<div class="blk b2"><p>B +0,17</p></div>
+<div class="blk b1"><p>A +0,03</p></div>
+<div class="blk b2"><p>B +0,15</p></div>
+<div class="blk b2"><p>B +0,25</p></div>
+<div class="blk b1"><p>A +0,11</p></div>
+<div class="blk b2"><p>B +0,27</p></div>
+<div class="blk b1"><p>A +0,10</p></div>
 </div>
 </div>
-<p class="source">Cadencia comprobada en 9 lecturas consecutivas del marcador público (14 nov 13:24–13:39 UTC). El laboratorio pasa 11 pruebas contra un marcador simulado.</p>
-<aside>¿Cómo sabemos si un cambio mejora? Las compras reales son muy ruidosas: 84 compras en una hora no distinguen dos variantes. Pero descubrimos que el marcador público publica la conversión esperada según el modelo oculto de los organizadores, sin el azar de las compras, y que se recalcula cada minuto sobre la última hora exacta. Así que lo convertimos en instrumento: si una variante corre 65 minutos seguidos, la ventana entera es suya y su cifra se lee directamente. El laboratorio nocturno rota cuatro variantes en dos vueltas, compara cada una con el punto de partida de su misma hora para descontar la deriva del tráfico, y lleva una guardia que retira una variante mala en menos de 16 minutos y vuelve a la mejor medida. Esto es una ablación: v1, luego qrank, luego qrank más la mejora de la página de inicio, luego todo más afinidad.</aside>
+<p class="source">Marcador público por ventana (api/state con from y to), 8 bloques de 2.700 peticiones. Qué política sirvió cada bloque: registro de despliegue del writer. Brazos paralelos: ±0,4 puntos entre rondas de 30 minutos con unas 1.500 peticiones por brazo.</p>
+<aside>¿Cómo sabemos si un cambio mejora? Las compras reales son muy ruidosas: unas 225 por hora no distinguen dos variantes. El marcador público da la conversión esperada según el modelo oculto, sin ese azar, y desde ayer por la tarde admite ventanas a medida. Primero repartimos el tráfico entre brazos en paralelo, y el mismo par de brazos bailaba cuatro décimas entre rondas. Así que cambiamos de instrumento: una sola política para todo el tráfico durante quince minutos, luego otra, alternando, y de cada bloque leemos nuestra conversión menos la de la referencia de los organizadores en esa misma ventana, que descuenta la deriva del tráfico. Entre bloques de la misma política esa diferencia se mueve seis a ocho centésimas. Abajo veis una ronda real: A es la política que teníamos, B la candidata. No es un experimento aleatorizado, son bloques en el tiempo, y por eso repetimos y alternamos.</aside>
 </section>

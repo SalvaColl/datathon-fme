@@ -5,12 +5,12 @@
   "format": {"v": 1, "shared": ["project/deck.css"]},
   "title": "Datathon FME 2026 · team_26 · Presentación jurado",
   "cover": "cover",
-  "order": ["cover", "problema", "huecos", "afinidad", "nuevos", "tendencias", "marcador", "sistema", "resultados", "aprendido"],
+  "order": ["cover", "problema", "huecos", "afinidad", "marcador", "sistema", "nuevos", "tendencias", "resultados", "aprendido"],
   "sections": {
     "s1": {"description": "El reto: diez productos válidos en tres segundos, tres veces por segundo.", "start": "cover"},
     "s2": {"description": "Lo que los datos nos enseñaron sobre qué se compra y qué no.", "start": "huecos"},
-    "s3": {"description": "Cómo medimos y cómo servimos sin fallar.", "start": "marcador"},
-    "s4": {"description": "Resultados medidos y lo que nos llevamos.", "start": "resultados"}
+    "s3": {"description": "Cómo medimos, cómo servimos sin fallar y cómo aprende el sistema del stream.", "start": "marcador"},
+    "s4": {"description": "Resultados medidos, fallos y descartes.", "start": "resultados"}
   },
   "faces": {
     "space-grotesk": {"family": "Space Grotesk", "href": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@400;600&display=swap"},

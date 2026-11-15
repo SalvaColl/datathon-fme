@@ -1,24 +1,22 @@
 <section id="sistema" data-transition="fade">
-<p class="eyebrow">EL SISTEMA</p>
-<h2>Un solo proceso responde; la receta se cambia en caliente</h2>
+<p class="eyebrow">EL SISTEMA · USO DE RAWTREE</p>
+<h2>Un solo proceso responde; la política se cambia en caliente</h2>
 <div class="stack">
 <div class="flow">
-<div class="step"><h3>Leer</h3><p class="small">Peticiones, eventos y stock de RawTree, de forma incremental</p></div>
+<div class="step"><h3>Leer</h3><p class="small">Peticiones, eventos y stock de RawTree por SQL, de forma incremental</p></div>
 <x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step"><h3>Candidatos</h3><p class="small">Lo visto, lo mejor de su categoría, lo nuevo</p></div>
+<div class="step key"><h3>Ordenar</h3><p class="small">Unas 20 señales por petición; los pesos están en un fichero que se relee cada 20 s</p></div>
 <x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step key"><h3>Ordenar</h3><p class="small">La variante activa se elige en un fichero que se relee cada 20 s</p></div>
+<div class="step"><h3>Guardas</h3><p class="small">10 distintos, en stock, nada ya comprado, dentro de plazo</p></div>
 <x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step"><h3>Guardas</h3><p class="small">10 distintos, en stock, dentro de plazo</p></div>
-<x-shape kind="arrow-right" class="arrow"></x-shape>
-<div class="step"><h3>Escribir</h3><p class="small">Una respuesta por petición, nunca dos</p></div>
+<div class="step"><h3>Escribir</h3><p class="small">Una respuesta por petición; el feedback vuelve y se guarda un resumen en scratch</p></div>
 </div>
 <div class="cards">
-<div class="card"><p class="mid">99,5 %</p><p class="cap">a tiempo en una hora normal (7.977 de 8.016)</p></div>
-<div class="card"><p class="mid">1,35 s</p><p class="cap">de latencia típica; el 95 % por debajo de 2,1 s</p></div>
-<div class="card"><p class="mid">37 %</p><p class="cap">de clientes alcanzados cuando escribían dos procesos a la vez: por eso solo uno</p></div>
+<div class="card"><p class="mid">99,96 %</p><p class="cap">a tiempo (43.182 de 43.200); latencia típica 1,22 s y el 95 % por debajo de 1,91 s</p></div>
+<div class="card"><p class="mid">3 peticiones</p><p class="cap">perdidas al cambiar de versión con relevo; antes, unas 200 por reinicio</p></div>
+<div class="card"><p class="mid">144 filas</p><p class="cap">de métricas por bloque de 15 minutos en nuestra tabla scratch de RawTree</p></div>
 </div>
 </div>
-<p class="source">Feedback propio, 14 nov 12:00–13:00 UTC. Dos procesos: 13:00–13:08 CET, 531 de 1.437 peticiones respondidas por ambos mostraron nuestra lista.</p>
-<aside>El sistema. Un único proceso lee de RawTree las peticiones, los eventos orgánicos y los cambios de stock de forma incremental, junta entre 150 y 300 candidatos por cliente, los ordena, pasa las guardas y escribe. Tres decisiones de diseño. Una: un solo proceso escribe. Lo aprendimos por las malas: con dos procesos a la vez, nuestra lista solo llegaba al 37 por ciento de los clientes. Dos: la forma de ordenar es una variante que se elige en un fichero que el proceso relee cada veinte segundos; cambiar de receta o volver atrás no requiere reiniciar nada, y si una variante falla en una petición, esa petición sigue por el camino anterior. Tres: las guardas van antes que el modelo: si una petición ya lleva 1,8 segundos, se contesta al instante con una lista segura en vez de llegar tarde. En una hora normal, 99,5 por ciento a tiempo.</aside>
+<p class="source">Feedback propio, 15 nov 03:00–07:00 UTC, N = 43.200. Relevo del 15 nov 00:36 UTC: 3 sin responder de 2.343 en 13 minutos; antes, unas 1.080 en 5 reinicios (E-220). Scratch: 24 bloques, 01:15–07:15 UTC.</p>
+<aside>El sistema. Un único proceso lee de RawTree, por SQL y de forma incremental, las peticiones, los eventos orgánicos y los cambios de stock; calcula unas veinte señales por petición, ordena, pasa las guardas y escribe. Un solo proceso escribe: con dos a la vez nuestra lista solo llegaba al 37 por ciento de los clientes. La política, es decir los pesos, vive en un fichero que el proceso relee cada veinte segundos y valida entero antes de aplicarlo; así es como rotamos políticas cada quince minutos sin reiniciar. Las guardas van antes que el modelo: si una petición va justa de tiempo recibe una lista segura, unas 17 por hora. Para cambiar de código hay un relevo: el proceso nuevo carga mientras el viejo sigue respondiendo; el relevo real de esta noche perdió 3 peticiones, cuando ayer cada reinicio costaba unas doscientas. En las últimas cuatro horas, 99,96 por ciento a tiempo. Y RawTree no es solo la entrada: guardamos en nuestra tabla scratch un resumen por bloque de quince minutos, y tenemos una consulta que sigue una petición de principio a fin, de la petición a las señales, a nuestra lista y a la compra. La podemos enseñar en la demo.</aside>
 </section>

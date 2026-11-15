@@ -1,16 +1,16 @@
 <section id="aprendido" class="dark" data-transition="fade">
-<p class="eyebrow">QUÉ NOS LLEVAMOS</p>
-<h2>Cuatro lecciones para la próxima tienda</h2>
+<p class="eyebrow">FALLOS, DESCARTES Y QUÉ NOS LLEVAMOS</p>
+<h2>Lo que no funcionó también está medido</h2>
 <div class="stack">
 <div class="cards">
-<div class="card"><h3>Quitar lo que no vende rinde más que afinar el modelo</h3><p class="body">Un tercio de los huecos estaba perdido y no lo veíamos.</p></div>
-<div class="card"><h3>El dato en vivo manda sobre el histórico</h3><p class="body">El histórico decía que lo ya comprado se revende. En vivo: 0 de 1.118.</p></div>
+<div class="card"><h3>Un fallo dejó el precio a cero durante horas</h3><p class="body">Al corregirlo cambiaba el 84 % de las listas. Las medidas de esa noche no se mezclaron con las posteriores.</p></div>
+<div class="card"><h3>Contábamos nuestras propias ventas como orgánicas</h3><p class="body">33 compras de más en 11 productos nuevos. Pequeño, pero se realimentaba.</p></div>
 </div>
 <div class="cards">
-<div class="card"><h3>Antes de optimizar, construye la regla de medir</h3><p class="body">Una variante por hora, contra el punto de partida de esa hora.</p></div>
-<div class="card"><h3>La fiabilidad es operación, no código</h3><p class="body">Una tapa de portátil cerrada nos costó 14 minutos de respuestas.</p></div>
+<div class="card"><h3>29 ideas descartadas con su evidencia</h3><p class="body">Un modelo no lineal predecía peor que el lineal: −645 frente a −628 (offline).</p></div>
+<div class="card"><h3>Primero la regla de medir, luego el modelo</h3><p class="body">Y la fiabilidad es operación: una tapa de portátil cerrada costó 14 minutos.</p></div>
 </div>
 </div>
-<p class="source">Código, experimentos numerados y decisiones en el repositorio del equipo: cada cifra de esta presentación enlaza a su experimento.</p>
-<aside>Cuatro cosas que nos llevamos. Una: lo más rentable no fue un modelo mejor sino dejar de enseñar lo que no se vende. Dos: el histórico y el vivo no siempre coinciden; el histórico decía que lo ya comprado se vuelve a comprar, y en vivo fueron cero de 1.118. Hay que comprobarlo con el sistema real. Tres: antes de optimizar hay que tener con qué medir; convertir el marcador en un instrumento nos permitió comparar variantes sin discutir sobre ruido. Y cuatro, la más humilde: nuestra peor caída del día no fue un fallo de código, fue cerrar la tapa del portátil que servía las respuestas. Todo lo que hemos contado está en el repositorio con su número de experimento, incluidas las ideas que no funcionaron. Gracias.</aside>
+<p class="source">I-420 y E-421 (replay, 44 snapshots, 14 nov 19:07–22:44 UTC); I-470 (400 lanzamientos); R-24 (log-verosimilitud de compra, usuarios apartados); I-161. En el repositorio: 52 experimentos, 66 hallazgos, 33 decisiones, 394 tests.</p>
+<aside>Para cerrar, lo que salió mal, porque cambió decisiones. Uno: anoche descubrimos que desde las 19:07 UTC todas las variantes servían sin las señales de precio, por un fallo de código nuestro. No sabemos cuánto costó en conversión; sí que al corregirlo cambiaba el 84 por ciento de las listas, así que no mezclamos las comparaciones de esa noche con las posteriores al arreglo. Dos: las compras hechas en nuestro carrusel se estaban sumando a la tasa orgánica de los productos nuevos. Eran 33 compras, poco, pero es un error que se alimenta a sí mismo, y de arreglarlo salió la calidad orgánica que usamos hoy. Tres: llevamos 29 ideas descartadas con su evidencia: un modelo no lineal, modelos de secuencia, exploración con bandits, trucos de diversidad. No están en el sistema porque las medimos y no ganaban. Y lo que nos llevamos: antes de optimizar, construye con qué medir; y la fiabilidad es operación, nuestra peor caída fue una tapa de portátil cerrada. Todo está numerado en el repositorio. Gracias.</aside>
 </section>
