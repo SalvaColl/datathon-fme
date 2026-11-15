@@ -202,3 +202,29 @@ Detalle y límites en `experiments.md` E-650.
 | Nuevos en página, conversión esperada | 3,09% (práctica 06:19–07:19 UTC: 3,41%) | 5.132 / 2.614 | `api/state?by=model` |
 
 No decir: que la política de la final fuera peor o mejor que la de práctica (no hay comparación limpia), ni por qué subió la referencia (no observable).
+
+## 13. Cifras nuevas del deck de recorrido completo (15 nov 11:45 UTC)
+
+Las diapositivas 3, 7, 9, 10 y 13 añaden cifras. Las marcadas "otros hilos" se midieron en otros hilos del proyecto y no se han vuelto a calcular aquí.
+
+| Diapositiva | Cifra | Fuente |
+|---|---|---|
+| 3 | Nueve filas de trayectoria (−1,07 … +0,27) | Sección 2 de este fichero (marcador por ventana) |
+| 3, 12 | Final −0,03; 2,11 / 2,14 / 2,25 / 0,75; nota 53,67 | Sección 12; E-650 |
+| 7 | +0,04 y +0,21, error típico 0,05 | Sección 5 |
+| 7 | Listas genéricas 3 % → 0,15 % (69 de 46.821) | 3 %: 14 nov 20:00–22:30 UTC (otros hilos, T-043); 0,15 %: E-633, feedback 15 nov 03:00–07:30 UTC |
+| 7 | 3 de 2.343 en el relevo; unas 1.080 en 5 reinicios | Sección 6; E-220 |
+| 9 | Inicio: control 0,49 %, 0,38 / 0,21 / 0,14 % | R-18 / E-271, 14 nov 17:05–17:35 UTC |
+| 9 | No lineal −645 frente a −628 (offline) | R-24 / E-260 |
+| 9 | Secuencias 3,7 % frente a 5,1 % (offline) | R-26 / E-320 |
+| 9 | Productos nuevos con dosis alta: 4,3 por lista, 7 compras en unas 8.500 impresiones (8 por 10.000) frente a 22 | Otros hilos (revisión del día 14 nov 22:10 UTC); compras reales, primeros 75 minutos, páginas de conocidos |
+| 9 | Pesos del histórico −0,05 (IC −0,10 a −0,01), offline sobre nuestro feedback | Otros hilos (T-040): puesto recíproco medio de la compra, listas anteriores a las 16:00 UTC del 14 nov |
+| 9 | Señal producto a producto +0,20 y −0,41 | E-271 y ronda siguiente (`experiments.md`) |
+| 9 | Mover el servicio: 0,2 % recuperable | E-633 |
+| 10 | 37 % (531 de 1.437) | I-017 |
+| 10 | Precio a cero 19:07–22:44 UTC, 84 % de listas, 44 instantáneas | I-420, E-421 |
+| 10 | 2.821 sin respuesta y 1.570 con lista genérica, 14 nov 20:20–22:01 UTC | Otros hilos (revisión del día 14 nov 22:10 UTC), feedback |
+| 10 | Razón 10,2 (IC 5,8–16,5), 16 compras | I-390 |
+| 10 | Última pieza: 24 minutos en vivo sin bloque de control | Registro de despliegue (hilo de despliegue), 15 nov 07:32–07:56 UTC |
+| 13 | 30 segundos, 82 peticiones | Sección 12 |
+| 13 | 52 experimentos, 66 hallazgos, 33 decisiones, 29 descartes | Sección 9 |

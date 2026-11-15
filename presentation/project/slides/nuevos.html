@@ -1,21 +1,21 @@
 <section id="nuevos" data-transition="fade">
-<p class="eyebrow">APRENDER DEL STREAM · 1</p>
-<h2>Los pesos se reajustan con las compras de nuestro carrusel</h2>
+<p class="eyebrow">LO QUE FUNCIONÓ, MEDIDO EN VIVO</p>
+<h2>Aprender de las compras de nuestro propio carrusel</h2>
 <div class="main">
 <div class="col grow">
 <p class="small">Nuestra conversión menos la de la referencia, media de 4 bloques de 15 minutos por política</p>
 <div class="bars">
-<div class="row"><p class="lab">Pesos anteriores</p><div class="bar" style="width:116px"></div><p class="val">+0,04</p></div>
-<div class="row"><p class="lab">Pesos reajustados con compras en vivo</p><div class="bar good" style="width:560px"></div><p class="val">+0,21</p></div>
+<div class="row"><p class="lab" style="width:400px">Pesos anteriores</p><div class="bar" style="width:92px"></div><p class="val">+0,04</p></div>
+<div class="row"><p class="lab" style="width:400px">Pesos reajustados con compras en vivo</p><div class="bar good" style="width:440px"></div><p class="val">+0,21</p></div>
 </div>
-<p class="body">Diferencia: +0,17 puntos de conversión, con 10.800 peticiones por política.</p>
-<p class="body">La calidad de cada producto sale de sus compras orgánicas por vista en el stream, no del histórico.</p>
+<p class="body">+0,17 puntos con 10.800 peticiones por política. Es la única mejora de modelo que medimos con bloques alternos.</p>
+<p class="body">El ajuste pregunta, dentro de cada lista con compra, cuál de los diez productos se compró. La calidad de cada producto sale de sus compras orgánicas por vista en el stream.</p>
 </div>
-<div class="col" style="width:520px">
-<div class="card"><p class="mid">10 veces</p><p class="cap">más de lo esperado vendían los productos lanzados durante el evento cuando los enseñábamos (16 compras)</p></div>
-<p class="body">Preparado para la final: peso propio y tope por lista. Efecto en vivo: <span class="todo-text">[pendiente]</span></p>
+<div class="col tight" style="width:560px">
+<div class="card"><p class="mid">3 % → 0,15 %</p><p class="cap">de peticiones con lista genérica, tras medir dónde se iba el tiempo y subir el umbral de 1,8 a 2,2 s</p></div>
+<div class="card"><p class="mid">200 → 3</p><p class="cap">peticiones perdidas por cambio de versión: el proceso nuevo carga al lado del viejo y recibe el candado</p></div>
 </div>
 </div>
-<p class="source">Marcador público, 15 nov 02:20–04:20 UTC, 8 bloques alternos; error típico de la diferencia 0,05. Lanzados: feedback 14 nov 11:09–19:50 UTC, 1.256 impresiones a clientes conocidos, observado/esperado 10,2 (IC 95 % 5,8–16,5; I-390).</p>
-<aside>Cómo aprende el sistema de lo que pasa en vivo. Tres cosas. Una: los pesos. Por la tarde los ajustamos con datos del histórico y de nuestro feedback; de madrugada reajustamos los de las páginas de clientes conocidos contra las compras reales de nuestro propio carrusel, y lo medimos con el instrumento de antes: cuatro bloques con los pesos anteriores, cuatro con los nuevos. Diferencia, 17 centésimas de punto de conversión, unas tres veces y media su error. Es la política base desde las 04:25. Dos: la calidad de cada producto. Dejamos de usar la del carrusel histórico y pasamos a la tasa orgánica, compras por vista en el stream; offline, con corte temporal, predecía mejor nuestras compras en los tres segmentos. Tres: los productos lanzados durante el evento. Los estábamos hundiendo: cuando los enseñábamos a clientes conocidos vendían diez veces lo que el modelo esperaba, con solo 16 compras, así que el orden de magnitud es lo que vale. Para la final hemos preparado un peso propio para ellos y un tope por lista para no inundarla. El efecto en vivo de esa parte no está cerrado y por eso lo veis como pendiente.</aside>
+<p class="source">Marcador público, 15 nov 02:20–04:20 UTC, 8 bloques alternos, error típico de la diferencia 0,05. Listas genéricas: feedback 14 nov 20:00–22:30 UTC frente a 15 nov 03:00–07:30 UTC (69 de 46.821). Relevo: 3 sin responder de 2.343 el 15 nov 00:36 UTC; antes, unas 1.080 en 5 reinicios.</p>
+<aside>Qué funcionó, y lo decimos solo de lo que medimos en vivo. Lo primero: aprender de nuestras propias ventas. Hasta la una de la madrugada los pesos venían del histórico y de la navegación orgánica. Los reajustamos preguntando, dentro de cada lista nuestra que acabó en compra, cuál de los diez productos se compró. Lo probamos en ocho bloques alternos de quince minutos: los pesos anteriores quedaban 4 centésimas por encima de la referencia y los nuevos 21. Diecisiete centésimas, con un error típico de cinco. Es la única mejora de modelo que tenemos medida así, y lo decimos tal cual: el resto de la subida de la noche es trayectoria, no experimento. Las otras dos cosas son de operación. Medimos que el 3 por ciento de las peticiones recibía una lista genérica porque un umbral de tiempo era demasiado prudente; al subirlo bajó al 0,15. Y cambiar de versión costaba unas doscientas peticiones por reinicio; con el relevo, en el que el proceso nuevo carga al lado del viejo y recibe el candado, costó tres.</aside>
 </section>

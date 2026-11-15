@@ -81,3 +81,20 @@ table { font-size: 28px; color: #14232E; width: 100%; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 .card, .row, .vcol, .step { animation: rise 500ms both; }
+
+/* trayectoria: barras a izquierda y derecha de un cero común */
+.trail { display: flex; flex-direction: column; gap: 12px; }
+.trow { display: flex; align-items: center; gap: 20px; animation: rise 500ms both; }
+.twin { width: 250px; font-size: 26px; font-weight: 600; color: #14232E; }
+.tneg { width: 390px; display: flex; justify-content: flex-end; }
+.tpos { width: 110px; display: flex; justify-content: flex-start; border-left: 3px solid #14232E; }
+.tbar { height: 40px; border-radius: 6px; background: #D9662B; }
+.tbar.up { background: #0B6B58; }
+.tval { width: 100px; font-size: 28px; font-weight: 600; color: #14232E; }
+.twhat { flex: 1; font-size: 26px; line-height: 1.2; color: #3C4B55; }
+.trow.fin .twin, .trow.fin .twhat { color: #B4501C; }
+/* tarjetas compactas */
+.tight .card { padding: 28px; gap: 10px; }
+.tag { font-size: 24px; font-weight: 600; letter-spacing: 1px; color: #0B6B58; }
+.dark .tag { color: #7FD1BE; }
+.rej td, .rej th { padding: 9px 0; }
