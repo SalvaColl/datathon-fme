@@ -234,7 +234,9 @@ Definiciones en D-360. **Por defecto no hay ventana de día y no hay que hacer n
 - Vuelta atrás: política, `cp policy.fix_champion.json data/policy.json`; código, reinicio con relevo desde `6150ffc` y `cp policy.champion.json data/policy.json`.
 
 
-## Vigilancia y relevo entre máquinas (final) — T-063 (2026-11-15)
+## Watchdog y reserva en otra máquina (T-063) — 2026-11-15
+
+Complementa la sección "Vigilancia y relevo durante la final" (PR 68, `tools/final_watch.py`: márgenes de las guardas de lanzados y de tendencias, retraso por tabla, orden manual del relevo). Aquí solo está lo que aquella no cubre: el veredicto OK / WARN / CRITICAL del watchdog y sus umbrales, cómo arrancar y promover un proceso de reserva, y cómo se prueba que el writer anterior ha parado. Si las dos secciones discrepan en el orden del relevo, manda la de PR 68.
 
 Evidencia: E-630..E-632. Decisión: D-630. Nada de esto toca al writer del Mac: el vigilante solo lee y el modo de espera es un proceso aparte que no escribe hasta que una persona lo promueve.
 
