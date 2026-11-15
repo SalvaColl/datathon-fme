@@ -50,7 +50,12 @@ FEATS = ["aff10", "chn", "cl", "islast", "oinrv", "ssub2", "scat2", "na", "home"
          # orate = log purchases per view, opop = log views, both centred on the catalogue median. Within the same request and
          # at the same slot they predict which product is bought better than `lq` (whose weight drops to 0 next to them),
          # on held-out requests, for new and returning shoppers and on home (E-490); weight 0 in every committed file
-         "orate", "opop"]
+         "orate", "opop",
+         # T-053: `hot` only for shoppers whose recent views include the burst's category. In the 7 bursts of 14 Nov these
+         # shoppers (11% of the requests of a burst) bought hot products 11 times more often than the other products at the
+         # same slot (30 buys vs 2.7 expected); everybody else 3 vs 1.9, no evidence (E-530). Lets a policy give them a
+         # large dose and the rest a small one (`hot`); weight 0 in every committed file
+         "hotc"]
 # nbp: description phrases shared with something bought TODAY (0/1/2) | bsub: same subcategory as something bought today
 # hcart: home page x carted-not-bought (history or today) | p40: price above 40 EUR
 # segcheap: price-sensitive shopper (android in SEG_REGIONS) x price under 20 EUR | seglq: same shopper x product quality
@@ -198,7 +203,9 @@ def features(S: Snap, aff, rv, page, hist_cart: dict, live_cart, idx=None, bough
         sc = Q @ mfu; sd = float(sc.std())
         if sd > 0: X[rows_s, 20] = (sc[rows_mf] - sc.mean()) / sd
     if getattr(S, "newp", None) is not None and rv and page in LQ_PAGES: X[:, 21] = S.newp      # never on home or without views
-    if getattr(S, "hot", None) is not None: X[:, 22] = S.hot                                    # every page: a burst reaches every shopper
+    if getattr(S, "hot", None) is not None:
+        X[:, 22] = S.hot                                                                        # every page: a burst reaches every shopper
+        if rows: X[:, 25] = S.hot * np.isin(S.cat, S.cat[rows])                                 # T-053: the burst's category is in the recent views
     if getattr(S, "orate", None) is not None: X[:, 23] = S.orate; X[:, 24] = S.opop             # every page: a property of the product
     return X if idx is None else X[idx]
 
@@ -432,9 +439,9 @@ class LiveFit:
 
     def wants_hot(self) -> bool:
         """Does any weight set in use (committed or arm) give the burst feature a weight? If not, nobody asks for trends."""
-        k = FEATS.index("hot")
+        ks = (FEATS.index("hot"), FEATS.index("hotc"))
         sets = [self.w] + [w for w, _ in list(self.alt.values())]
-        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new"))
+        return any(float(w[seg][k]) != 0.0 for w in sets for seg in ("known", "new") for k in ks)
 
     def wants_oq(self) -> bool:
         """Does any weight set in use give the organic quality features a weight? If not, nobody builds them."""

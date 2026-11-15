@@ -555,3 +555,8 @@ Past-only minute-resolution replay, shop.events 14 Nov 09:00 through 15 Nov 00:2
 Shadow replay on the **cs2r base at 05a862c**, with hot weight 1.5 for product/category pages and unchanged home overrides: 3,744 sampled requests, all three paths valid; fast/slow slates differed in 1.04%, and fast/no-hot in 5.48%. Local fast-arm scoring p95/p99 7.15/22.54 ms (includes replay user-profile work, excludes network). This was before the unified organic-quality policy arrived: it does not validate that newer policy, its known-user hot weight 3.0, or conversion.
 
 If pursued, clone the latest champion and change only the detector window, with separate immutable masks per arm built from one background query. A fast empty/error mask must be neutral, never fall back to a stale slow mask. Preserve all coefficients. Use actual served-policy epochs, same-window reference, one challenger, and confirmation on a new detected episode. Continue streaming updates after the pre-final parameter freeze. Keep this experiment separate from E-520.
+### I-530 — La ráfaga es un escalón de 45 minutos y casi todo su valor está en quien ya mira esa categoría
+- **Status / date / owner:** SUPPORTED (LIVE FEEDBACK, 33 compras) — 2026-11-15 01:00 UTC — Javi (agente, T-053).
+- **Evidence:** E-530, E-531, E-532. Con contexto ×11 a igual puesto (30 compras frente a 2,7); caliente en el puesto 1: 6,9% frente a 1,3%. Ventaja completa desde el minuto 0 y nula tras el 45.
+- **Weakness:** sin contexto y home no hay potencia (3 y 2 compras). La cadencia (:30 de horas UTC impares, 7 de 8 huecos) puede cambiar en la final.
+- **Use:** dosis alta solo con contexto (`hotc`), baja para el resto (`hot`); detector rápido sin reloj.

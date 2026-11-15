@@ -31,7 +31,7 @@ def slate(lf, aff, model, rv=('A30',), new=False, page='product'):
 
 class OrganicQualityTests(unittest.TestCase):
     def test_features_are_last_and_committed_weights_are_zero(self):
-        self.assertEqual(lfm.FEATS[-2:], ["orate", "opop"])
+        self.assertEqual(lfm.FEATS[23:25], ["orate", "opop"])
         for f in Path(lfm.HERE).glob("lfm_coef*.json"):
             c = json.loads(f.read_text())
             for seg in ("known", "new"):

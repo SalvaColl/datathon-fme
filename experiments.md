@@ -761,3 +761,32 @@ The benchmark alternates call order and includes tied scores, non-finite exclusi
 - **Recalculo de E-500** (`unified_eval.py targets --base cs2r`, mismo caché y misma rejilla que `targets_e500_on_cs2r.json`; salida `/mnt/project-files/bot-unico/targets_e520_on_cs2r.json`): **todas las cifras iguales a la centésima** en todos los grupos (conocidos/página 13,27 → 16,46 con la dosis de u1, +3,19 ± 0,33; nuevos/página 10,39 → 12,36; fb@10 sin cambio). Motivo: (a) las puntuaciones son continuas, no hay empates en el borde del top 10 con datos reales (el caso de 80 empatados es sintético); (b) el proxy causal de ráfagas solo cambia 3 de 34 cubos de 10 minutos (Aquariums 10:10, 10:20 y 11:30 UTC), fuera de las peticiones evaluadas; (c) el catálogo de la evaluación ya traía los lanzamientos. Ninguna decisión de piezas ni de dosis cambia.
 - **Pérdida de eventos orgánicos de lanzamientos en el writer:** el fallo existe (un lanzamiento que aparece entre `refresh_catalog()` y `refresh_events()` del mismo ciclo pierde los eventos de esos segundos), pero medido en `shop.events` del 14 nov: 400 lanzamientos, 0 eventos anteriores al alta en `catalog_updates`, 21 eventos en los primeros 5 s y 145 en los primeros 30 s, de 179.554 eventos de productos lanzados (0,08% como cota superior; la ventana real son los ~2 s entre las dos consultas, en uno de cada ~15 ciclos). En un arranque el catálogo se carga antes del relleno de eventos, así que no se pierde nada. **No justifica un reinicio por sí solo**; entra en el próximo reinicio planificado. Los consumidores de `organic_frame` (`attr_model`, `live_quality`, `cold_items`, `lfm.organic_quality`) reindexan al catálogo: una fila de un producto aún sin metadatos no les afecta.
 - **Límite:** el proxy de ráfagas de `unified_eval` sigue sin servir para elegir ventanas del detector (I-521 usa `trends.compute`, que no tenía la fuga).
+`python recsys/unified_eval.py check policy.unified.json ...` (`clean_lfm_arms` → `set_arms` → `LiveFit.slate`, estado a fecha de la petición). Primera pasada (4.111 peticiones desde las 17:00 UTC, versión sin carritos y versión con carritos a dosis 0,8): 100% válidas en todos los grupos; latencia por lista p50 1,3 ms, p95 5,0, p99 7,8, igual que r3. Cambia el puesto 1 en ~49% de las listas de nuevos en página. Pasada de la política final: ver el PR.
+
+## E-530 — Dosis y momento de las ráfagas en nuestro carrusel (T-053, 15 nov 01:00 UTC) — LIVE FEEDBACK, muestras pequeñas
+
+Feedback propio de las 7 ráfagas del 14 nov (Aquariums 09:30, Kettles 11:30, Cutting Boards 13:30, Bike Helmets 15:30, Game Consoles 19:30, Face Cream 21:30, Vitamins 23:30 UTC), 132.982 listas servidas por el equipo; "con contexto" = alguna vista reciente en la categoría de la subcategoría en ráfaga.
+
+- **Forma:** escalón exacto en `shop.events`: vistas ×4 desde el minuto :30:00 hasta el :15:00, sin rampa. En el carrusel, productos calientes: 12–15 compras por 10.000 impresiones antes, 117 / 149 / 158 en los minutos 0–5 / 5–10 / 10–15, 66–97 hasta el 45, 35 y 20 después.
+- **A quién:** con contexto (11% de las peticiones en ráfaga) 30 compras frente a 2,7 esperadas a igual puesto y tipo de usuario (×11); sin contexto 3 frente a 1,9 (clics 12 frente a 6). Fuera de ráfaga (placebo) 5 frente a 5,1 y 4 frente a 4,6. Home: 2 compras en 488 impresiones (0,8 esperadas).
+- **Cuántos y dónde (con contexto):** conversión de la lista con 0 calientes 0,72% (3.600 listas), 1: 3,04% (691), 2: 4,83% (331), 3–4: 5,73% (227), 5 o más 4,55% (22). Caliente en el puesto 1: 6,93% (274) frente a 1,26% (4.597). Calientes en los puestos 4–10: 9 compras frente a 0,54 esperadas. Sin contexto, caliente en el puesto 1: 1,59% (126) frente a 1,66%.
+- **Qué productos:** el alza de vistas es igual para todos los productos de la subcategoría (×3,7–4,5 en la mitad más vista y ×3,8–5,6 en la otra); venden los que ya vendían (correlación compras antes / durante 0,80–0,96; el 20% de productos reúne el 60–73% de las compras). Los lanzados hoy venden como el resto. Basta el orden que ya da `orate`.
+- **Límite:** quienes vieron productos calientes los eligió el modelo (afinidad); el efecto sobre usuarios sin contexto a dosis alta es HYPOTHESIS.
+
+## E-531 — u1 a varias dosis de `hot`, repetición por el camino del writer con ráfaga perfecta (T-053) — OFFLINE, exposición, no conversión
+
+`clean_lfm_arms` → `set_arms` → `LiveFit.slate`, estado a fecha de la petición, conjunto caliente = subcategoría real durante sus 45 minutos (4 ráfagas, 4.037 peticiones, 100% válidas en todas). Calientes por lista / caliente en el puesto 1:
+
+| Grupo | u1 (3 / 1,5) | u1t (6 / 3, home 1) | u1c (u1 + `hotc` 9) |
+|---|---|---|---|
+| conocido, última vista en la subcategoría | 5,4 / 55% | 8,7 / 84% | 10,0 / 100% |
+| conocido, categoría en las vistas | 3,0 / 26% | 6,2 / 61% | 9,6 / 97% |
+| nuevo, última vista en la subcategoría | 5,2 / 83% | 8,1 / 100% | 10,0 / 100% |
+| nuevo, categoría en las vistas | 2,4 / 43% | 4,9 / 74% | 10,0 / 100% |
+| conocido sin contexto (página) | 0,3 / 4% | 2,4 / 19% | 0,3 / 4% |
+| nuevo sin contexto (página) | 0,8 / 9% | 3,1 / 50% | 0,8 / 9% |
+| home | 0,1 / 1% | 0,5–0,8 / 5–12% | 0,1 / 1% |
+
+## E-532 — Detector rápido repetido sobre todo el 14 nov (T-053)
+
+`python recsys/trend_fast_replay.py` (necesita los agregados por minuto; solo lectura): `trends.compute` + `trends.fast_hot` cada minuto de 09:40 a 00:50 UTC. Regla de 15 minutos: entra en el minuto 4–8 y sale en el 52–56. Rápido (3 minutos, alza 2,5, z 8, 50 vistas; se mantiene con alza 1,5 y z 3): entra en el minuto 2–3, sale en el 46–47, 43–44 de los 45 minutos cubiertos, 0 minutos marcados fuera de las 7 ráfagas.

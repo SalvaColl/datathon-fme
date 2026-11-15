@@ -27,6 +27,18 @@ MIN_BASE = 6            # need at least 30 min of baseline before saying anythin
 K_SUB, K_PROD = 20.0, 5.0   # pseudo-views for shrinkage (lift -> 1 when there is little data)
 HOT_LIFT, HOT_Z, HOT_MIN_VIEWS = 2.0, 6.0, 50   # a subcategory is "hot" if all three hold
 ALPHA, CAP = 0.5, 3.0   # multiplier = clip(lift, 1, CAP) ** ALPHA  (conservative: sqrt of the lift)
+# T-053 fast path. A burst is an exact step (starts at :30:00, ends 45 minutes later, full effect from the first minute,
+# E-530), so the 15-minute window above enters 4-8 minutes late and leaves 7-11 minutes late. The fast path compares the
+# views of the last FAST_MIN minutes with the same baseline share: on 14 Nov it enters at minute 2-3, leaves at minute
+# 46-47 and never fires outside the 7 bursts. A subcategory enters with the strict thresholds and stays while it is still
+# clearly above normal (hysteresis), so a noisy minute inside a burst does not switch it off.
+FAST_MIN, FAST_K = 3, 10.0
+FAST_LIFT, FAST_Z, FAST_MIN_VIEWS = 2.5, 8.0, 50
+STAY_LIFT, STAY_Z = 1.5, 3.0
+FAST_SQL = """SELECT product_id::String i, toUInt32(count()) v FROM shop.events
+WHERE event_type::String = 'view' AND ts::DateTime64(3) > toDateTime64('{now}', 3) - INTERVAL {m} MINUTE AND ts::DateTime64(3) <= toDateTime64('{now}', 3)
+GROUP BY i"""
+_PREV: set = set()      # subcategories the fast path had on at the previous call (refresher thread only)
 
 SQL = """SELECT toUInt16(intDiv(dateDiff('second', ts::DateTime64(3), toDateTime64('{now}', 3)), {bsec})) age,
   product_id::String i, toUInt32(countIf(event_type::String = 'view')) v,
@@ -51,6 +63,7 @@ class Snapshot:
     sub_z: dict = field(default_factory=dict)        # subcategory -> Poisson z-score of the recent count
     prod_lift: dict = field(default_factory=dict)    # product -> shrunk lift relative to its own subcategory
     hot: list = field(default_factory=list)          # hot subcategories, strongest first
+    share: dict = field(default_factory=dict)        # subcategory -> usual share of the views (median of the baseline blocks)
     sub_of: dict = field(default_factory=dict)
     n_base: int = 0
 
@@ -94,6 +107,7 @@ def compute(counts: pd.DataFrame, sub_of: dict, recent=RECENT, base=BASE) -> Sna
     v = v_sub.reindex(subs).fillna(0)
     lift = (v + K_SUB) / (e + K_SUB); z = (v - e) / np.sqrt(e + 1.0)
     snap.sub_lift, snap.sub_z = lift.to_dict(), z.to_dict()
+    snap.share = share.to_dict()
     hot = lift[(lift >= HOT_LIFT) & (z >= HOT_Z) & (v >= HOT_MIN_VIEWS)].sort_values(ascending=False)
     snap.hot = hot.index.tolist()
     # --- product level, relative to its own subcategory (is this product moving more than its shelf?)
@@ -107,13 +121,38 @@ def compute(counts: pd.DataFrame, sub_of: dict, recent=RECENT, base=BASE) -> Sna
     return snap
 
 
-def snapshot(query, sub_of: dict, now=None) -> Snapshot:
-    """Fetch + compute. Safe to call from the refresher thread; on any error return a neutral snapshot."""
+def fast_hot(share: dict, recent: pd.DataFrame, sub_of: dict, prev=()) -> list:
+    """Hot subcategories from the views of the last FAST_MIN minutes. share: usual share per subcategory (Snapshot.share);
+    recent: rows (i, v); prev: what this function returned last time. Strongest first. Pure function (replayed in tests)."""
+    if not share or recent is None or len(recent) == 0: return []
+    v = recent.assign(sub=recent.i.map(sub_of)).dropna(subset=["sub"]).groupby("sub").v.sum().astype(float)
+    tot = float(v.sum())
+    if tot <= 0: return []
+    e = pd.Series(share).reindex(v.index).fillna(0.0) * tot
+    lift = (v + FAST_K) / (e + FAST_K); z = (v - e) / np.sqrt(e + 1.0)
+    on = (lift >= FAST_LIFT) & (z >= FAST_Z) & (v >= FAST_MIN_VIEWS)
+    stay = v.index.isin(list(prev)) & (lift >= STAY_LIFT) & (z >= STAY_Z)
+    return lift[on | stay].sort_values(ascending=False).index.tolist()
+
+
+def snapshot(query, sub_of: dict, now=None, fast=True) -> Snapshot:
+    """Fetch + compute. Safe to call from the refresher thread; on any error return a neutral snapshot.
+    fast (T-053): `hot` comes from the last FAST_MIN minutes against the same baseline; if that query fails, or there is
+    no baseline yet, `hot` stays as the 15-minute rule left it."""
+    global _PREV
     try:
-        return compute(fetch_counts(query, now), sub_of)
+        snap = compute(fetch_counts(query, now), sub_of)
     except Exception as e:  # never break serving because of trends
         print("trends error", e)
         return Snapshot(sub_of=sub_of)
+    if fast and snap.share:
+        try:
+            t = now or (pd.Timestamp.now("UTC").tz_localize(None) - pd.Timedelta(seconds=5)).strftime("%Y-%m-%d %H:%M:%S")
+            rec = pd.DataFrame(query(FAST_SQL.format(now=t, m=FAST_MIN)), columns=["i", "v"])
+            snap.hot = fast_hot(snap.share, rec, sub_of, _PREV); _PREV = set(snap.hot)
+        except Exception as e:
+            print("trends fast path error, keeping the 15-minute rule:", type(e).__name__, e)
+    return snap
 
 
 if __name__ == "__main__":  # python trends.py  -> print what is hot right now (read-only)
